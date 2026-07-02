@@ -1,0 +1,102 @@
+{
+  "auditors": [
+    {
+      "id": 1,
+      "name": "Informal Systems / Zellic / Oak Security",
+      "specialization": "Cosmos SDK / Go chain specialist",
+      "assigned_scopes": ["Scope A", "Scope B"],
+      "pre_engaged_week": 14,
+      "status": "pre-engaged",
+      "context_delivered": true
+    },
+    {
+      "id": 2,
+      "name": "Trail of Bits / Halborn / Zellic / Spearbit",
+      "specialization": "Solidity / EVM specialist",
+      "assigned_scopes": ["Scope C", "Scope E"],
+      "pre_engaged_week": 14,
+      "status": "pre-engaged",
+      "context_delivered": true,
+      "requirements": {
+        "evm_on_cosmos_experience": true,
+        "cosmos_evm_pre_v1_risk_acknowledged": true
+      }
+    },
+    {
+      "id": 3,
+      "name": "Internal Red Team / Specialist Firm",
+      "specialization": "Infrastructure / Distributed Systems specialist",
+      "assigned_scopes": ["Scope D"],
+      "pre_engaged_week": 14,
+      "status": "pre-engaged",
+      "context_delivered": true
+    }
+  ],
+  "scopes": {
+    "Scope A": {
+      "name": "Go chain",
+      "components": [
+        "all custom modules",
+        "x/staking compatibility shim",
+        "x/distribution override",
+        "genesis config",
+        "ABCI++ hooks",
+        "degraded mode chain-state design",
+        "x/authz blocked message types"
+      ]
+    },
+    "Scope B": {
+      "name": "CosmWasm",
+      "components": [
+        "all four contracts",
+        "authority graph",
+        "gas limits",
+        "EmergencyPause scope (ExecuteMsg only)",
+        "cold multi-sig holder set",
+        "Governance replacement procedure",
+        "fund migration",
+        "cold multi-sig key holder identities"
+      ]
+    },
+    "Scope C": {
+      "name": "Bridge",
+      "components": [
+        "BSC LockBox (keccak256 nonce generation, bitmap, tiered confirmation, circuit-breaker)",
+        "x/bridge",
+        "relayer (deterministic promotion ladder, NATS coordination, Relayer DB)"
+      ]
+    },
+    "Scope D": {
+      "name": "Infrastructure",
+      "components": [
+        "NATS account isolation",
+        "retention policies",
+        "nats_published back-fill",
+        "ingestion singleton (advisory lock, startup reconciliation)",
+        "projection aggregate singleton",
+        "CQRS DB user permission matrix",
+        "TimescaleDB hypertable correctness"
+      ]
+    },
+    "Scope E": {
+      "name": "EVM",
+      "components": [
+        "x/vm module wiring and genesis params (EVM chain ID, base denom = atoken 18-decimal, AllowUnprotectedTxs = false)",
+        "x/feemarket EIP-1559 fee accounting",
+        "x/erc20 token pair registration",
+        "ante handler routing correctness",
+        "/cosmos.evm.vm.v1.MsgEthereumTx authz block enforcement",
+        "StateDB isolation",
+        "JSON-RPC endpoint security (debug_ namespace disabled in mainnet app.toml)",
+        "EVM denomination immutability"
+      ]
+    }
+  },
+  "mainnet_gate_criteria": {
+    "zero_unresolved_critical_findings": true,
+    "zero_unresolved_high_findings": true,
+    "all_medium_findings_resolved_or_accepted": true,
+    "final_report_published_before_genesis": true
+  },
+  "evm_integration_pre_v1_risk_acknowledged": true
+}
