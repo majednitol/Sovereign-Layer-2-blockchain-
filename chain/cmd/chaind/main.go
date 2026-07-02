@@ -128,9 +128,9 @@ func setupSDKConfig() {
 	sdk.DefaultPowerReduction = math.NewInt(1_000_000)
 
 	cfg := sdk.GetConfig()
-	cfg.SetBech32PrefixForAccount(sdk.Bech32PrefixAccAddr, sdk.Bech32PrefixAccPub)
-	cfg.SetBech32PrefixForValidator(sdk.Bech32PrefixValAddr, sdk.Bech32PrefixValPub)
-	cfg.SetBech32PrefixForConsensusNode(sdk.Bech32PrefixConsAddr, sdk.Bech32PrefixConsPub)
+	cfg.SetBech32PrefixForAccount("sov", "sovpub")
+	cfg.SetBech32PrefixForValidator("sovvaloper", "sovvaloperpub")
+	cfg.SetBech32PrefixForConsensusNode("sovvalcons", "sovvalconspub")
 	cfg.Seal()
 }
 
@@ -139,8 +139,8 @@ func NewRootCmd() *cobra.Command {
 	// a full App instance (which sets global EVM chainConfig and panics
 	// when NewApp is called again during 'chaind start').
 	signingOptions := signing.Options{
-		AddressCodec:          evmaddress.NewEvmCodec(sdk.Bech32PrefixAccAddr),
-		ValidatorAddressCodec: evmaddress.NewEvmCodec(sdk.Bech32PrefixValAddr),
+		AddressCodec:          evmaddress.NewEvmCodec(sdk.GetConfig().GetBech32AccountAddrPrefix()),
+		ValidatorAddressCodec: evmaddress.NewEvmCodec(sdk.GetConfig().GetBech32ValidatorAddrPrefix()),
 		CustomGetSigners: map[protoreflect.FullName]signing.GetSignersFunc{
 			evmtypes.MsgEthereumTxCustomGetSigner.MsgType:     evmtypes.MsgEthereumTxCustomGetSigner.Fn,
 			erc20types.MsgConvertERC20CustomGetSigner.MsgType: erc20types.MsgConvertERC20CustomGetSigner.Fn,

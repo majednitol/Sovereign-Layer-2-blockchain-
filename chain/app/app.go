@@ -101,6 +101,9 @@ import (
 	transfer "github.com/cosmos/ibc-go/v11/modules/apps/transfer"
 	ibc "github.com/cosmos/ibc-go/v11/modules/core"
 	ibctm "github.com/cosmos/ibc-go/v11/modules/light-clients/07-tendermint"
+	ibcfee "github.com/cosmos/ibc-go/v11/modules/apps/fee"
+	ibcfeekeeper "github.com/cosmos/ibc-go/v11/modules/apps/fee/keeper"
+	ibcfeetypes "github.com/cosmos/ibc-go/v11/modules/apps/fee/types"
 
 	// CosmWasm
 	"github.com/CosmWasm/wasmd/x/wasm"
@@ -139,6 +142,7 @@ var (
 		ibc.AppModuleBasic{},
 		ibctm.AppModuleBasic{},
 		transfer.AppModuleBasic{},
+		ibcfee.AppModuleBasic{},
 		// Cosmos EVM
 		feemarket.AppModuleBasic{},
 		vm.AppModuleBasic{},
@@ -155,6 +159,7 @@ var (
 		stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
 		govtypes.ModuleName:            {authtypes.Burner},
 		ibctransfertypes.ModuleName:    {authtypes.Minter, authtypes.Burner},
+		ibcfeetypes.ModuleName:        nil,
 		evmtypes.ModuleName:            {authtypes.Minter, authtypes.Burner},
 		erc20types.ModuleName:          {authtypes.Minter, authtypes.Burner},
 		feemarkettypes.ModuleName:      nil,
@@ -197,6 +202,7 @@ type App struct {
 	// IBC keepers
 	IBCKeeper      *ibckeeper.Keeper
 	TransferKeeper *transferkeeper.Keeper
+	IBCFeeKeeper   ibcfeekeeper.Keeper
 
 	// Cosmos EVM keepers
 	FeeMarketKeeper feemarketkeeper.Keeper
@@ -230,8 +236,8 @@ func NewApp(
 ) *App {
 	sdk.DefaultPowerReduction = math.NewInt(1_000_000)
 	signingOptions := signing.Options{
-		AddressCodec:          evmaddress.NewEvmCodec(sdk.Bech32PrefixAccAddr),
-		ValidatorAddressCodec: evmaddress.NewEvmCodec(sdk.Bech32PrefixValAddr),
+		AddressCodec:          evmaddress.NewEvmCodec(sdk.GetConfig().GetBech32AccountAddrPrefix()),
+		ValidatorAddressCodec: evmaddress.NewEvmCodec(sdk.GetConfig().GetBech32ValidatorAddrPrefix()),
 		CustomGetSigners: map[protoreflect.FullName]signing.GetSignersFunc{
 			evmtypes.MsgEthereumTxCustomGetSigner.MsgType:     evmtypes.MsgEthereumTxCustomGetSigner.Fn,
 			erc20types.MsgConvertERC20CustomGetSigner.MsgType: erc20types.MsgConvertERC20CustomGetSigner.Fn,
@@ -269,6 +275,7 @@ func NewApp(
 		// IBC
 		ibcexported.StoreKey,
 		ibctransfertypes.StoreKey,
+		ibcfeetypes.StoreKey,
 		// Cosmos EVM
 		evmtypes.StoreKey,
 		feemarkettypes.StoreKey,
@@ -316,8 +323,8 @@ func NewApp(
 		runtime.NewKVStoreService(keys[authtypes.StoreKey]),
 		authtypes.ProtoBaseAccount,
 		maccPerms,
-		addresscodec.NewBech32Codec(sdk.Bech32PrefixAccAddr),
-		sdk.Bech32PrefixAccAddr,
+		addresscodec.NewBech32Codec(sdk.GetConfig().GetBech32AccountAddrPrefix()),
+		sdk.GetConfig().GetBech32AccountAddrPrefix(),
 		authAddr,
 	)
 
@@ -336,8 +343,8 @@ func NewApp(
 		app.AccountKeeper,
 		app.BankKeeper,
 		authAddr,
-		addresscodec.NewBech32Codec(sdk.Bech32PrefixValAddr),
-		addresscodec.NewBech32Codec(sdk.Bech32PrefixConsAddr),
+		addresscodec.NewBech32Codec(sdk.GetConfig().GetBech32ValidatorAddrPrefix()),
+		addresscodec.NewBech32Codec(sdk.GetConfig().GetBech32ConsensusAddrPrefix()),
 	)
 
 	app.DistrKeeper = distrkeeper.NewKeeper(
@@ -415,6 +422,16 @@ func NewApp(
 		authAddr,
 	)
 
+	app.IBCFeeKeeper = ibcfeekeeper.NewKeeper(
+		appCodec,
+		runtime.NewKVStoreService(keys[ibcfeetypes.StoreKey]),
+		app.IBCKeeper.ChannelKeeper,
+		app.IBCKeeper.ChannelKeeper,
+		app.IBCKeeper.PortKeeper,
+		app.AccountKeeper,
+		app.BankKeeper,
+	)
+
 	// --- Cosmos EVM Keepers (order matters: feemarket → vm → erc20) ---
 	app.FeeMarketKeeper = feemarketkeeper.NewKeeper(
 		appCodec,
@@ -449,9 +466,10 @@ func NewApp(
 		app.TransferKeeper,
 	)
 
-	// --- Set up IBC transfer stack (transfer → erc20 middleware) ---
+	// --- Set up IBC transfer stack (transfer → ibcfee → erc20 middleware) ---
 	var transferStack porttypes.IBCModule
 	transferStack = transfer.NewIBCModule(app.TransferKeeper)
+	transferStack = ibcfee.NewIBCMiddleware(transferStack, app.IBCFeeKeeper)
 	transferStack = erc20.NewIBCMiddleware(app.Erc20Keeper, transferStack)
 
 	ibcRouter := porttypes.NewRouter()
@@ -526,6 +544,7 @@ func NewApp(
 		ibc.NewAppModule(app.IBCKeeper),
 		ibctm.NewAppModule(tmLightClientModule),
 		transferModule,
+		ibcfee.NewAppModule(app.IBCFeeKeeper),
 		// Cosmos EVM (order: feemarket → vm → erc20)
 		feemarket.NewAppModule(app.FeeMarketKeeper),
 		vm.NewAppModule(app.EVMKeeper, app.AccountKeeper, app.BankKeeper, app.AccountKeeper.AddressCodec()),
@@ -551,6 +570,7 @@ func NewApp(
 		ibcexported.ModuleName,
 		ibctm.ModuleName,
 		ibctransfertypes.ModuleName,
+		ibcfeetypes.ModuleName,
 		feemarkettypes.ModuleName,
 		erc20types.ModuleName,
 	)
@@ -562,6 +582,7 @@ func NewApp(
 		erc20types.ModuleName,
 		ibcexported.ModuleName,
 		ibctransfertypes.ModuleName,
+		ibcfeetypes.ModuleName,
 		distrtypes.ModuleName,
 		slashingtypes.ModuleName,
 		stakingtypes.ModuleName,
@@ -585,6 +606,7 @@ func NewApp(
 		stakingtypes.ModuleName,
 		ibcexported.ModuleName,
 		ibctransfertypes.ModuleName,
+		ibcfeetypes.ModuleName,
 		distrtypes.ModuleName,
 		slashingtypes.ModuleName,
 		authtypes.ModuleName,
@@ -612,6 +634,7 @@ func NewApp(
 		feemarkettypes.ModuleName,
 		erc20types.ModuleName,
 		ibctransfertypes.ModuleName,
+		ibcfeetypes.ModuleName,
 		genutiltypes.ModuleName,
 		upgradetypes.ModuleName,
 		wasm.ModuleName,

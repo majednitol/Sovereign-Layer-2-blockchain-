@@ -26,6 +26,16 @@ jobs:
         with:
           version: v1.60
 
+      # 1.1 Protobuf Lint
+      - name: Run Buf Lint
+        uses: bufbuild/buf-lint-action@v1
+
+      # 1.2 Protobuf Breaking Change Check
+      - name: Run Buf Breaking Check
+        uses: bufbuild/buf-breaking-action@v1
+        with:
+          against: 'https://github.com/majednitol/Sovereign-L1-Blockchain.git#branch=master'
+
       # 2. Test (Go chain and e2e tests)
       - name: Run Workspace Tests
         run: |

@@ -13,7 +13,8 @@ require (
 	github.com/cosmos/cosmos-sdk/store/v2 v2.0.0
 	github.com/cosmos/evm v0.7.0
 	github.com/cosmos/gogoproto v1.7.2
-	github.com/cosmos/ibc-go/v11 v11.0.0
+	github.com/cosmos/ibc-go/v11 v11.1.0
+	github.com/cosmos/ibc-go/v11/modules/apps/fee v0.0.0-00010101000000-000000000000
 	github.com/ethereum/go-ethereum v1.17.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0
 	github.com/spf13/cast v1.10.0
@@ -361,6 +362,7 @@ require (
 
 replace (
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
+	github.com/cosmos/ibc-go/v11/modules/apps/fee => ./ibcfee
 	github.com/ethereum/go-ethereum => github.com/cosmos/go-ethereum v1.17.2-cosmos-0
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
