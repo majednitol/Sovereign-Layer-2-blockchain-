@@ -21,13 +21,10 @@
 package main
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"time"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
@@ -184,238 +181,8 @@ func BuildGenesisDoc(chainID string) GenesisDoc {
 	}
 }
 
-func compileContracts() error {
-	fmt.Println("Compiling contracts to wasm32...")
-	cmd := exec.Command("cargo", "build", "--target", "wasm32-unknown-unknown", "--release", "--lib")
-	cmd.Dir = "contracts"
-	cmd.Env = append(os.Environ(), "RUSTFLAGS=-C target-feature=-bulk-memory")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	fmt.Println("Lowering bulk memory operations in compiled WASM files...")
-	contractsDir := "contracts/target/wasm32-unknown-unknown/release"
-	contracts := []string{
-		"constitution.wasm",
-		"treasury.wasm",
-		"reserve_fund.wasm",
-		"governance.wasm",
-	}
-
-	for _, contract := range contracts {
-		path := filepath.Join(contractsDir, contract)
-		fmt.Printf("Lowering bulk memory operations for %s...\n", contract)
-		optCmd := exec.Command("wasm-opt", "--llvm-memory-copy-fill-lowering", path, "-o", path)
-		optCmd.Stdout = os.Stdout
-		optCmd.Stderr = os.Stderr
-		if err := optCmd.Run(); err != nil {
-			return fmt.Errorf("failed to run wasm-opt on %s: %w", contract, err)
-		}
-	}
-
-	return nil
-}
-
-func sha256Hash(data []byte) []byte {
-	hash := sha256.Sum256(data)
-	return hash[:]
-}
-
-// buildAppState constructs the genesis app_state with all Phase 1 module params and Phase 3 CosmWasm smart contracts.
+// buildAppState constructs the genesis app_state with all Phase 1 module params.
 func buildAppState() map[string]interface{} {
-	if err := compileContracts(); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to compile contracts: %v. Using existing compiled WASM files if present.\n", err)
-	}
-
-	contractsDir := "contracts/target/wasm32-unknown-unknown/release"
-	constitutionWasm, err := os.ReadFile(filepath.Join(contractsDir, "constitution.wasm"))
-	if err != nil {
-		panic(fmt.Sprintf("failed to read constitution.wasm: %v", err))
-	}
-	treasuryWasm, err := os.ReadFile(filepath.Join(contractsDir, "treasury.wasm"))
-	if err != nil {
-		panic(fmt.Sprintf("failed to read treasury.wasm: %v", err))
-	}
-	reserveFundWasm, err := os.ReadFile(filepath.Join(contractsDir, "reserve_fund.wasm"))
-	if err != nil {
-		panic(fmt.Sprintf("failed to read reserve_fund.wasm: %v", err))
-	}
-	governanceWasm, err := os.ReadFile(filepath.Join(contractsDir, "governance.wasm"))
-	if err != nil {
-		panic(fmt.Sprintf("failed to read governance.wasm: %v", err))
-	}
-
-	codes := []wasmtypes.Code{
-		{
-			CodeID: 1,
-			CodeInfo: wasmtypes.CodeInfo{
-				CodeHash: sha256Hash(constitutionWasm),
-				Creator:  "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
-				InstantiateConfig: wasmtypes.AccessConfig{
-					Permission: wasmtypes.AccessTypeEverybody,
-				},
-			},
-			CodeBytes: constitutionWasm,
-		},
-		{
-			CodeID: 2,
-			CodeInfo: wasmtypes.CodeInfo{
-				CodeHash: sha256Hash(treasuryWasm),
-				Creator:  "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
-				InstantiateConfig: wasmtypes.AccessConfig{
-					Permission: wasmtypes.AccessTypeEverybody,
-				},
-			},
-			CodeBytes: treasuryWasm,
-		},
-		{
-			CodeID: 3,
-			CodeInfo: wasmtypes.CodeInfo{
-				CodeHash: sha256Hash(reserveFundWasm),
-				Creator:  "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
-				InstantiateConfig: wasmtypes.AccessConfig{
-					Permission: wasmtypes.AccessTypeEverybody,
-				},
-			},
-			CodeBytes: reserveFundWasm,
-		},
-		{
-			CodeID: 4,
-			CodeInfo: wasmtypes.CodeInfo{
-				CodeHash: sha256Hash(governanceWasm),
-				Creator:  "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
-				InstantiateConfig: wasmtypes.AccessConfig{
-					Permission: wasmtypes.AccessTypeEverybody,
-				},
-			},
-			CodeBytes: governanceWasm,
-		},
-	}
-
-	constitutionConfigVal := `{"governance_address":"cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8","cold_multisig_address":"cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh","rules":"Safe rules","is_paused":false}`
-	constitutionContract := wasmtypes.Contract{
-		ContractAddress: "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
-		ContractInfo: wasmtypes.ContractInfo{
-			CodeID:  1,
-			Creator: "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
-			Label:   "Constitution",
-			Created: &wasmtypes.AbsoluteTxPosition{BlockHeight: 0, TxIndex: 0},
-		},
-		ContractState: []wasmtypes.Model{
-			{
-				Key:   []byte("config"),
-				Value: []byte(constitutionConfigVal),
-			},
-		},
-		ContractCodeHistory: []wasmtypes.ContractCodeHistoryEntry{
-			{
-				Operation: wasmtypes.ContractCodeHistoryOperationTypeGenesis,
-				CodeID:    1,
-				Updated:   &wasmtypes.AbsoluteTxPosition{BlockHeight: 0, TxIndex: 0},
-				Msg:       []byte(`{}`),
-			},
-		},
-	}
-
-	treasuryConfigVal := `{"governance_address":"cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8","cold_multisig_address":"cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh","is_paused":false,"reentrancy_lock":false}`
-	treasuryContract := wasmtypes.Contract{
-		ContractAddress: "cosmos1w8kmv94zcf8yysgw9dp8yzq6ffe2e8m0uj8dm0",
-		ContractInfo: wasmtypes.ContractInfo{
-			CodeID:  2,
-			Creator: "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
-			Label:   "Treasury",
-			Created: &wasmtypes.AbsoluteTxPosition{BlockHeight: 0, TxIndex: 0},
-		},
-		ContractState: []wasmtypes.Model{
-			{
-				Key:   []byte("config"),
-				Value: []byte(treasuryConfigVal),
-			},
-		},
-		ContractCodeHistory: []wasmtypes.ContractCodeHistoryEntry{
-			{
-				Operation: wasmtypes.ContractCodeHistoryOperationTypeGenesis,
-				CodeID:    2,
-				Updated:   &wasmtypes.AbsoluteTxPosition{BlockHeight: 0, TxIndex: 0},
-				Msg:       []byte(`{}`),
-			},
-		},
-	}
-
-	reserveConfigVal := `{"governance_address":"cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8","cold_multisig_address":"cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh","min_balance_threshold":"100000000000","is_paused":false,"reentrancy_lock":false}`
-	reserveContract := wasmtypes.Contract{
-		ContractAddress: "cosmos1dag3w9ydhzmwpvd6asrt8elexa8s27ph7895jc",
-		ContractInfo: wasmtypes.ContractInfo{
-			CodeID:  3,
-			Creator: "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
-			Label:   "Reserve Fund",
-			Created: &wasmtypes.AbsoluteTxPosition{BlockHeight: 0, TxIndex: 0},
-		},
-		ContractState: []wasmtypes.Model{
-			{
-				Key:   []byte("config"),
-				Value: []byte(reserveConfigVal),
-			},
-		},
-		ContractCodeHistory: []wasmtypes.ContractCodeHistoryEntry{
-			{
-				Operation: wasmtypes.ContractCodeHistoryOperationTypeGenesis,
-				CodeID:    3,
-				Updated:   &wasmtypes.AbsoluteTxPosition{BlockHeight: 0, TxIndex: 0},
-				Msg:       []byte(`{}`),
-			},
-		},
-	}
-
-	governanceConfigVal := `{"constitution_address":"cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g","treasury_address":"cosmos1w8kmv94zcf8yysgw9dp8yzq6ffe2e8m0uj8dm0","reserve_fund_address":"cosmos1dag3w9ydhzmwpvd6asrt8elexa8s27ph7895jc"}`
-	governanceContract := wasmtypes.Contract{
-		ContractAddress: "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
-		ContractInfo: wasmtypes.ContractInfo{
-			CodeID:  4,
-			Creator: "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
-			Label:   "Governance",
-			Created: &wasmtypes.AbsoluteTxPosition{BlockHeight: 0, TxIndex: 0},
-		},
-		ContractState: []wasmtypes.Model{
-			{
-				Key:   []byte("config"),
-				Value: []byte(governanceConfigVal),
-			},
-			{
-				Key:   []byte("log_count"),
-				Value: []byte("0"),
-			},
-		},
-		ContractCodeHistory: []wasmtypes.ContractCodeHistoryEntry{
-			{
-				Operation: wasmtypes.ContractCodeHistoryOperationTypeGenesis,
-				CodeID:    4,
-				Updated:   &wasmtypes.AbsoluteTxPosition{BlockHeight: 0, TxIndex: 0},
-				Msg:       []byte(`{}`),
-			},
-		},
-	}
-
-	contracts := []wasmtypes.Contract{
-		constitutionContract,
-		treasuryContract,
-		reserveContract,
-		governanceContract,
-	}
-
-	sequences := []wasmtypes.Sequence{
-		{
-			IDKey: wasmtypes.KeySequenceCodeID,
-			Value: 5,
-		},
-		{
-			IDKey: wasmtypes.KeySequenceInstanceID,
-			Value: 5,
-		},
-	}
-
 	wasmGenesis := wasmtypes.GenesisState{
 		Params: wasmtypes.Params{
 			CodeUploadAccess: wasmtypes.AccessConfig{
@@ -423,9 +190,9 @@ func buildAppState() map[string]interface{} {
 			},
 			InstantiateDefaultPermission: wasmtypes.AccessTypeEverybody,
 		},
-		Codes:     codes,
-		Contracts: contracts,
-		Sequences: sequences,
+		Codes:     nil,
+		Contracts: nil,
+		Sequences: nil,
 	}
 
 	// 1. Get default genesis app_state
@@ -621,23 +388,6 @@ func buildAppState() map[string]interface{} {
 		panic(fmt.Sprintf("failed to unmarshal wasm genesis: %v", err))
 	}
 	appState["wasm"] = wasmMap
-
-	// --- Modify bridge ---
-	appState["bridge"] = map[string]interface{}{
-		"params": map[string]interface{}{
-			"standard_finality_depth":  15,
-			"large_finality_depth":     50,
-			"large_transfer_threshold": 5000000000,
-			"quorum_threshold":        3,
-			"max_unlock_per_block":     100000000000,
-			"circuit_breaker_address":  "cosmos1cb_addr",
-			"gnosis_safe_address":      "cosmos1gs_addr",
-			"supply_cap":              1000000000000,
-			"lockbox_address":         "0x1234567890123456789012345678901234567890",
-		},
-		"relayers":      []interface{}{},
-		"cosmos_minted": 0,
-	}
 
 	return appState
 }

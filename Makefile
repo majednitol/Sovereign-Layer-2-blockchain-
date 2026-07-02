@@ -9,17 +9,9 @@ GO_BUILD_FLAGS = -trimpath -ldflags="-s -w -buildid="
 build:
 	mkdir -p bin
 	CGO_ENABLED=1 go build $(GO_BUILD_FLAGS) -o bin/chaind ./chain/cmd/chaind
-	CGO_ENABLED=1 go build $(GO_BUILD_FLAGS) -o bin/oracle ./oracle
-	CGO_ENABLED=0 go build $(GO_BUILD_FLAGS) -o bin/ingestion ./backend/module/ingestion
-	CGO_ENABLED=0 go build $(GO_BUILD_FLAGS) -o bin/projection ./backend/module/projection
-	CGO_ENABLED=0 go build $(GO_BUILD_FLAGS) -o bin/api ./backend/module/api
-	CGO_ENABLED=0 go build $(GO_BUILD_FLAGS) -o bin/faucet ./backend/module/faucet
 
 test:
 	go test -v ./chain/...
-	go test -v ./oracle/...
-	go test -v ./relayer/...
-	go test -v ./backend/...
 	go test -v ./e2e/...
 
 lint:
@@ -33,35 +25,13 @@ verify-build:
 	mkdir -p bin/build1 bin/build2
 	# Compile build 1
 	CGO_ENABLED=1 go build $(GO_BUILD_FLAGS) -o bin/build1/chaind ./chain/cmd/chaind
-	CGO_ENABLED=1 go build $(GO_BUILD_FLAGS) -o bin/build1/oracle ./oracle
-	CGO_ENABLED=0 go build $(GO_BUILD_FLAGS) -o bin/build1/ingestion ./backend/module/ingestion
-	CGO_ENABLED=0 go build $(GO_BUILD_FLAGS) -o bin/build1/projection ./backend/module/projection
-	CGO_ENABLED=0 go build $(GO_BUILD_FLAGS) -o bin/build1/api ./backend/module/api
-	CGO_ENABLED=0 go build $(GO_BUILD_FLAGS) -o bin/build1/faucet ./backend/module/faucet
 	# Compile build 2
 	CGO_ENABLED=1 go build $(GO_BUILD_FLAGS) -o bin/build2/chaind ./chain/cmd/chaind
-	CGO_ENABLED=1 go build $(GO_BUILD_FLAGS) -o bin/build2/oracle ./oracle
-	CGO_ENABLED=0 go build $(GO_BUILD_FLAGS) -o bin/build2/ingestion ./backend/module/ingestion
-	CGO_ENABLED=0 go build $(GO_BUILD_FLAGS) -o bin/build2/projection ./backend/module/projection
-	CGO_ENABLED=0 go build $(GO_BUILD_FLAGS) -o bin/build2/api ./backend/module/api
-	CGO_ENABLED=0 go build $(GO_BUILD_FLAGS) -o bin/build2/faucet ./backend/module/faucet
 	# Compare hashes
 	@echo "Verifying SHA256 of chaind..."
 	shasum -a 256 bin/build1/chaind bin/build2/chaind
 	cmp bin/build1/chaind bin/build2/chaind
-	@echo "Verifying SHA256 of oracle..."
-	shasum -a 256 bin/build1/oracle bin/build2/oracle
-	cmp bin/build1/oracle bin/build2/oracle
-	@echo "Verifying SHA256 of backend binaries..."
-	shasum -a 256 bin/build1/ingestion bin/build2/ingestion
-	cmp bin/build1/ingestion bin/build2/ingestion
-	shasum -a 256 bin/build1/projection bin/build2/projection
-	cmp bin/build1/projection bin/build2/projection
-	shasum -a 256 bin/build1/api bin/build2/api
-	cmp bin/build1/api bin/build2/api
-	shasum -a 256 bin/build1/faucet bin/build2/faucet
-	cmp bin/build1/faucet bin/build2/faucet
-	@echo "[SUCCESS] Pinned build flags produce 100% identical binary signatures locally."
+	@echo "[SUCCESS] Pinned build flags produce 100% identical chaind binary signature locally."
 
 clean:
 	rm -rf bin

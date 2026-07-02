@@ -14,99 +14,29 @@ jobs:
       - name: Checkout Current Code
         uses: actions/checkout@v4
 
-      - name: Checkout Master Branch (for buf breaking check)
-        uses: actions/checkout@v4
-        with:
-          ref: master
-          path: master-branch
-
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.25.5'
           cache: true
 
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-          components: clippy
-
-      - name: Setup Buf
-        uses: bufbuild/buf-setup-action@v1
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-store
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
-
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install pnpm dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
-
-      # 1. Lint (Go, Rust, and TypeScript)
+      # 1. Lint (Go only)
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.60
 
-      - name: Run Cargo Clippy
-        run: |
-          cd contracts
-          cargo clippy --workspace --all-targets -- -D warnings
-
-      - name: TypeScript Type Check (Explorer)
-        run: pnpm --filter explorer exec tsc --noEmit
-
-      - name: ESLint (Explorer)
-        run: pnpm --filter explorer lint
-
-      # 2. Buf Lint (Protobuf)
-      - name: Lint Protobuf Schemas
-        uses: bufbuild/buf-lint-action@v1
-        with:
-          input: proto
-
-      # 3. Buf Breaking (Protobuf backward compatibility check)
-      - name: Check Protobuf Backward Compatibility
-        uses: bufbuild/buf-breaking-action@v1
-        with:
-          input: proto
-          against: master-branch/proto
-
-      # 4. Test (Go, Rust, and TypeScript unit/integration/E2E tests)
+      # 2. Test (Go chain and e2e tests)
       - name: Run Workspace Tests
         run: |
           make test
 
-      # 5. Build (Compile all binaries and frontend)
+      # 3. Build (Compile chaind daemon)
       - name: Build Project Binaries
         run: |
           make build
 
-      - name: Build Explorer Frontend
-        run: pnpm --filter explorer build
-
-      # 6. SimApp Simulation (Randomized simulation run)
+      # 4. SimApp Simulation (Randomized simulation run)
       - name: Run SimApp Randomized Simulation
         run: |
           # Generate a randomized seed and log it for reproducibility
@@ -116,32 +46,4 @@ jobs:
           echo "========================================="
           go test -v ./chain/app -run TestAppSimulation -NumBlocks=500 -BlockSize=200 -Seed=$SEED
 
-      # 7. Helm Chart Linting
-      - name: Lint Helm Charts
-        run: |
-          helm lint infra/helm/sovereign-chain
-
-      # 8. Terraform Configuration Validation
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.6.0'
-
-      - name: Initialize and Validate Terraform Config
-        run: |
-          cd infra/terraform
-          terraform init -backend=false
-          terraform validate
-
-      # 9. Docker Build & Push Simulation (CD Step)
-      - name: Build Docker Container Images (Simulation)
-        run: |
-          echo "Simulating Docker build for registry..."
-          echo "docker build -t sovereign-l1/chain-node:v1.0.0 ./chain"
-          echo "docker build -t sovereign-l1/backend-ingestion:v1.0.0 ./backend"
-          echo "docker build -t sovereign-l1/explorer-frontend:v1.0.0 ./explorer"
-          echo "docker build -t sovereign-l1/explorer-api:v1.0.0 ./explorer-api"
-          echo "docker build -t sovereign-l1/explorer-indexer:v1.0.0 ./explorer-indexer"
-          echo "Simulating push to Container Registry..."
-          echo "docker push sovereign-l1/chain-node:v1.0.0"
 

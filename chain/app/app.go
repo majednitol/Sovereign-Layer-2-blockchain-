@@ -108,16 +108,6 @@ import (
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/spf13/cast"
 
-	// Custom Modules
-	"github.com/sovereign-l1/chain/x/validator"
-	"github.com/sovereign-l1/chain/x/certification"
-	"github.com/sovereign-l1/chain/x/oracle"
-	"github.com/sovereign-l1/chain/x/milestone"
-	"github.com/sovereign-l1/chain/x/settlement"
-	gext "github.com/sovereign-l1/chain/x/governance-ext"
-	"github.com/sovereign-l1/chain/x/bridge"
-	"github.com/sovereign-l1/chain/x/vm/precompiles"
-
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/std"
 )
@@ -155,14 +145,6 @@ var (
 		erc20.AppModuleBasic{},
 		// CosmWasm
 		wasm.AppModuleBasic{},
-		// Custom Modules
-		validator.AppModuleBasic{},
-		certification.AppModuleBasic{},
-		oracle.AppModuleBasic{},
-		milestone.AppModuleBasic{},
-		settlement.AppModuleBasic{},
-		gext.AppModuleBasic{},
-		bridge.AppModuleBasic{},
 	)
 
 	// maccPerms is a mapping of module account names to their permission flags.
@@ -223,15 +205,6 @@ type App struct {
 
 	// CosmWasm
 	WasmKeeper wasmkeeper.Keeper
-
-	// Custom Keepers
-	ValidatorKeeper     validator.Keeper
-	CertificationKeeper certification.Keeper
-	OracleKeeper        oracle.Keeper
-	MilestoneKeeper     milestone.Keeper
-	SettlementKeeper    settlement.Keeper
-	GovExtKeeper        gext.Keeper
-	BridgeKeeper        bridge.Keeper
 
 	// the module manager
 	mm *module.Manager
@@ -302,13 +275,6 @@ func NewApp(
 		erc20types.StoreKey,
 		// CosmWasm
 		wasm.StoreKey,
-		// Custom Modules
-		validator.StoreKey,
-		certification.StoreKey,
-		oracle.StoreKey,
-		milestone.StoreKey,
-		settlement.StoreKey,
-		bridge.StoreKey,
 	)
 
 	// Object store keys (transient per-block data, reset on every Commit)
@@ -526,36 +492,6 @@ func NewApp(
 		GetWasmOpts(nil)...,
 	)
 
-	// --- Custom Module Keepers (initialized before GovExtKeeper) ---
-	app.ValidatorKeeper = validator.NewKeeper(keys[validator.StoreKey], appCodec, app.StakingKeeper, app.SlashingKeeper, app.BankKeeper, app.DistrKeeper, 30)
-	app.OracleKeeper = oracle.NewKeeper(keys[oracle.StoreKey], appCodec, app.StakingKeeper, app.SlashingKeeper)
-	app.MilestoneKeeper = milestone.NewKeeper(keys[milestone.StoreKey], appCodec, app.OracleKeeper, app.BankKeeper)
-	app.SettlementKeeper = settlement.NewKeeper(keys[settlement.StoreKey], appCodec, app.BankKeeper)
-	app.BridgeKeeper = bridge.NewKeeper(keys[bridge.StoreKey], appCodec, app.BankKeeper)
-	app.CertificationKeeper = certification.NewKeeper(keys[certification.StoreKey], appCodec, app.StakingKeeper, app.SlashingKeeper)
-
-	// Register EVM Custom Precompiles
-	app.EVMKeeper.RegisterStaticPrecompile(
-		precompiles.OraclePrecompileAddress,
-		precompiles.NewOraclePrecompile(app.OracleKeeper),
-	)
-	app.EVMKeeper.RegisterStaticPrecompile(
-		precompiles.MilestonePrecompileAddress,
-		precompiles.NewMilestonePrecompile(app.MilestoneKeeper),
-	)
-
-	// Wire CosmWasm Constitution contract address to x/governance-ext
-	app.GovExtKeeper = gext.NewKeeper(
-		keys[govtypes.StoreKey],
-		appCodec,
-		wasmkeeper.NewDefaultPermissionKeeper(app.WasmKeeper),
-		ConstitutionContractAddr,
-		app.ValidatorKeeper,
-		app.MilestoneKeeper,
-		app.OracleKeeper,
-		app.SettlementKeeper,
-		app.BridgeKeeper,
-	)
 
 	// --- GovKeeper (after wasm so proposals can target x/governance-ext) ---
 	govConfig := govtypes.DefaultConfig()
@@ -596,14 +532,6 @@ func NewApp(
 		erc20.NewAppModule(app.Erc20Keeper, app.AccountKeeper),
 		// CosmWasm
 		wasm.NewAppModule(appCodec, &app.WasmKeeper, app.StakingKeeper, app.AccountKeeper, app.BankKeeper, app.MsgServiceRouter(), nil),
-		// Custom modules
-		validator.NewAppModule(app.ValidatorKeeper),
-		certification.NewAppModule(app.CertificationKeeper),
-		oracle.NewAppModule(app.OracleKeeper),
-		milestone.NewAppModule(app.MilestoneKeeper),
-		settlement.NewAppModule(app.SettlementKeeper),
-		gext.NewAppModule(app.GovExtKeeper),
-		bridge.NewAppModule(app.BridgeKeeper),
 	)
 
 	// --- Module Ordering ---
@@ -625,14 +553,6 @@ func NewApp(
 		ibctransfertypes.ModuleName,
 		feemarkettypes.ModuleName,
 		erc20types.ModuleName,
-		wasm.ModuleName,
-		"validator",
-		"certification",
-		"oracle",
-		"milestone",
-		"settlement",
-		"govext",
-		"bridge",
 	)
 
 	// BeginBlockers: EIP-1559 feemarket first, then EVM, then ERC-20, then rest
@@ -654,14 +574,6 @@ func NewApp(
 		"authz",
 		consensusparamtypes.ModuleName,
 		ibctm.ModuleName,
-		genutiltypes.ModuleName,
-		"validator",
-		"certification",
-		"oracle",
-		"milestone",
-		"settlement",
-		"govext",
-		"bridge",
 	)
 
 	// EndBlockers: EVM → ERC-20 → feemarket (to get full block gas used), then rest
@@ -683,14 +595,6 @@ func NewApp(
 		"authz",
 		consensusparamtypes.ModuleName,
 		ibctm.ModuleName,
-		genutiltypes.ModuleName,
-		"validator",
-		"certification",
-		"oracle",
-		"milestone",
-		"settlement",
-		"govext",
-		"bridge",
 	)
 
 	// InitGenesis: feemarket before vm, vm before erc20
@@ -714,14 +618,6 @@ func NewApp(
 		feegrant.ModuleName,
 		"authz",
 		ibctm.ModuleName,
-		// custom
-		"validator",
-		"certification",
-		"oracle",
-		"milestone",
-		"settlement",
-		"govext",
-		"bridge",
 	}
 	app.mm.SetOrderInitGenesis(genesisOrder...)
 	app.mm.SetOrderExportGenesis(genesisOrder...)

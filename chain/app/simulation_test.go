@@ -3,7 +3,6 @@ package app
 import (
 	context "context"
 	"crypto/ed25519"
-	"encoding/json"
 	"flag"
 	"fmt"
 	big "math/big"
@@ -26,14 +25,6 @@ import (
 
 	common "github.com/ethereum/go-ethereum/common"
 	evmtypes "github.com/cosmos/evm/x/vm/types"
-
-	"github.com/sovereign-l1/chain/x/bridge"
-	"github.com/sovereign-l1/chain/x/certification"
-	"github.com/sovereign-l1/chain/x/governance-ext"
-	"github.com/sovereign-l1/chain/x/milestone"
-	"github.com/sovereign-l1/chain/x/oracle"
-	"github.com/sovereign-l1/chain/x/settlement"
-	"github.com/sovereign-l1/chain/x/validator"
 )
 
 var numBlocks = flag.Int("NumBlocks", 100, "Number of blocks to run in the simulation")
@@ -120,12 +111,6 @@ func (m mockSlashingKeeperSim) Jail(ctx context.Context, consAddr sdk.ConsAddres
 	return nil
 }
 
-type mockWasmKeeperSim struct{}
-
-func (m mockWasmKeeperSim) Execute(ctx sdk.Context, contractAddr sdk.AccAddress, caller sdk.AccAddress, msg []byte, coins sdk.Coins) ([]byte, error) {
-	return []byte(`{"status":"approved"}`), nil
-}
-
 type mockBankKeeperSim struct{}
 
 func (m mockBankKeeperSim) SendCoins(ctx context.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error {
@@ -156,13 +141,9 @@ func TestAppSimulation(t *testing.T) {
 	// Set up multi-stores for keepers
 	dbMap := make(map[string]storetypes.KVStore)
 	modules := []string{
-		validator.StoreKey,
-		certification.StoreKey,
-		oracle.StoreKey,
-		milestone.StoreKey,
-		settlement.StoreKey,
-		gov_ext.StoreKey,
-		bridge.StoreKey,
+		"evm",
+		"feemarket",
+		"erc20",
 	}
 	for _, m := range modules {
 		db := dbm.NewMemDB()
@@ -178,63 +159,6 @@ func TestAppSimulation(t *testing.T) {
 		WithChainID("sovereign-devnet-1").
 		WithEventManager(sdk.NewEventManager())
 
-	// Initialize mock keepers
-	staking := mockStakingKeeperSim{}
-	slashing := mockSlashingKeeperSim{}
-	wasm := mockWasmKeeperSim{}
-	bank := mockBankKeeperSim{}
-
-	valKeeper := validator.NewKeeper(storetypes.NewKVStoreKey(validator.StoreKey), nil, staking, slashing, nil, nil, 30)
-	certKeeper := certification.NewKeeper(storetypes.NewKVStoreKey(certification.StoreKey), nil, staking, slashing)
-	oracleKeeper := oracle.NewKeeper(storetypes.NewKVStoreKey(oracle.StoreKey), nil, staking, slashing)
-	milesKeeper := milestone.NewKeeper(storetypes.NewKVStoreKey(milestone.StoreKey), nil, oracleKeeper, bank)
-	settKeeper := settlement.NewKeeper(storetypes.NewKVStoreKey(settlement.StoreKey), nil, bank)
-	bridgeKeeper := bridge.NewKeeper(storetypes.NewKVStoreKey(bridge.StoreKey), nil, bank)
-	govExtKeeper := gov_ext.NewKeeper(
-		storetypes.NewKVStoreKey(gov_ext.StoreKey),
-		nil,
-		wasm,
-		sdk.AccAddress([]byte("constitution_addr")),
-		valKeeper,
-		milesKeeper,
-		oracleKeeper,
-		settKeeper,
-		bridgeKeeper,
-	)
-
-	// Set default params for modules to avoid uninitialized panics
-	oracleKeeper.SetParams(ctx, oracle.Params{
-		CommitWindow:             10,
-		RevealWindow:             10,
-		MinOperatorCommits:       1,
-		StalenessThresholdBlocks: 100,
-	})
-	milesKeeper.SetParams(ctx, milestone.Params{
-		MaxActiveMilestones: 500,
-	})
-	settKeeper.SetParams(ctx, settlement.Params{
-		TimestampToleranceSeconds: 30,
-	})
-	govExtKeeper.SetParams(ctx, gov_ext.Params{
-		MinGasLimit: 100000,
-		MaxGasLimit: 2000000,
-	})
-	certKeeper.SetParams(ctx, certification.Params{
-		MaxConsecutiveRejections: 5,
-		MissedExtensionLimit:     10,
-	})
-	bridgeKeeper.SetParams(ctx, bridge.Params{
-		StandardFinalityDepth:  15,
-		LargeFinalityDepth:     50,
-		LargeTransferThreshold: 5000000000,
-		QuorumThreshold:        2,
-		MaxUnlockPerBlock:      100000000000,
-		CircuitBreakerAddress:  "cosmos1cb_addr",
-		GnosisSafeAddress:      "cosmos1gs_addr",
-		SupplyCap:              1000000000000,
-		LockBoxAddress:         "0x1234567890123456789012345678901234567890",
-	})
-
 	// Pre-generate accounts
 	accs := make([]simtypes.Account, 5)
 	for i := 0; i < 5; i++ {
@@ -244,29 +168,8 @@ func TestAppSimulation(t *testing.T) {
 		}
 	}
 
-	// Register operations
+	// Register operations (only EVM operations remain)
 	ops := []simtypes.Operation{
-		validator.SimulateMsgFillValidatorSlot(valKeeper),
-		validator.SimulateMsgEjectValidator(valKeeper),
-		validator.SimulateMsgUpdatePartitionScheme(valKeeper),
-		certification.SimulateMsgUpdateCertificationParams(certKeeper),
-		oracle.SimulateMsgCommitOracleHash(oracleKeeper),
-		oracle.SimulateMsgRevealOracleReport(oracleKeeper),
-		oracle.SimulateDropOracleReveal(oracleKeeper),
-		oracle.SimulateOracleRoundInsufficient(oracleKeeper),
-		milestone.SimulateMsgCreateMilestone(milesKeeper),
-		settlement.SimulateMsgSettlement(settKeeper),
-		settlement.SimulateMsgInvalidWitnessSettlement(settKeeper),
-		settlement.SimulateMsgExpiredTimestampSettlement(settKeeper),
-		gov_ext.SimulateMsgMigrateContracts(govExtKeeper),
-		gov_ext.SimulateMsgUpdateValidatorSlot(govExtKeeper),
-		gov_ext.SimulateMsgUpdateMilestone(govExtKeeper),
-		gov_ext.SimulateMsgUpdateOracleOperator(govExtKeeper),
-		gov_ext.SimulateMsgUpdateWitnessRegistry(govExtKeeper),
-		gov_ext.SimulateMsgUpdateBridgeRelayerSet(govExtKeeper),
-		bridge.SimulateMsgBridgeIn(bridgeKeeper),
-		bridge.SimulateMsgBridgeOut(bridgeKeeper),
-		bridge.SimulateMsgBridgeInCapBreach(bridgeKeeper),
 		SimulateMsgEthSimpleTransfer(),
 		SimulateMsgEthContractCreate(),
 		SimulateMsgEthContractCall(),
@@ -284,39 +187,10 @@ func TestAppSimulation(t *testing.T) {
 	for i := int64(1); i <= int64(blocks); i++ {
 		ctx = ctx.WithBlockHeight(i).WithBlockTime(ctx.BlockTime().Add(time.Second * 5))
 
-		// Write a fresh mock aggregate price to oracle keeper to prevent feed staleness.
-		// Use target price 105000 so the milestone target targetPrice of 100000 is met and achieved.
-		oracleStore := ctx.KVStore(storetypes.NewKVStoreKey(oracle.StoreKey))
-		agg := oracle.AggregatePrice{
-			Price:       105000,
-			BlockHeight: i,
-		}
-		bz, _ := json.Marshal(agg)
-		oracleStore.Set(append(oracle.AggregateKeyPrefix, []byte("BTC_USD")...), bz)
-
-		// Run custom number of random operations per block
+		// Run random operations per block
 		for opIdx := 0; opIdx < *blockSize; opIdx++ {
 			op := ops[r.Intn(len(ops))]
 			_, _, _ = op(r, nil, ctx, accs, ctx.ChainID())
-		}
-
-		// Trigger EndBlocker executions
-		_ = valKeeper.EndBlocker(ctx)
-		certKeeper.EndBlocker(ctx, r.Intn(100) < 5) // 5% chance of proposal rejection
-		milesKeeper.EndBlocker(ctx)
-		oracleKeeper.EndBlocker(ctx)
-
-		// Prune achieved/expired milestones to keep database small and iteration O(1)
-		var toDelete []string
-		milesKeeper.IterateMilestones(ctx, func(m milestone.Milestone) bool {
-			if m.State == milestone.StateAchieved || m.State == milestone.StateExpired {
-				toDelete = append(toDelete, m.ID)
-			}
-			return false
-		})
-		milesStore := ctx.KVStore(storetypes.NewKVStoreKey(milestone.StoreKey))
-		for _, id := range toDelete {
-			milesStore.Delete(append(milestone.MilestoneKeyPrefix, []byte(id)...))
 		}
 
 		if i%5000 == 0 || i == 1 {
