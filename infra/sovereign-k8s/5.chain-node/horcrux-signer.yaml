@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: horcrux-signer
+  namespace: sovereign-chain
+  labels:
+    role: horcrux-signer
+spec:
+  serviceName: horcrux-service
+  replicas: 3
+  selector:
+    matchLabels:
+      role: horcrux-signer
+  template:
+    metadata:
+      labels:
+        role: horcrux-signer
+    spec:
+      containers:
+        - name: horcrux
+          image: sovereign-l1/horcrux:latest
+          command:
+            - "horcrux"
+            - "start"
+            - "--config=/etc/horcrux/horcrux.toml"
+          ports:
+            - containerPort: 2222
+              name: peer-comm
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/horcrux
+            - name: secrets-volume
+              mountPath: /secrets
+            - name: state-volume
+              mountPath: /data
+      volumes:
+        - name: config-volume
+          configMap:
+            name: horcrux-config-map
+        - name: secrets-volume
+          secret:
+            secretName: horcrux-shares
+  volumeClaimTemplates:
+    - metadata:
+        name: state-volume
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: horcrux-service
+  namespace: sovereign-chain
+spec:
+  clusterIP: None
+  selector:
+    role: horcrux-signer
+  ports:
+    - protocol: TCP
+      port: 2222
+      name: peer-comm

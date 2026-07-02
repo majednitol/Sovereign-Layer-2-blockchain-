@@ -1,0 +1,3 @@
+{
+  "/ibc/channels/[channelId]/page": "app/ibc/channels/[channelId]/page.js"
+}

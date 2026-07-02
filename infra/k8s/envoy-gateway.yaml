@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: envoy-gateway
+  namespace: sovereign-backend
+  labels:
+    app: envoy-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: envoy-gateway
+  template:
+    metadata:
+      labels:
+        app: envoy-gateway
+    spec:
+      containers:
+        - name: envoy
+          image: envoyproxy/envoy:v1.28.0
+          command:
+            - "/usr/local/bin/envoy"
+            - "-c"
+            - "/etc/envoy/envoy.yaml"
+          ports:
+            - containerPort: 8080
+              name: ingress
+          volumeMounts:
+            - name: envoy-config
+              mountPath: /etc/envoy
+            - name: gateway-certs
+              mountPath: /etc/ssl/certs
+              readOnly: true
+      volumes:
+        - name: envoy-config
+          configMap:
+            name: envoy-config-map
+        - name: gateway-certs
+          secret:
+            secretName: gateway-tls-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy-service
+  namespace: sovereign-backend
+spec:
+  type: LoadBalancer
+  selector:
+    app: envoy-gateway
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      name: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: envoy-hpa
+  namespace: sovereign-backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: envoy-gateway
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75

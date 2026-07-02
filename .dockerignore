@@ -1,0 +1,22 @@
+# Ignore everything by default
+*
+
+# Allow chain, backend, scratch, and go.work
+!chain/
+!backend/
+!scratch/
+!go.work
+!explorer/
+!frontend/
+!explorer-api/
+!explorer-indexer/
+!packages/
+!package.json
+!pnpm-workspace.yaml
+!pnpm-lock.yaml
+
+# Ignore intermediate build artifacts inside chain and scratch
+**/bin/
+**/obj/
+**/*.test
+**/.git/

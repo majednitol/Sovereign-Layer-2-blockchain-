@@ -1,0 +1,125 @@
+version: 2
+project_name: sovereign
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: chaind
+    main: ./chain/cmd/chaind
+    binary: chaind
+    env:
+      - CGO_ENABLED=1
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -buildid=
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+  - id: oracle
+    main: ./oracle
+    binary: oracle
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -buildid=
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+  - id: backend-api
+    main: ./backend/cmd/api
+    binary: backend-api
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -buildid=
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+  - id: backend-ingestion
+    main: ./backend/cmd/ingestion
+    binary: backend-ingestion
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -buildid=
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+  - id: backend-projection
+    main: ./backend/cmd/projection
+    binary: backend-projection
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -buildid=
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - doc/**/*
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+signs:
+  - id: cosign
+    cmd: cosign
+    args:
+      - "sign-blob"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+      - "--yes" # keyless signing by default
+    artifacts: checksum
+
+provenance:
+  - id: slsa
+    ids:
+      - chaind
+      - oracle
+      - backend-api
+      - backend-ingestion
+      - backend-projection
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'

@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-ingestion
+  namespace: sovereign-chain
+  labels:
+    app: backend-ingestion
+spec:
+  replicas: 1 # Ingestion is a singleton worker
+  selector:
+    matchLabels:
+      app: backend-ingestion
+  template:
+    metadata:
+      labels:
+        app: backend-ingestion
+    spec:
+      containers:
+        - name: ingestion
+          image: sovereign-l1/backend-ingestion:latest
+          env:
+            - name: NATS_URL
+              value: "nats://nats.sovereign-chain.svc.cluster.local:4222"
+            - name: WRITE_DB_URL
+              value: "postgres://ingestion_writer:sovereign_write_pwd@timescale-db-write.sovereign-chain.svc.cluster.local:5432/sovereign_write"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-projection
+  namespace: sovereign-chain
+  labels:
+    app: backend-projection
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend-projection
+  template:
+    metadata:
+      labels:
+        app: backend-projection
+    spec:
+      containers:
+        - name: projection
+          image: sovereign-l1/backend-projection:latest
+          env:
+            - name: NATS_URL
+              value: "nats://nats.sovereign-chain.svc.cluster.local:4222"
+            - name: READ_DB_URL
+              value: "postgres://projection_writer:sovereign_write_pwd@timescale-db-write.sovereign-chain.svc.cluster.local:5432/sovereign_read"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-api
+  namespace: sovereign-chain
+  labels:
+    app: backend-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: backend-api
+  template:
+    metadata:
+      labels:
+        app: backend-api
+    spec:
+      containers:
+        - name: api
+          image: sovereign-l1/backend-api:latest
+          ports:
+            - containerPort: 9090
+              name: grpc
+          env:
+            - name: READ_DB_URL
+              value: "postgres://api_reader:sovereign_read_pwd@timescale-db-read.sovereign-chain.svc.cluster.local:5432/sovereign_read"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-api-service
+  namespace: sovereign-chain
+spec:
+  ports:
+    - port: 9090
+      targetPort: 9090
+      name: grpc
+  selector:
+    app: backend-api

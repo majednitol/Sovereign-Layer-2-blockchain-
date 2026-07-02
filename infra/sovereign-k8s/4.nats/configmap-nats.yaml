@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nats-config
+  namespace: sovereign-chain
+data:
+  nats.conf: |
+    # NATS Server Config with NKey User Permissions
+    authorization {
+      users = [
+        # Ingestion Client Role
+        {
+          nkey = "UAZ4E4X46A53H4OG3E3UX64KQNGP76BNUQDCF7M5QE7S3KOY4FNJ6IIY"
+          permissions = {
+            publish = ["account:chain"]
+            subscribe = []
+          }
+        },
+        # Projection Client Role
+        {
+          nkey = "UCGECJAIMADYMTTLDMYMA57GLT2ZCLGR3UIVHCLTCCLF3NJAXCK4ICBT"
+          permissions = {
+            publish = ["account:stream"]
+            subscribe = ["account:chain"]
+          }
+        },
+        # Stream / API Client Role
+        {
+          nkey = "UCU5E5BS7VT7RMJMXJM7VYSTYN6UCUOABE6XGUUA73OHU5MMB5WFG4QS"
+          permissions = {
+            publish = []
+            subscribe = ["account:stream"]
+          }
+        }
+      ]
+    }

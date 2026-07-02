@@ -1,0 +1,117 @@
+package settlement
+
+import (
+	"context"
+	"crypto/ed25519"
+	"encoding/json"
+	"fmt"
+
+	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
+	"github.com/cosmos/cosmos-sdk/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+)
+
+type BankKeeper interface {
+	SendCoins(ctx context.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error
+}
+
+type Keeper struct {
+	storeKey   storetypes.StoreKey
+	cdc        codec.BinaryCodec
+	bankKeeper BankKeeper
+}
+
+func NewKeeper(storeKey storetypes.StoreKey, cdc codec.BinaryCodec, bankKeeper BankKeeper) Keeper {
+	return Keeper{
+		storeKey:   storeKey,
+		cdc:        cdc,
+		bankKeeper: bankKeeper,
+	}
+}
+
+func (k Keeper) GetParams(ctx sdk.Context) Params {
+	store := ctx.KVStore(k.storeKey)
+	bz := store.Get(ParamsKey)
+	if bz == nil {
+		return Params{
+			TimestampToleranceSeconds: 30,
+		}
+	}
+	var params Params
+	_ = json.Unmarshal(bz, &params)
+	return params
+}
+
+func (k Keeper) SetParams(ctx sdk.Context, params Params) {
+	store := ctx.KVStore(k.storeKey)
+	bz, _ := json.Marshal(params)
+	store.Set(ParamsKey, bz)
+}
+
+func (k Keeper) SetWitnessPubKey(ctx sdk.Context, witnessID string, pubKey []byte) {
+	store := ctx.KVStore(k.storeKey)
+	store.Set(append(WitnessKeyPrefix, []byte(witnessID)...), pubKey)
+}
+
+func (k Keeper) DeleteWitnessPubKey(ctx sdk.Context, witnessID string) {
+	store := ctx.KVStore(k.storeKey)
+	store.Delete(append(WitnessKeyPrefix, []byte(witnessID)...))
+}
+
+func (k Keeper) GetWitnessPubKey(ctx sdk.Context, witnessID string) ([]byte, bool) {
+	store := ctx.KVStore(k.storeKey)
+	bz := store.Get(append(WitnessKeyPrefix, []byte(witnessID)...))
+	if bz == nil {
+		return nil, false
+	}
+	return bz, true
+}
+
+func (k Keeper) ProcessSettlement(ctx sdk.Context, msg MsgSettlement) error {
+	// 1. Retrieve witness public key
+	pubKey, ok := k.GetWitnessPubKey(ctx, msg.WitnessID)
+	if !ok {
+		return fmt.Errorf("witness ID %s is not registered", msg.WitnessID)
+	}
+
+	// 2. Validate timestamp tolerance
+	params := k.GetParams(ctx)
+	blockTime := ctx.BlockTime().Unix()
+	diff := msg.Timestamp - blockTime
+	if diff < 0 {
+		diff = -diff
+	}
+	if diff > params.TimestampToleranceSeconds {
+		return fmt.Errorf("settlement timestamp %d deviates too far from block time %d (tolerance: %ds)",
+			msg.Timestamp, blockTime, params.TimestampToleranceSeconds)
+	}
+
+	// 3. Verify Ed25519 signature
+	domainSeparator := ComputeDomainSeparator(ctx.ChainID(), msg.PayloadHash)
+	if !ed25519.Verify(pubKey, domainSeparator, msg.Signature) {
+		return fmt.Errorf("invalid witness signature for settlement payload")
+	}
+
+	// 4. Perform payout / bank transfer
+	destAddr, err := sdk.AccAddressFromBech32(msg.TransferDest)
+	if err != nil {
+		return fmt.Errorf("invalid transfer destination: %w", err)
+	}
+
+	if k.bankKeeper != nil {
+		escrowAddr := sdk.AccAddress([]byte("settlement_escrow"))
+		err = k.bankKeeper.SendCoins(ctx, escrowAddr, destAddr, msg.TransferAmt)
+		if err != nil {
+			return fmt.Errorf("failed to transfer settlement payout: %w", err)
+		}
+	}
+
+	// 5. Emit event
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"settlement_executed",
+		sdk.NewAttribute("witness_id", msg.WitnessID),
+		sdk.NewAttribute("destination", msg.TransferDest),
+	))
+
+	return nil
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SummaryResponse",
+  "type": "object",
+  "required": [
+    "count",
+    "label",
+    "owner",
+    "paused"
+  ],
+  "properties": {
+    "count": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "label": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "paused": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

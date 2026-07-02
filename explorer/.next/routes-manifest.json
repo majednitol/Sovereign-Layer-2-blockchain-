@@ -1,0 +1,538 @@
+{
+  "version": 3,
+  "pages404": true,
+  "appType": "app",
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "priority": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "onMatchHeaders": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/address/[any]",
+      "regex": "^/address/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPany": "nxtPany"
+      },
+      "namedRegex": "^/address/(?<nxtPany>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/address/[any]/send",
+      "regex": "^/address/([^/]+?)/send(?:/)?$",
+      "routeKeys": {
+        "nxtPany": "nxtPany"
+      },
+      "namedRegex": "^/address/(?<nxtPany>[^/]+?)/send(?:/)?$"
+    },
+    {
+      "page": "/address/[any]/stake",
+      "regex": "^/address/([^/]+?)/stake(?:/)?$",
+      "routeKeys": {
+        "nxtPany": "nxtPany"
+      },
+      "namedRegex": "^/address/(?<nxtPany>[^/]+?)/stake(?:/)?$"
+    },
+    {
+      "page": "/blocks/[height]",
+      "regex": "^/blocks/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPheight": "nxtPheight"
+      },
+      "namedRegex": "^/blocks/(?<nxtPheight>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/bridge/tx/[nonce]",
+      "regex": "^/bridge/tx/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPnonce": "nxtPnonce"
+      },
+      "namedRegex": "^/bridge/tx/(?<nxtPnonce>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/codes/[codeId]",
+      "regex": "^/codes/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPcodeId": "nxtPcodeId"
+      },
+      "namedRegex": "^/codes/(?<nxtPcodeId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/contracts/[addr]",
+      "regex": "^/contracts/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/contracts/(?<nxtPaddr>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/contracts/[addr]/execute",
+      "regex": "^/contracts/([^/]+?)/execute(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/contracts/(?<nxtPaddr>[^/]+?)/execute(?:/)?$"
+    },
+    {
+      "page": "/contracts/[addr]/nfts",
+      "regex": "^/contracts/([^/]+?)/nfts(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/contracts/(?<nxtPaddr>[^/]+?)/nfts(?:/)?$"
+    },
+    {
+      "page": "/contracts/[addr]/nfts/[tokenId]",
+      "regex": "^/contracts/([^/]+?)/nfts/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr",
+        "nxtPtokenId": "nxtPtokenId"
+      },
+      "namedRegex": "^/contracts/(?<nxtPaddr>[^/]+?)/nfts/(?<nxtPtokenId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/contracts/[addr]/query",
+      "regex": "^/contracts/([^/]+?)/query(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/contracts/(?<nxtPaddr>[^/]+?)/query(?:/)?$"
+    },
+    {
+      "page": "/evm/addresses/[addr]",
+      "regex": "^/evm/addresses/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/evm/addresses/(?<nxtPaddr>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/evm/blocks/[height]",
+      "regex": "^/evm/blocks/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPheight": "nxtPheight"
+      },
+      "namedRegex": "^/evm/blocks/(?<nxtPheight>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/evm/contracts/[addr]",
+      "regex": "^/evm/contracts/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/evm/contracts/(?<nxtPaddr>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/evm/contracts/[addr]/read",
+      "regex": "^/evm/contracts/([^/]+?)/read(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/evm/contracts/(?<nxtPaddr>[^/]+?)/read(?:/)?$"
+    },
+    {
+      "page": "/evm/contracts/[addr]/write",
+      "regex": "^/evm/contracts/([^/]+?)/write(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/evm/contracts/(?<nxtPaddr>[^/]+?)/write(?:/)?$"
+    },
+    {
+      "page": "/evm/nfts/[addr]",
+      "regex": "^/evm/nfts/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/evm/nfts/(?<nxtPaddr>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/evm/nfts/[addr]/[tokenId]",
+      "regex": "^/evm/nfts/([^/]+?)/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr",
+        "nxtPtokenId": "nxtPtokenId"
+      },
+      "namedRegex": "^/evm/nfts/(?<nxtPaddr>[^/]+?)/(?<nxtPtokenId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/evm/tokens/[addr]",
+      "regex": "^/evm/tokens/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/evm/tokens/(?<nxtPaddr>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/evm/tokens/[addr]/multi",
+      "regex": "^/evm/tokens/([^/]+?)/multi(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/evm/tokens/(?<nxtPaddr>[^/]+?)/multi(?:/)?$"
+    },
+    {
+      "page": "/evm/txs/[hash]",
+      "regex": "^/evm/txs/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPhash": "nxtPhash"
+      },
+      "namedRegex": "^/evm/txs/(?<nxtPhash>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/governance/[id]",
+      "regex": "^/governance/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/governance/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/ibc/channels/[channelId]",
+      "regex": "^/ibc/channels/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPchannelId": "nxtPchannelId"
+      },
+      "namedRegex": "^/ibc/channels/(?<nxtPchannelId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/milestones/[id]",
+      "regex": "^/milestones/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/milestones/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/oracle/rounds/[roundId]",
+      "regex": "^/oracle/rounds/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtProundId": "nxtProundId"
+      },
+      "namedRegex": "^/oracle/rounds/(?<nxtProundId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/oracle/[feedId]",
+      "regex": "^/oracle/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPfeedId": "nxtPfeedId"
+      },
+      "namedRegex": "^/oracle/(?<nxtPfeedId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/settlements/[id]",
+      "regex": "^/settlements/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/settlements/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/txs/[hash]",
+      "regex": "^/txs/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPhash": "nxtPhash"
+      },
+      "namedRegex": "^/txs/(?<nxtPhash>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/validators/[addr]",
+      "regex": "^/validators/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/validators/(?<nxtPaddr>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_global-error",
+      "regex": "^/_global\\-error(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_global\\-error(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/analytics",
+      "regex": "^/analytics(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/analytics(?:/)?$"
+    },
+    {
+      "page": "/blocks",
+      "regex": "^/blocks(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/blocks(?:/)?$"
+    },
+    {
+      "page": "/bridge",
+      "regex": "^/bridge(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/bridge(?:/)?$"
+    },
+    {
+      "page": "/bridge/deposit",
+      "regex": "^/bridge/deposit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/bridge/deposit(?:/)?$"
+    },
+    {
+      "page": "/bridge/history",
+      "regex": "^/bridge/history(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/bridge/history(?:/)?$"
+    },
+    {
+      "page": "/bridge/withdraw",
+      "regex": "^/bridge/withdraw(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/bridge/withdraw(?:/)?$"
+    },
+    {
+      "page": "/certification",
+      "regex": "^/certification(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/certification(?:/)?$"
+    },
+    {
+      "page": "/codes",
+      "regex": "^/codes(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/codes(?:/)?$"
+    },
+    {
+      "page": "/codes/submit",
+      "regex": "^/codes/submit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/codes/submit(?:/)?$"
+    },
+    {
+      "page": "/consensus",
+      "regex": "^/consensus(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/consensus(?:/)?$"
+    },
+    {
+      "page": "/contracts",
+      "regex": "^/contracts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/contracts(?:/)?$"
+    },
+    {
+      "page": "/developers",
+      "regex": "^/developers(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/developers(?:/)?$"
+    },
+    {
+      "page": "/docs",
+      "regex": "^/docs(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/docs(?:/)?$"
+    },
+    {
+      "page": "/evm",
+      "regex": "^/evm(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/evm(?:/)?$"
+    },
+    {
+      "page": "/evm/blocks",
+      "regex": "^/evm/blocks(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/evm/blocks(?:/)?$"
+    },
+    {
+      "page": "/evm/contracts",
+      "regex": "^/evm/contracts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/evm/contracts(?:/)?$"
+    },
+    {
+      "page": "/evm/nfts",
+      "regex": "^/evm/nfts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/evm/nfts(?:/)?$"
+    },
+    {
+      "page": "/evm/tokens",
+      "regex": "^/evm/tokens(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/evm/tokens(?:/)?$"
+    },
+    {
+      "page": "/evm/txs",
+      "regex": "^/evm/txs(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/evm/txs(?:/)?$"
+    },
+    {
+      "page": "/evm/verify",
+      "regex": "^/evm/verify(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/evm/verify(?:/)?$"
+    },
+    {
+      "page": "/faucet",
+      "regex": "^/faucet(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/faucet(?:/)?$"
+    },
+    {
+      "page": "/governance",
+      "regex": "^/governance(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/governance(?:/)?$"
+    },
+    {
+      "page": "/governance/submit",
+      "regex": "^/governance/submit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/governance/submit(?:/)?$"
+    },
+    {
+      "page": "/ibc",
+      "regex": "^/ibc(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ibc(?:/)?$"
+    },
+    {
+      "page": "/ibc/assets",
+      "regex": "^/ibc/assets(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ibc/assets(?:/)?$"
+    },
+    {
+      "page": "/ibc/channels",
+      "regex": "^/ibc/channels(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ibc/channels(?:/)?$"
+    },
+    {
+      "page": "/milestones",
+      "regex": "^/milestones(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/milestones(?:/)?$"
+    },
+    {
+      "page": "/network",
+      "regex": "^/network(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/network(?:/)?$"
+    },
+    {
+      "page": "/oracle",
+      "regex": "^/oracle(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/oracle(?:/)?$"
+    },
+    {
+      "page": "/oracle/operators",
+      "regex": "^/oracle/operators(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/oracle/operators(?:/)?$"
+    },
+    {
+      "page": "/params",
+      "regex": "^/params(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/params(?:/)?$"
+    },
+    {
+      "page": "/search",
+      "regex": "^/search(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/search(?:/)?$"
+    },
+    {
+      "page": "/settlements",
+      "regex": "^/settlements(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settlements(?:/)?$"
+    },
+    {
+      "page": "/staking",
+      "regex": "^/staking(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/staking(?:/)?$"
+    },
+    {
+      "page": "/staking/history",
+      "regex": "^/staking/history(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/staking/history(?:/)?$"
+    },
+    {
+      "page": "/status",
+      "regex": "^/status(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/status(?:/)?$"
+    },
+    {
+      "page": "/txs",
+      "regex": "^/txs(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/txs(?:/)?$"
+    },
+    {
+      "page": "/txs/pending",
+      "regex": "^/txs/pending(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/txs/pending(?:/)?$"
+    },
+    {
+      "page": "/validators",
+      "regex": "^/validators(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/validators(?:/)?$"
+    },
+    {
+      "page": "/verify",
+      "regex": "^/verify(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/verify(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments",
+    "clientParamParsing": false,
+    "dynamicRSCPrerender": false
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

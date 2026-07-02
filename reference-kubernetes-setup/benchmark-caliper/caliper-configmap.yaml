@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: caliper-config
+  labels:
+    app: caliper
+data:
+  caliper-network.yaml: |
+    name: Caliper Benchmarks
+    version: "2.0.0"
+    caliper:
+      blockchain: fabric
+
+    channels:
+      - channelName: mychannel
+        contracts:
+          - id: basic
+
+    organizations:
+      - mspid: AfrinicMSP
+        identities:
+          certificates:
+            - name: 'User1'
+              clientPrivateKey:
+                path: '/organizations/peerOrganizations/afrinic.rono.com/users/User1@afrinic.rono.com/msp/keystore/priv_sk'
+              clientSignedCert:
+                path: '/organizations/peerOrganizations/afrinic.rono.com/users/User1@afrinic.rono.com/msp/signcerts/cert.pem'
+        connectionProfile:
+          path: '/usr/src/app/connection-profile/connection-afrinic.json'
+          discover: false
+
+      - mspid: ApnicMSP
+        identities:
+          certificates:
+            - name: 'User1'
+              clientPrivateKey:
+                path: '/organizations/peerOrganizations/apnic.rono.com/users/User1@apnic.rono.com/msp/keystore/priv_sk'
+              clientSignedCert:
+                path: '/organizations/peerOrganizations/apnic.rono.com/users/User1@apnic.rono.com/msp/signcerts/cert.pem'
+        connectionProfile:
+          path: '/usr/src/app/connection-profile/connection-apnic.json'
+          discover: false
+
+      - mspid: ArinMSP
+        identities:
+          certificates:
+            - name: 'User1'
+              clientPrivateKey:
+                path: '/organizations/peerOrganizations/arin.rono.com/users/User1@arin.rono.com/msp/keystore/priv_sk'
+              clientSignedCert:
+                path: '/organizations/peerOrganizations/arin.rono.com/users/User1@arin.rono.com/msp/signcerts/cert.pem'
+        connectionProfile:
+          path: '/usr/src/app/connection-profile/connection-arin.json'
+          discover: false
+
+      - mspid: RipenccMSP
+        identities:
+          certificates:
+            - name: 'User1'
+              clientPrivateKey:
+                path: '/organizations/peerOrganizations/ripencc.rono.com/users/User1@ripencc.rono.com/msp/keystore/priv_sk'
+              clientSignedCert:
+                path: '/organizations/peerOrganizations/ripencc.rono.com/users/User1@ripencc.rono.com/msp/signcerts/cert.pem'
+        connectionProfile:
+          path: '/usr/src/app/connection-profile/connection-ripencc.json'
+          discover: false
+
+      - mspid: LacnicMSP
+        identities:
+          certificates:
+            - name: 'User1'
+              clientPrivateKey:
+                path: '/organizations/peerOrganizations/lacnic.rono.com/users/User1@lacnic.rono.com/msp/keystore/priv_sk'
+              clientSignedCert:
+                path: '/organizations/peerOrganizations/lacnic.rono.com/users/User1@lacnic.rono.com/msp/signcerts/cert.pem'
+        connectionProfile:
+          path: '/usr/src/app/connection-profile/connection-lacnic.json'
+          discover: false
+
+      - mspid: RonoMSP
+        identities:
+          certificates:
+            - name: 'User1'
+              clientPrivateKey:
+                path: '/organizations/peerOrganizations/rono.rono.com/users/User1@rono.rono.com/msp/keystore/priv_sk'
+              clientSignedCert:
+                path: '/organizations/peerOrganizations/rono.rono.com/users/User1@rono.rono.com/msp/signcerts/cert.pem'
+        connectionProfile:
+          path: '/usr/src/app/connection-profile/connection-rono.json'
+          discover: false
+
+  config.yaml: |
+    simpleArgs: &simple-args
+      userId: "20000"
+      name: "System Manager"
+      email: "sysmgr@rono.com"
+      orgMSP: "AfrinicMSP"
+      role: "rir"
+      createdAt: "2025-06-21T10:00:00Z"
+
+    test:
+      name: system-manager-benchmark
+      description: Performance benchmark for SystemManager chaincode
+      workers:
+        number: 10
+      rounds:
+        - label: createSystemManager (fixed-load)
+          txDuration: 30
+          rateControl:
+            type: fixed-load
+            opts:
+              transactionLoad: 2500
+          workload:
+            module: benchmarks/scenario/systemmanager/create.js
+            arguments: *simple-args
+          timeout:
+            transaction: 180
+            endorsement: 180
+
+        - label: createSystemManager (fixed-rate)
+          txDuration: 30
+          rateControl:
+            type: fixed-rate
+            opts:
+              tps: 2500
+          workload:
+            module: benchmarks/scenario/systemmanager/create.js
+            arguments: *simple-args
+          timeout:
+            transaction: 180
+            endorsement: 180
+
+        - label: getSystemManager (fixed-load)
+          txDuration: 30
+          rateControl:
+            type: fixed-load
+            opts:
+              transactionLoad: 2500
+          workload:
+            module: benchmarks/scenario/systemmanager/query.js
+            arguments:
+              userId: "100"
+          timeout:
+            transaction: 180
+            endorsement: 180
+
+        - label: getSystemManager (fixed-rate)
+          txDuration: 30
+          rateControl:
+            type: fixed-rate
+            opts:
+              tps: 2500
+          workload:
+            module: benchmarks/scenario/systemmanager/query.js
+            arguments:
+              userId: "100"
+          timeout:
+            transaction: 180
+            endorsement: 180

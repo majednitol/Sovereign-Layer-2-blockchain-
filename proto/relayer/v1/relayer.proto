@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package relayer.v1;
+
+option go_package = "github.com/sovereign-l1/chain/api/relayer/v1;relayerv1";
+
+import "google/api/annotations.proto";
+
+service RelayerService {
+  rpc SubmitSignature(SubmitSignatureRequest) returns (SubmitSignatureResponse) {
+    option (google.api.http) = {
+      post: "/api/rest/v1/relayer/signature"
+      body: "*"
+    };
+  }
+
+  rpc GetCommitteeNonces(GetCommitteeNoncesRequest) returns (GetCommitteeNoncesResponse) {
+    option (google.api.http) = {
+      get: "/api/rest/v1/relayer/nonces"
+    };
+  }
+}
+
+message SubmitSignatureRequest {
+  string committee_id = 1;
+  uint64 nonce = 2;
+  string signature = 3; // e.g., hex-encoded signature
+  string validator_address = 4;
+}
+
+message SubmitSignatureResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetCommitteeNoncesRequest {
+  string committee_id = 1;
+}
+
+message GetCommitteeNoncesResponse {
+  string committee_id = 1;
+  uint64 current_nonce = 2;
+  uint64 expected_nonce = 3;
+}

@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db-relayer
+  labels:
+    app: db-relayer
+spec:
+  serviceName: db-relayer
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-relayer
+  template:
+    metadata:
+      labels:
+        app: db-relayer
+    spec:
+      containers:
+        - name: db-relayer
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: "sovereign_relayer"
+            - name: POSTGRES_USER
+              value: "relayer_user"
+            - name: POSTGRES_PASSWORD
+              value: "sovereign_relayer_pwd"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: db-relayer-data
+              mountPath: /var/lib/postgresql/data
+            - name: schemas-volume
+              mountPath: /docker-entrypoint-initdb.d/000001_init_relayer.sql
+              subPath: 000001_init_relayer.sql
+      volumes:
+        - name: schemas-volume
+          configMap:
+            name: db-schemas-config
+  volumeClaimTemplates:
+    - metadata:
+        name: db-relayer-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-relayer
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    app: db-relayer

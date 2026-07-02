@@ -1,0 +1,58 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: sovereign-ca-cert
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: sovereign-ca
+  secretName: sovereign-ca-key-pair
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: sovereign-ca-issuer
+spec:
+  ca:
+    secretName: sovereign-ca-key-pair
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: sentry-node-cert
+  namespace: sovereign-chain
+spec:
+  dnsNames:
+    - sentry-service.sovereign-chain.svc
+    - sentry-service.sovereign-chain.svc.cluster.local
+  secretName: sentry-tls-secret
+  issuerRef:
+    name: sovereign-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: validator-node-cert
+  namespace: sovereign-chain
+spec:
+  dnsNames:
+    - validator-service.sovereign-chain.svc
+    - validator-service.sovereign-chain.svc.cluster.local
+  secretName: validator-tls-secret
+  issuerRef:
+    name: sovereign-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io

@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/staking/layout,_N_T_/staking/history/layout,_N_T_/staking/history/page,_N_T_/staking/history"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/staking/history/__PAGE__",
+    "/staking/history",
+    "/staking",
+    "/_index",
+    "/_head"
+  ]
+}

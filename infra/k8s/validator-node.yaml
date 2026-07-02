@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sovereign-validator
+  namespace: sovereign-chain
+  labels:
+    role: validator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      role: validator
+  template:
+    metadata:
+      labels:
+        role: validator
+    spec:
+      containers:
+        - name: validator-node
+          image: sovereign-l1/chain-node:latest
+          command:
+            - "chaind"
+            - "start"
+            - "--p2p.pex=false"
+            - "--p2p.persistent-peers=sentry-peer-id@sentry-service.sovereign-chain.svc:26656"
+            - "--priv_validator_laddr=tcp://0.0.0.0:26659"
+          ports:
+            - containerPort: 26656
+              name: p2p
+            - containerPort: 26659
+              name: priv-val
+          resources:
+            limits:
+              cpu: "4"
+              memory: 8Gi
+            requests:
+              cpu: "2"
+              memory: 4Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: validator-service
+  namespace: sovereign-chain
+spec:
+  selector:
+    role: validator
+  ports:
+    - protocol: TCP
+      port: 26656
+      targetPort: 26656
+      name: p2p
+    - protocol: TCP
+      port: 26659
+      targetPort: 26659
+      name: priv-val

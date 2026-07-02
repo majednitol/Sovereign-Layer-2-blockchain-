@@ -1,0 +1,11 @@
+go 1.25.9
+
+use (
+	./backend
+	./chain
+	./e2e
+	./oracle
+	./relayer
+	./explorer-indexer
+	./explorer-api
+)

@@ -1,0 +1,369 @@
+services:
+  # --- NATS JetStream 3-Node Cluster ---
+  nats-0:
+    image: nats:2.10-alpine
+    container_name: nats-0
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats-0-data:/data
+      - ./infra/nats/nats.conf:/etc/nats/nats.conf:ro
+    command: >
+      -c /etc/nats/nats.conf
+      --name nats-0
+      --cluster_listen nats://0.0.0.0:6222
+      --routes nats://nats-1:6222,nats://nats-2:6222
+      --cluster_name sovereign-cluster
+      -js
+      -sd /data
+    networks:
+      sovereign-net:
+        aliases:
+          - nats-cluster
+
+  nats-1:
+    image: nats:2.10-alpine
+    container_name: nats-1
+    volumes:
+      - nats-1-data:/data
+      - ./infra/nats/nats.conf:/etc/nats/nats.conf:ro
+    command: >
+      -c /etc/nats/nats.conf
+      --name nats-1
+      --cluster_listen nats://0.0.0.0:6222
+      --routes nats://nats-0:6222,nats://nats-2:6222
+      --cluster_name sovereign-cluster
+      -js
+      -sd /data
+    networks:
+      - sovereign-net
+    depends_on:
+      - nats-0
+
+  nats-2:
+    image: nats:2.10-alpine
+    container_name: nats-2
+    volumes:
+      - nats-2-data:/data
+      - ./infra/nats/nats.conf:/etc/nats/nats.conf:ro
+    command: >
+      -c /etc/nats/nats.conf
+      --name nats-2
+      --cluster_listen nats://0.0.0.0:6222
+      --routes nats://nats-0:6222,nats://nats-1:6222
+      --cluster_name sovereign-cluster
+      -js
+      -sd /data
+    networks:
+      - sovereign-net
+    depends_on:
+      - nats-0
+
+  # --- PostgreSQL Isolation (Write, Read, Relayer DBs) ---
+  db-write:
+    image: timescale/timescaledb:latest-pg16
+    container_name: db-write
+    environment:
+      POSTGRES_DB: sovereign_write
+      POSTGRES_USER: ingestion_writer
+      POSTGRES_PASSWORD: sovereign_write_pwd
+    ports:
+      - "5433:5432"
+    volumes:
+      - db-write-data:/var/lib/postgresql/data
+      - pg-write-archive:/var/lib/postgresql/archive
+      - ./db/write_schema:/docker-entrypoint-initdb.d
+    command: postgres -c wal_level=replica -c archive_mode=off
+    networks:
+      - sovereign-net
+
+  db-read:
+    image: timescale/timescaledb:latest-pg16
+    container_name: db-read
+    environment:
+      POSTGRES_DB: sovereign_read
+      POSTGRES_USER: api_reader
+      POSTGRES_PASSWORD: sovereign_read_pwd
+    ports:
+      - "5434:5432"
+    volumes:
+      - db-read-data:/var/lib/postgresql/data
+      - pg-read-archive:/var/lib/postgresql/archive
+      - ./db/read_schema:/docker-entrypoint-initdb.d
+    command: postgres -c wal_level=replica -c max_wal_senders=5 -c archive_mode=off
+    networks:
+      - sovereign-net
+
+  db-read-standby:
+    image: timescale/timescaledb:latest-pg16
+    container_name: db-read-standby
+    environment:
+      POSTGRES_DB: sovereign_read
+      POSTGRES_USER: api_reader
+      POSTGRES_PASSWORD: sovereign_read_pwd
+      PGPASSWORD: sovereign_read_pwd
+    volumes:
+      - db-read-standby-data:/var/lib/postgresql/data
+      - pg-read-archive:/var/lib/postgresql/archive
+    command: >
+      gosu postgres /bin/sh -c "
+      until pg_isready -h db-read -p 5432 -U api_reader; do echo 'waiting for primary...'; sleep 1; done;
+      if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+        echo 'Initializing standby replica from primary...';
+        rm -rf /var/lib/postgresql/data/*;
+        pg_basebackup -h db-read -D /var/lib/postgresql/data -U api_reader -v -P -R -X stream;
+      fi;
+      chmod 700 /var/lib/postgresql/data;
+      exec postgres;
+      "
+    depends_on:
+      - db-read
+    networks:
+      - sovereign-net
+
+  pgbouncer-read:
+    image: edoburu/pgbouncer:latest
+    container_name: pgbouncer-read
+    environment:
+      - DB_HOST=db-read
+      - DB_PORT=5432
+      - DB_USER=api_reader
+      - DB_PASSWORD=sovereign_read_pwd
+      - DB_NAME=sovereign_read
+      - LISTEN_PORT=6432
+      - POOL_MODE=transaction
+      - MAX_CLIENT_CONN=100
+      - DEFAULT_POOL_SIZE=20
+      - AUTH_TYPE=scram-sha-256
+    depends_on:
+      - db-read
+    networks:
+      - sovereign-net
+
+  db-relayer:
+    image: postgres:16-alpine
+    container_name: db-relayer
+    environment:
+      POSTGRES_DB: sovereign_relayer
+      POSTGRES_USER: relayer_user
+      POSTGRES_PASSWORD: sovereign_relayer_pwd
+    ports:
+      - "5435:5432"
+    volumes:
+      - db-relayer-data:/var/lib/postgresql/data
+      - ./db/relayer_schema:/docker-entrypoint-initdb.d
+    networks:
+      - sovereign-net
+
+  # --- Envoy Gateway ---
+  envoy:
+    image: envoyproxy/envoy:v1.28.0
+    container_name: envoy-gateway
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    networks:
+      - sovereign-net
+    depends_on:
+      - nats-0
+      - backend-api
+      - chain-node
+
+  # --- Off-chain Backend Service ---
+  backend-api:
+    image: sovereign-backend:latest
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: backend-api
+    environment:
+      - WRITE_DB_URL=postgres://ingestion_writer:sovereign_write_pwd@db-write:5432/sovereign_write
+      - READ_DB_URL=postgres://api_reader:sovereign_read_pwd@pgbouncer-read:6432/sovereign_read
+      - NATS_URL=nats://nats-cluster:4222
+      - COMETBFT_RPC_URL=http://chain-node:26657
+    ports:
+      - "9091:9090"
+      - "8081:8081"
+    depends_on:
+      - db-write
+      - db-read
+      - pgbouncer-read
+      - nats-0
+      - chain-node
+    networks:
+      - sovereign-net
+
+  faucet-service:
+    image: sovereign-backend:latest
+    container_name: faucet-service
+    command: ["faucet"]
+    environment:
+      - NODE_URL=http://chain-node:26657
+      - FAUCET_KEY=faucet
+      - DENOM=atoken
+      - FAUCET_AMOUNT=10000000000000000000
+      - CHAIN_ID=sovereign-1
+    ports:
+      - "8000:8000"
+    depends_on:
+      - chain-node
+      - backend-api
+    networks:
+      - sovereign-net
+
+
+  chain-node:
+    build:
+      context: .
+      dockerfile: ./chain/Dockerfile
+    container_name: chain-node
+    ports:
+      - "26657:26657"
+      - "9090:9090"
+      - "1317:1317"
+      - "8545:8545"
+      - "8546:8546"
+    volumes:
+      - ./chain/genesis.json:/root/genesis.json:ro
+    networks:
+      - sovereign-net
+
+  # --- Unified Custom Explorer: Redis Cache ---
+  explorer-redis:
+    image: redis:7-alpine
+    container_name: explorer-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - sovereign-net
+    restart: unless-stopped
+
+  # --- Unified Custom Explorer: Indexer ---
+  explorer-indexer:
+    build:
+      context: .
+      dockerfile: ./explorer-indexer/Dockerfile
+    container_name: explorer-indexer
+    depends_on:
+      - db-read
+      - nats-0
+      - chain-node
+    environment:
+      DATABASE_URL: "postgres://api_reader:sovereign_read_pwd@db-read:5432/sovereign_read"
+      NATS_URL: "nats://nats-0:4222"
+      NATS_USER: "explorer"
+      NATS_PASSWORD: "explorer_pass"
+      COMET_RPC: "http://chain-node:26657"
+      EVM_RPC: "http://chain-node:8545"
+      BSC_RPC: "https://bsc-dataseed.binance.org"
+    networks:
+      - sovereign-net
+    restart: unless-stopped
+
+  # --- Unified Custom Explorer: API Server ---
+  explorer-api:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ./explorer-api/Dockerfile
+    container_name: explorer-api
+    depends_on:
+      - db-read
+      - explorer-redis
+      - nats-0
+    ports:
+      - "9092:9091"
+      - "8082:8081"
+    environment:
+      DATABASE_URL: "postgres://api_reader:sovereign_read_pwd@db-read:5432/sovereign_read"
+      REDIS_URL: "redis://explorer-redis:6379"
+      NATS_URL: "nats://nats-0:4222"
+      NATS_USER: "explorer"
+      NATS_PASSWORD: "explorer_pass"
+      GRPC_PORT: "9091"
+      REST_PORT: "8081"
+    networks:
+      - sovereign-net
+    restart: unless-stopped
+
+  # --- Unified Custom Explorer: Frontend ---
+  explorer-frontend:
+    build:
+      context: .
+      dockerfile: ./explorer/Dockerfile
+      args:
+        NEXT_PUBLIC_RPC_URL: "http://localhost:26657"
+        NEXT_PUBLIC_API_URL: "http://localhost:8082"
+        NEXT_PUBLIC_FAUCET_URL: "http://localhost:8000"
+        NEXT_PUBLIC_COSMOS_RPC_URL: "http://localhost:26657"
+        NEXT_PUBLIC_COSMOS_RPC_WS: "ws://localhost:26657/websocket"
+        NEXT_PUBLIC_EVM_RPC_URL: "http://localhost:8545"
+        NEXT_PUBLIC_EVM_RPC_WS: "ws://localhost:8546"
+        NEXT_PUBLIC_COSMOS_GRPC: "localhost:9090"
+        NEXT_PUBLIC_COSMOS_REST: "http://localhost:1317"
+        NEXT_PUBLIC_COSMOS_CHAIN_ID: "sovereign-1"
+        NEXT_PUBLIC_EVM_CHAIN_ID: "7777"
+        NEXT_PUBLIC_CURRENCY_SYMBOL: "SLT"
+    container_name: explorer-frontend
+    depends_on:
+      - chain-node
+      - explorer-api
+    ports:
+      - "3001:3001"
+    networks:
+      - sovereign-net
+    restart: unless-stopped
+
+  # --- User DApp Frontend ---
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    container_name: frontend
+    depends_on:
+      - chain-node
+      - backend-api
+    ports:
+      - "3000:3000"
+    networks:
+      - sovereign-net
+    restart: unless-stopped
+
+  # --- HashiCorp Vault (Secret Management) ---
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: vault
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "root"
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - sovereign-net
+    restart: unless-stopped
+
+  # --- CosmWasm Contract Optimizer ---
+  contract-optimizer:
+    image: cosmwasm/optimizer:0.17.0
+    container_name: contract-optimizer
+    volumes:
+      - ./contracts:/code
+
+networks:
+  sovereign-net:
+    driver: bridge
+
+volumes:
+  nats-0-data:
+  nats-1-data:
+  nats-2-data:
+  db-write-data:
+  db-read-data:
+  db-relayer-data:
+  db-read-standby-data:
+  pg-read-archive:
+  pg-write-archive:

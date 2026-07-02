@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "constitution",
+    "treasury",
+    "reserve-fund",
+    "governance",
+    "cw-counter"
+]
+resolver = "2"

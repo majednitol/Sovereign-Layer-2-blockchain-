@@ -1,0 +1,191 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-schemas-config
+  namespace: sovereign-chain
+data:
+  000001_init_write.sql: |
+    -- Write-side schema: partitioned event store
+    CREATE TABLE IF NOT EXISTS events (
+        block_height BIGINT NOT NULL,
+        event_index INT NOT NULL,
+        event_type TEXT NOT NULL,
+        payload JSONB NOT NULL,
+        nats_published BOOLEAN DEFAULT false,
+        PRIMARY KEY (block_height, event_index)
+    ) PARTITION BY RANGE (block_height);
+    CREATE TABLE IF NOT EXISTS events_default PARTITION OF events DEFAULT;
+    CREATE INDEX IF NOT EXISTS idx_events_nats_published ON events (nats_published) WHERE nats_published = false;
+
+  000002_timescale_write.sql: |
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
+    DROP TABLE IF EXISTS events_default CASCADE;
+    DROP TABLE IF EXISTS events CASCADE;
+    CREATE TABLE IF NOT EXISTS events (
+        block_height    BIGINT                   NOT NULL,
+        event_index     INT                      NOT NULL,
+        event_type      TEXT                     NOT NULL,
+        payload         JSONB                    NOT NULL,
+        nats_published  BOOLEAN                  DEFAULT false,
+        created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        PRIMARY KEY (block_height, event_index, created_at)
+    );
+    SELECT create_hypertable('events', 'created_at', chunk_time_interval => INTERVAL '7 days', if_not_exists => TRUE);
+    CREATE INDEX IF NOT EXISTS idx_events_nats_published ON events (nats_published) WHERE nats_published = false;
+    ALTER TABLE events SET (timescaledb.compress, timescaledb.compress_segmentby = 'event_type');
+    SELECT add_compression_policy('events', INTERVAL '60 days', if_not_exists => TRUE);
+
+  000001_init_read.sql: |
+    CREATE TABLE IF NOT EXISTS bridge_volume (
+        token_address VARCHAR(42) NOT NULL,
+        chain_id VARCHAR(64) NOT NULL,
+        timeframe VARCHAR(10) NOT NULL,
+        bucket_time TIMESTAMP NOT NULL,
+        total_minted NUMERIC(78, 0) DEFAULT 0,
+        total_burned NUMERIC(78, 0) DEFAULT 0,
+        volume_usd NUMERIC(18, 4) DEFAULT 0.0,
+        transaction_count BIGINT DEFAULT 0,
+        PRIMARY KEY (token_address, chain_id, timeframe, bucket_time)
+    );
+    CREATE TABLE IF NOT EXISTS validator_uptime (
+        validator_address VARCHAR(42) PRIMARY KEY,
+        total_blocks BIGINT DEFAULT 0,
+        missed_blocks BIGINT DEFAULT 0,
+        uptime_percentage DOUBLE PRECISION DEFAULT 100.0
+    );
+    CREATE TABLE IF NOT EXISTS oracle_participation (
+        oracle_address VARCHAR(42) PRIMARY KEY,
+        total_requests BIGINT DEFAULT 0,
+        successful_reveals BIGINT DEFAULT 0,
+        participation_rate DOUBLE PRECISION DEFAULT 100.0
+    );
+    CREATE TABLE IF NOT EXISTS settlements (
+        settlement_id VARCHAR(66) PRIMARY KEY,
+        proof BYTEA NOT NULL,
+        status VARCHAR(20) NOT NULL,
+        block_height BIGINT NOT NULL,
+        signatures TEXT[] DEFAULT '{}'::TEXT[]
+    );
+    CREATE TABLE IF NOT EXISTS milestone_status (
+        milestone_id VARCHAR(66) PRIMARY KEY,
+        status VARCHAR(20) NOT NULL,
+        block_height BIGINT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS bridge_pending (
+        nonce BIGINT PRIMARY KEY,
+        token_address VARCHAR(42) NOT NULL,
+        amount NUMERIC(78, 0) NOT NULL,
+        recipient VARCHAR(42) NOT NULL,
+        status VARCHAR(20) NOT NULL
+    );
+
+  000002_timescale.sql: |
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
+    CREATE TABLE IF NOT EXISTS block_stats (
+      block_height   BIGINT    NOT NULL,
+      block_time_ms  INT       NOT NULL,
+      tx_count       INT       NOT NULL,
+      avg_fee_uatom  NUMERIC   NOT NULL,
+      PRIMARY KEY (block_height)
+    );
+    SELECT create_hypertable('block_stats', 'block_height', chunk_time_interval => 432000, if_not_exists => TRUE);
+    CREATE TABLE IF NOT EXISTS oracle_submissions (
+      block_height  BIGINT   NOT NULL,
+      asset_id      TEXT     NOT NULL,
+      price         NUMERIC  NOT NULL,
+      validator     TEXT     NOT NULL,
+      PRIMARY KEY (block_height, asset_id, validator)
+    );
+    SELECT create_hypertable('oracle_submissions', 'block_height', chunk_time_interval => 432000, if_not_exists => TRUE);
+    CREATE TABLE IF NOT EXISTS validator_signatures (
+      block_height       BIGINT   NOT NULL,
+      validator_address  TEXT     NOT NULL,
+      signed             BOOLEAN  NOT NULL,
+      PRIMARY KEY (block_height, validator_address)
+    );
+    SELECT create_hypertable('validator_signatures', 'block_height', chunk_time_interval => 432000, if_not_exists => TRUE);
+    CREATE TABLE IF NOT EXISTS bridge_events (
+      block_height  BIGINT   NOT NULL,
+      event_index   INT      NOT NULL,
+      direction     TEXT     NOT NULL,
+      asset         TEXT     NOT NULL,
+      amount        NUMERIC  NOT NULL,
+      PRIMARY KEY (block_height, event_index)
+    );
+    SELECT create_hypertable('bridge_events', 'block_height', chunk_time_interval => 432000, if_not_exists => TRUE);
+    CREATE OR REPLACE FUNCTION public.current_block_height() RETURNS bigint AS $$
+      SELECT COALESCE(MAX(block_height), 0)::bigint FROM public.block_stats;
+    $$ LANGUAGE SQL STABLE;
+    SELECT set_integer_now_func('block_stats', 'public.current_block_height', replace_if_exists => TRUE);
+    SELECT set_integer_now_func('oracle_submissions', 'public.current_block_height', replace_if_exists => TRUE);
+    SELECT set_integer_now_func('validator_signatures', 'public.current_block_height', replace_if_exists => TRUE);
+    SELECT set_integer_now_func('bridge_events', 'public.current_block_height', replace_if_exists => TRUE);
+    CREATE MATERIALIZED VIEW IF NOT EXISTS tps_1h WITH (timescaledb.continuous) AS
+      SELECT time_bucket(600, block_height)        AS period,
+             COUNT(*)::FLOAT / 600.0 / 6.0         AS tps_avg,
+             MAX(tx_count)::FLOAT / 6.0            AS tps_peak,
+             SUM(tx_count)                         AS total_txs
+      FROM block_stats
+      GROUP BY period WITH NO DATA;
+    SELECT add_continuous_aggregate_policy('tps_1h', start_offset => 1800, end_offset => 600, schedule_interval => INTERVAL '10 minutes', if_not_exists => TRUE);
+    CREATE MATERIALIZED VIEW IF NOT EXISTS block_time_1h WITH (timescaledb.continuous) AS
+      SELECT time_bucket(600, block_height)        AS period,
+             AVG(block_time_ms)                    AS avg_ms,
+             MAX(block_time_ms)                    AS max_ms
+      FROM block_stats
+      GROUP BY period WITH NO DATA;
+    SELECT add_continuous_aggregate_policy('block_time_1h', start_offset => 1800, end_offset => 600, schedule_interval => INTERVAL '10 minutes', if_not_exists => TRUE);
+    CREATE MATERIALIZED VIEW IF NOT EXISTS oracle_price_1h WITH (timescaledb.continuous) AS
+      SELECT time_bucket(600, block_height)        AS period,
+             asset_id,
+             first(price, block_height)            AS open,
+             max(price)                            AS high,
+             min(price)                            AS low,
+             last(price, block_height)             AS close,
+             count(*)                              AS submission_count
+      FROM oracle_submissions
+      GROUP BY period, asset_id WITH NO DATA;
+    SELECT add_continuous_aggregate_policy('oracle_price_1h', start_offset => 1800, end_offset => 600, schedule_interval => INTERVAL '10 minutes', if_not_exists => TRUE);
+    CREATE MATERIALIZED VIEW IF NOT EXISTS validator_uptime_1d WITH (timescaledb.continuous) AS
+      SELECT time_bucket(14400, block_height)      AS period,
+             validator_address,
+             AVG(signed::INT)::FLOAT * 100         AS uptime_pct,
+             COUNT(*)                              AS blocks_in_window
+      FROM validator_signatures
+      GROUP BY period, validator_address WITH NO DATA;
+    SELECT add_continuous_aggregate_policy('validator_uptime_1d', start_offset => 43200, end_offset => 14400, schedule_interval => INTERVAL '1 hour', if_not_exists => TRUE);
+    CREATE MATERIALIZED VIEW IF NOT EXISTS bridge_volume_1h WITH (timescaledb.continuous) AS
+      SELECT time_bucket(600, block_height)        AS period,
+             direction,
+             asset,
+             SUM(amount)                           AS volume,
+             COUNT(*)                              AS tx_count
+      FROM bridge_events
+      GROUP BY period, direction, asset WITH NO DATA;
+    SELECT add_continuous_aggregate_policy('bridge_volume_1h', start_offset => 1800, end_offset => 600, schedule_interval => INTERVAL '10 minutes', if_not_exists => TRUE);
+
+  000003_percentile.sql: |
+    DROP MATERIALIZED VIEW IF EXISTS block_time_1h CASCADE;
+    CREATE MATERIALIZED VIEW IF NOT EXISTS block_time_1h WITH (timescaledb.continuous) AS
+      SELECT time_bucket(600, block_height)        AS period,
+             AVG(block_time_ms)                    AS avg_ms,
+             MAX(block_time_ms)                    AS max_ms
+      FROM block_stats
+      GROUP BY period WITH NO DATA;
+    SELECT add_continuous_aggregate_policy('block_time_1h', start_offset => 1800, end_offset => 600, schedule_interval => INTERVAL '10 minutes', if_not_exists => TRUE);
+
+  000001_init_relayer.sql: |
+    CREATE TABLE IF NOT EXISTS nonces (
+        nonce TEXT PRIMARY KEY,
+        state TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS votes (
+        nonce TEXT,
+        relayer TEXT,
+        signature BYTEA,
+        PRIMARY KEY (nonce, relayer)
+    );
+    CREATE TABLE IF NOT EXISTS checkpoints (
+        key TEXT PRIMARY KEY,
+        block_num BIGINT NOT NULL
+    );

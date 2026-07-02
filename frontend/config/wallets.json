@@ -1,0 +1,89 @@
+{
+  "keplr": {
+    "chainId": "sovereign-testnet-1",
+    "chainName": "Sovereign Testnet",
+    "rpc": "http://localhost:26657",
+    "rest": "http://localhost:8080/api/rest",
+    "bip44": {
+      "coinType": 60
+    },
+    "bech32Config": {
+      "bech32PrefixAccAddr": "cosmos",
+      "bech32PrefixAccPub": "cosmospub",
+      "bech32PrefixValAddr": "cosmosvaloper",
+      "bech32PrefixValPub": "cosmosvaloperpub",
+      "bech32PrefixConsAddr": "cosmosvalcons",
+      "bech32PrefixConsPub": "cosmosvalconspub"
+    },
+    "currencies": [
+      {
+        "coinDenom": "SOV",
+        "coinMinimalDenom": "usov",
+        "coinDecimals": 6
+      }
+    ],
+    "feeCurrencies": [
+      {
+        "coinDenom": "SOV",
+        "coinMinimalDenom": "usov",
+        "coinDecimals": 6,
+        "gasPriceStep": {
+          "low": 0.01,
+          "average": 0.025,
+          "high": 0.04
+        }
+      }
+    ],
+    "stakeCurrency": {
+      "coinDenom": "SOV",
+      "coinMinimalDenom": "usov",
+      "coinDecimals": 6
+    }
+  },
+  "metamaskSovereignEvm": {
+    "chainId": "0x2329",
+    "chainName": "Sovereign EVM",
+    "nativeCurrency": {
+      "name": "TOKEN",
+      "symbol": "TOKEN",
+      "decimals": 18
+    },
+    "rpcUrls": ["https://testnet.sovereign.example/evm-rpc"],
+    "blockExplorerUrls": ["https://testnet.sovereign.example/blockscout"]
+  },
+  "metamaskBsc": {
+    "chainId": "0x61",
+    "chainName": "BSC Testnet",
+    "nativeCurrency": {
+      "name": "Binance Coin",
+      "symbol": "tBNB",
+      "decimals": 18
+    },
+    "rpcUrls": ["https://data-seed-prebsc-1-s1.binance.org:8545/"],
+    "blockExplorerUrls": ["https://testnet.bscscan.com"]
+  },
+  "walletConnect": {
+    "projectId": "sovereign-walletconnect-placeholder-id",
+    "namespaces": {
+      "eip155": {
+        "methods": [
+          "eth_sendTransaction",
+          "personal_sign"
+        ],
+        "chains": [
+          "eip155:97",
+          "eip155:9001"
+        ]
+      },
+      "cosmos": {
+        "methods": [
+          "cosmos_signDirect",
+          "cosmos_signAmino"
+        ],
+        "chains": [
+          "cosmos:sovereign-testnet-1"
+        ]
+      }
+    }
+  }
+}

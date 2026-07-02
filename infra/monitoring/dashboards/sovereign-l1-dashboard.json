@@ -1,0 +1,161 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Mixed --",
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "title": "Chain TPS and Block Interval",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(cometbft_consensus_num_txs[5m])",
+          "legendFormat": "TPS",
+          "refId": "A"
+        },
+        {
+          "expr": "cometbft_consensus_block_interval_seconds",
+          "legendFormat": "Block Interval",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "title": "Bridge Volume Inbound/Outbound (SOV)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(sovereign_bridge_volume_in_total[1h])",
+          "legendFormat": "Inbound Volume",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(sovereign_bridge_volume_out_total[1h])",
+          "legendFormat": "Outbound Volume",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "title": "Oracle Asset Price updates (OHLC)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sovereign_oracle_asset_price{asset=\"BTC_USD\"}",
+          "legendFormat": "BTC/USD Price",
+          "refId": "A"
+        },
+        {
+          "expr": "sovereign_oracle_asset_price{asset=\"ETH_USD\"}",
+          "legendFormat": "ETH/USD Price",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "title": "Validator Uptime and Missed Blocks",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sovereign_validator_uptime_ratio",
+          "legendFormat": "{{validator}} Uptime",
+          "refId": "A"
+        },
+        {
+          "expr": "sovereign_validator_missed_blocks_total",
+          "legendFormat": "{{validator}} Missed Blocks",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 5,
+      "title": "Ingestion Advisory Lock Status",
+      "type": "state-timeline",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sovereign_backend_ingestion_advisory_lock_held",
+          "legendFormat": "Advisory Lock Held",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": [
+    "sovereign",
+    "blockchain",
+    "mainnet"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Sovereign L1 Mainnet Dashboard",
+  "version": 1
+}

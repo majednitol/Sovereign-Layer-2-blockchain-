@@ -1,0 +1,13 @@
+var R=require("../../chunks/ssr/[turbopack]_runtime.js")("server/app/search/page.js")
+R.c("server/chunks/ssr/[root-of-the-server]__00qc34y._.js")
+R.c("server/chunks/ssr/0k5d_next_dist_esm_build_templates_app-page_1hzx-5-.js")
+R.c("server/chunks/ssr/[root-of-the-server]__07q0xr5._.js")
+R.c("server/chunks/ssr/[root-of-the-server]__071djgc._.js")
+R.c("server/chunks/ssr/explorer_06c3wk_._.js")
+R.c("server/chunks/ssr/0k5d_next_dist_client_components_06ol0xl._.js")
+R.c("server/chunks/ssr/0k5d_next_dist_client_components_builtin_forbidden_1p4io1g.js")
+R.c("server/chunks/ssr/0k5d_next_dist_client_components_builtin_unauthorized_0xr3wsj.js")
+R.c("server/chunks/ssr/0k5d_next_dist_client_components_builtin_global-error_1-2crru.js")
+R.c("server/chunks/ssr/explorer__next-internal_server_app_search_page_actions_1uaw8mx.js")
+R.m(93345)
+module.exports=R.m(93345).exports

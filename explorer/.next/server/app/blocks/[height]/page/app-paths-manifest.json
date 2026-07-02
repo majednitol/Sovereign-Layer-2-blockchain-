@@ -1,0 +1,3 @@
+{
+  "/blocks/[height]/page": "app/blocks/[height]/page.js"
+}

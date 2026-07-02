@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package backend.v1;
+
+option go_package = "github.com/sovereign-l1/chain/api/backend/v1;backendv1";
+
+import "google/api/annotations.proto";
+
+service StreamService {
+  rpc StreamBridgeEvents(StreamBridgeEventsRequest) returns (stream BridgeEvent) {
+    option (google.api.http) = {
+      get: "/api/rest/v1/stream/bridge"
+    };
+  }
+
+  rpc StreamOracleEvents(StreamOracleEventsRequest) returns (stream OracleEvent) {
+    option (google.api.http) = {
+      get: "/api/rest/v1/stream/oracle"
+    };
+  }
+
+  rpc StreamMilestoneEvents(StreamMilestoneEventsRequest) returns (stream MilestoneEvent) {
+    option (google.api.http) = {
+      get: "/api/rest/v1/stream/milestone"
+    };
+  }
+
+  rpc StreamChainStats(StreamChainStatsRequest) returns (stream ChainStatsEvent) {
+    option (google.api.http) = {
+      get: "/api/rest/v1/stream/stats"
+    };
+  }
+}
+
+message StreamBridgeEventsRequest {
+  string token_address = 1;
+}
+
+message BridgeEvent {
+  string event_type = 1; // "mint" or "burn"
+  string token_address = 2;
+  string amount = 3;
+  string sender = 4;
+  string recipient = 5;
+  int64 block_height = 6;
+  string tx_hash = 7;
+}
+
+message StreamOracleEventsRequest {
+  string oracle_address = 1;
+}
+
+message OracleEvent {
+  string oracle_address = 1;
+  string request_id = 2;
+  string data_type = 3;
+  string payload = 4;
+  int64 block_height = 5;
+  string status = 6; // e.g., "requested", "revealed"
+}
+
+message StreamMilestoneEventsRequest {
+  string milestone_id = 1;
+}
+
+message MilestoneEvent {
+  string milestone_id = 1;
+  string status = 2; // "pending", "achieved", "stale"
+  int64 block_height = 3;
+}
+
+message StreamChainStatsRequest {}
+
+message ChainStatsEvent {
+  double tps_avg = 1;
+  double tps_peak = 2;
+  int64 total_txs = 3;
+  double avg_block_time_ms = 4;
+}
+

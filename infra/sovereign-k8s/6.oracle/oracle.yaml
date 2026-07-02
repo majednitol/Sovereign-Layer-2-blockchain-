@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oracle
+  labels:
+    app: oracle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oracle
+  template:
+    metadata:
+      labels:
+        app: oracle
+    spec:
+      containers:
+        - name: oracle
+          image: sovereign-l1/oracle:latest
+          ports:
+            - containerPort: 9200
+              name: metrics
+          env:
+            - name: NATS_URL
+              value: "nats://nats:4222"
+            - name: NODE_URL
+              value: "http://chain-node:26657"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oracle
+spec:
+  ports:
+    - port: 9200
+      targetPort: 9200
+      name: metrics
+  selector:
+    app: oracle

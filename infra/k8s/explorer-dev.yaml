@@ -1,0 +1,282 @@
+# ═══════════════════════════════════════════════════════════════════════
+# Kubernetes Explorer Deployment Manifests
+# Covers: Unified Explorer Frontend, API Server, Indexer, and Redis Cache
+# Namespace: sovereign-backend
+# ═══════════════════════════════════════════════════════════════════════
+
+# --- Redis: Explorer Hot Cache ---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: explorer-redis
+  namespace: sovereign-backend
+  labels:
+    app: explorer-redis
+    component: explorer
+spec:
+  serviceName: explorer-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: explorer-redis
+  template:
+    metadata:
+      labels:
+        app: explorer-redis
+        component: explorer
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+              name: redis
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: explorer-redis
+  namespace: sovereign-backend
+spec:
+  selector:
+    app: explorer-redis
+  ports:
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379
+      name: redis
+
+---
+# --- Explorer Indexer: Stateful Singleton Daemon ---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: explorer-indexer
+  namespace: sovereign-backend
+  labels:
+    app: explorer-indexer
+    component: indexer
+spec:
+  serviceName: explorer-indexer
+  replicas: 1
+  selector:
+    matchLabels:
+      app: explorer-indexer
+  template:
+    metadata:
+      labels:
+        app: explorer-indexer
+        component: indexer
+    spec:
+      containers:
+        - name: indexer
+          image: sovereign/explorer-indexer:latest
+          env:
+            - name: DATABASE_URL
+              value: "postgres://readuser:readpassword@database-service:5432/sovereign"
+            - name: NATS_URL
+              value: "nats://nats-service:4222"
+            - name: COMET_RPC
+              value: "http://chain-rpc-service:26657"
+            - name: EVM_RPC
+              value: "http://chain-rpc-service:8545"
+            - name: BSC_RPC
+              value: "https://bsc-dataseed.binance.org"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+
+---
+# --- Explorer gRPC & REST API Server ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: explorer-api
+  namespace: sovereign-backend
+  labels:
+    app: explorer-api
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: explorer-api
+  template:
+    metadata:
+      labels:
+        app: explorer-api
+        component: api
+    spec:
+      containers:
+        - name: api-server
+          image: sovereign/explorer-api:latest
+          ports:
+            - containerPort: 9091
+              name: grpc
+            - containerPort: 8081
+              name: rest
+          env:
+            - name: DATABASE_URL
+              value: "postgres://readuser:readpassword@database-service:5432/sovereign"
+            - name: REDIS_URL
+              value: "redis://explorer-redis:6379"
+            - name: NATS_URL
+              value: "nats://nats-service:4222"
+            - name: GRPC_PORT
+              value: "9091"
+            - name: REST_PORT
+              value: "8081"
+          livenessProbe:
+            httpGet:
+              path: /api/rest/v1/explorer/status
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/rest/v1/explorer/status
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: explorer-api
+  namespace: sovereign-backend
+spec:
+  selector:
+    app: explorer-api
+  ports:
+    - protocol: TCP
+      port: 9091
+      targetPort: 9091
+      name: grpc
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
+      name: rest
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: explorer-api-hpa
+  namespace: sovereign-backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: explorer-api
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75
+
+---
+# --- Explorer Next.js Frontend ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: explorer-frontend
+  namespace: sovereign-backend
+  labels:
+    app: explorer-frontend
+    component: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: explorer-frontend
+  template:
+    metadata:
+      labels:
+        app: explorer-frontend
+        component: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: sovereign/explorer-frontend:latest
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: NEXT_PUBLIC_RPC_URL
+              value: "http://chain-rpc-service:26657"
+            - name: NEXT_PUBLIC_API_URL
+              value: "http://explorer-api:8081"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: explorer-frontend
+  namespace: sovereign-backend
+spec:
+  selector:
+    app: explorer-frontend
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+      name: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: explorer-frontend-hpa
+  namespace: sovereign-backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: explorer-frontend
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75

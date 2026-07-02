@@ -1,0 +1,22 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+  - name: TimescaleDB
+    type: postgres
+    access: proxy
+    url: timescale-db-read:5432
+    user: api_reader
+    database: sovereign_read
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: true
+    secureJsonData:
+      password: sovereign_read_pwd

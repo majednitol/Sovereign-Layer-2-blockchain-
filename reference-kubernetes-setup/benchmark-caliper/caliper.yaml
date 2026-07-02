@@ -1,0 +1,62 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: caliper
+  labels:
+    app: caliper
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: caliper
+    spec:
+      restartPolicy: Never
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: mypvc
+        - name: caliper-config
+          configMap:
+            name: caliper-config
+            items:
+              - key: caliper-network.yaml
+                path: caliper-network.yaml
+              - key: config.yaml
+                path: config.yaml
+      containers:
+        - name: caliper
+          image: majedur708/hlf-api:500.34
+          imagePullPolicy: Always
+          env:
+            - name: CALIPER_NETWORKCONFIG
+              value: /caliper/config/caliper-network.yaml
+            - name: CALIPER_BENCHCONFIG
+              value: /caliper/config/config.yaml
+          volumeMounts:
+            - name: data
+              mountPath: /organizations
+              subPath: organizations
+            - name: data
+              mountPath: /usr/src/app/connection-profile
+              subPath: connection-profile
+            - name: caliper-config
+              mountPath: /caliper/config/caliper-network.yaml
+              subPath: caliper-network.yaml
+            - name: caliper-config
+              mountPath: /caliper/config/config.yaml
+              subPath: config.yaml
+          command: ["npx"]
+          args:
+            - "caliper"
+            - "launch"
+            - "manager"
+            - "--caliper-fabric-gateway-enabled"
+
+          resources:
+            requests:
+              memory: "800Mi"
+              cpu: "600m"
+            limits:
+              memory: "2Gi"
+              cpu: "4"

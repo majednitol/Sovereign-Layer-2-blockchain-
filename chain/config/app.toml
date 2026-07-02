@@ -1,0 +1,245 @@
+###############################################################################
+###                          Sovereign L1 app.toml                          ###
+###############################################################################
+# This file contains the configuration for the Sovereign L1 node daemon.
+
+# Default node home used by the chain daemon.
+# Override with --home flag or HOME env variable.
+minimum-gas-prices = "0atoken"
+
+# If true, the node will start halted and wait for manual intervention before
+# accepting any blocks or transactions.
+halt-height = 0
+halt-time = 0
+
+# Maximum size of request body and response in bytes.
+min-retain-blocks = 0
+
+###############################################################################
+###                         Base Configuration                              ###
+###############################################################################
+
+# The pruning strategy. Supported strategies: "default", "nothing", "everything",
+# "custom"
+pruning = "default"
+
+# These are applied if and only if the pruning strategy is custom.
+pruning-keep-recent = "0"
+pruning-keep-every = "0"
+pruning-interval = "0"
+
+# HaltHeight contains a non-zero block height at which a node will gracefully
+# halt and shutdown that can be used to assist upgrades and testing.
+# Note: Commitment of state will be attempted on the corresponding block.
+halt-height = 0
+
+# HaltTime contains a non-zero minimum block time (in Unix seconds) at which
+# a node will gracefully halt and shutdown that can be used to assist upgrades
+# and testing.
+halt-time = 0
+
+# IndexEvents defines the set of events in the form {eventType}.{attributeKey},
+# which informs Tendermint what to index. If empty, all events will be indexed.
+index-events = []
+
+###############################################################################
+###                         Telemetry Configuration                         ###
+###############################################################################
+
+[telemetry]
+
+# Prefixed with keys to separate services.
+service-name = ""
+
+# Enabled enables the application telemetry functionality. When enabled,
+# an in-memory sink is always exported to. If the enable-hostname is enabled,
+# hostname will be added to metric labels.
+enabled = false
+
+# Enable prefixing gauge values with hostname.
+enable-hostname = false
+
+# Enable adding hostname to labels.
+enable-hostname-label = false
+
+# Enable adding service to labels.
+enable-service-label = false
+
+# PrometheusRetentionTime, when positive, enables a Prometheus metrics sink.
+prometheus-retention-time = 0
+
+# GlobalLabels defines a global set of name/value label tuples applied to all
+# metrics emitted using the wrapper functions defined in telemetry package.
+global-labels = []
+
+###############################################################################
+###                           API Configuration                             ###
+###############################################################################
+
+[api]
+
+# Enable defines if the API server should be enabled.
+enable = true
+
+# Swagger defines if swagger documentation should automatically be registered.
+swagger = false
+
+# Address defines the API server to listen on.
+address = "tcp://0.0.0.0:1317"
+
+# MaxOpenConnections defines the number of maximum open connections.
+max-open-connections = 1000
+
+# RPCReadTimeout defines the Tendermint RPC read timeout (in seconds).
+rpc-read-timeout = 10
+
+# RPCWriteTimeout defines the Tendermint RPC write timeout (in seconds).
+rpc-write-timeout = 0
+
+# RPCMaxBodyBytes defines the Tendermint maximum request body (in bytes).
+rpc-max-body-bytes = 1000000
+
+# EnableUnsafeCORS defines if CORS should be enabled (unsafe - use it at your own risk).
+enabled-unsafe-cors = false
+
+###############################################################################
+###                           gRPC Configuration                            ###
+###############################################################################
+
+[grpc]
+
+# Enable defines if the gRPC server should be enabled.
+enable = true
+
+# Address defines the gRPC server address to bind to.
+address = "0.0.0.0:9090"
+
+# MaxRecvMsgSize defines the max message size in bytes the server can receive.
+# The default value is 10MB.
+max-recv-msg-size = "10485760"
+
+# MaxSendMsgSize defines the max message size in bytes the server can send.
+# The default value is math.MaxInt32.
+max-send-msg-size = "2147483647"
+
+###############################################################################
+###                        gRPC Web Configuration                           ###
+###############################################################################
+
+[grpc-web]
+
+# GRPCWebEnable defines if the gRPC-web should be enabled and attached to
+# Tendermint process. NOTE: gRPC must also be enabled, otherwise, this
+# configuration is a no-op. NOTE: gRPC-Web uses the same address as the
+# REST API server.
+enable = true
+
+###############################################################################
+###                        State Sync Configuration                         ###
+###############################################################################
+
+[state-sync]
+
+# State sync snapshots allow other nodes to rapidly join the network without
+# replaying historical blocks, instead downloading and applying a snapshot of
+# the application state at a given height.
+snapshot-interval = 1500
+snapshot-keep-recent = 2
+
+###############################################################################
+###                         EVM Configuration                               ###
+###############################################################################
+# [!IMPORTANT] This section enables the Ethereum JSON-RPC server required for
+# MetaMask, cast, ethers.js, wagmi, and Blockscout to connect to Sovereign L1.
+
+[evm]
+
+# Tracer defines the vm.Tracer type that the EVM will use if the node is run in
+# trace mode. Default: 'json'.
+tracer = "json"
+
+# MaxTxGasWanted defines the gas wanted for each eth tx returned in ante handler
+# in check tx mode. Default: 0 (use available block gas limit)
+max-tx-gas-wanted = 0
+
+###############################################################################
+###                         JSON RPC Configuration                          ###
+###############################################################################
+
+[json-rpc]
+
+# Enable defines if the JSON-RPC server should be enabled.
+enable = true
+
+# Address defines the JSON-RPC server to listen on.
+# Port 8545 is the standard Ethereum JSON-RPC port.
+address = "0.0.0.0:8545"
+
+# WS-Address defines the WebSocket JSON-RPC server address to bind to.
+# Port 8546 is the standard Ethereum WebSocket port.
+ws-address = "0.0.0.0:8546"
+
+# API defines a list of JSON-RPC namespaces that should be enabled.
+# All namespaces needed for MetaMask, Blockscout, and wagmi interoperability.
+api = "eth,net,web3,txpool,debug,personal"
+
+# GasCap sets a cap on gas that can be used in eth_call/estimateGas (0=infinite).
+# Default: 25,000,000
+gas-cap = 25000000
+
+# EVMTimeout is the global timeout for eth_call. Default: 5s
+evm-timeout = "5s"
+
+# TxFeeCap is the global tx-fee cap for send-transaction variants.
+# The unit is in ether. 0 = no cap.
+txfee-cap = 1.0
+
+# FilterCap sets the global cap for total number of filters that can be created.
+filter-cap = 200
+
+# FeeHistoryCap sets the global cap for total number of blocks that can be fetched
+# from eth_feeHistory.
+feehistory-cap = 100
+
+# LogsCap defines the max number of results can be returned from single `eth_getLogs` query.
+logs-cap = 10000
+
+# BlockRangeCap defines the max block range allowed for `eth_getLogs` query.
+block-range-cap = 10000
+
+# HTTPTimeout is the read/write timeout of http json-rpc server.
+http-timeout = "30s"
+
+# HTTPIdleTimeout is the idle timeout of http json-rpc server.
+http-idle-timeout = "2m0s"
+
+# AllowUnprotectedTxs restricts unprotected (non EIP155 signed) transactions to
+# be submitted via the node's RPC when global parameter is disabled.
+# ADR-011: Set to false to enforce EIP-155 chain ID binding (anti-replay).
+allow-unprotected-txs = false
+
+# MaxOpenConnections sets the maximum number of simultaneous connections
+# for the server listener.
+max-open-connections = 0
+
+# EnableIndexer enables the custom transaction indexer for the EVM (ethtxindexer).
+enable-indexer = false
+
+# MetricsAddress defines the EVM Metrics server to listen on. Disabled by default.
+metrics-address = "0.0.0.0:6065"
+
+# FixRevertGasRefundHeight set minimum block height to fix gas refund for failed
+# EVM transactions. Default: 0 (disabled)
+fix-revert-gas-refund-height = 0
+
+###############################################################################
+###                         TLS Configuration                               ###
+###############################################################################
+
+[tls]
+
+# Certificate path defines the cert.pem file path for the TLS configuration.
+certificate-path = ""
+
+# Key path defines the key.pem file path for the TLS configuration.
+key-path = ""

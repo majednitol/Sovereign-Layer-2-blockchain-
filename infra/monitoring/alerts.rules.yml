@@ -1,0 +1,132 @@
+groups:
+  - name: sovereign-testnet-alerts
+    rules:
+      - alert: ChainHalted
+        expr: delta(tendermint_consensus_latest_block_height[15s]) == 0
+        for: 15s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Sovereign L1 chain has halted block production"
+          description: "Block height has not progressed in the last 15 seconds."
+
+      - alert: NatsPublishedBacklog
+        expr: pg_row_count{table="block_events", condition="nats_published_false"} > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Unpublished events backlog detected"
+          description: "There are events in the Write DB that have not been published to NATS for more than 1 minute."
+
+      - alert: OracleStaleness
+        expr: time() - sovereign_oracle_last_reveal_timestamp > 60
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Oracle price feed is stale"
+          description: "Oracle prices for active feeds have not been updated for over 2 minutes."
+
+      - alert: RewardsBucketDepleting
+        expr: sovereign_staking_rewards_bucket_balance / sovereign_staking_block_emission < 3153600 # < 6 months in blocks
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Staking economic rewards bucket runway is low"
+          description: "Remaining economic rewards runway is less than 6 months."
+
+      - alert: IngestionCrash
+        expr: sovereign_backend_ingestion_advisory_lock_held == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Ingestion service lock not held"
+          description: "Ingestion service is offline or has lost its advisory lock session."
+
+      - alert: ValidatorMissedBlocks
+        expr: increase(sovereign_validator_missed_blocks_total[5m]) > 10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Validator is missing blocks"
+          description: "Validator has missed blocks in the last 5 minutes."
+
+      - alert: HorcruxSignerOffline
+        expr: sovereign_horcrux_signer_online == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Horcrux threshold signer node is offline"
+          description: "A Horcrux signer node has gone offline."
+
+      - alert: RelayerMissedEvent
+        expr: sovereign_relayer_missed_events_total > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Bridge relayer missed events"
+          description: "The bridge relayer has missed event signatures."
+
+      - alert: EvmJsonrpcErrorRate
+        expr: sum(rate(jsonrpc_errors_total[2m])) / sum(rate(jsonrpc_requests_total[2m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "EVM JSON-RPC error rate is high"
+          description: "EVM JSON-RPC error rate exceeds 5% for the last 2 minutes."
+
+      - alert: BlockscoutIndexingLag
+        expr: blockscout_indexing_lag_blocks > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Blockscout indexing lag is high"
+          description: "Blockscout is lagging behind the chain tip by more than 10 blocks."
+
+      - alert: EvmBlockGasHigh
+        expr: evm_block_gas_used / evm_block_gas_limit > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "EVM block gas utilization is high"
+          description: "EVM block gas utilization is consistently above 80% of the limit."
+
+      - alert: ValidatorDowntimeAlert
+        expr: sovereign_validator_uptime_ratio < 0.9
+        for: 2m
+        labels:
+          severity: critical
+          pagerduty: "true"
+        annotations:
+          summary: "Validator Node Downtime Critical"
+          description: "Validator uptime ratio has dropped below 90% in the last 2 minutes."
+
+      - alert: BridgeRateLimitHitAlert
+        expr: rate(sovereign_bridge_rate_limit_exceeded_total[1m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          pagerduty: "true"
+        annotations:
+          summary: "Bridge rate limit has been triggered"
+          description: "LockBox unlock request failed because rate limits were hit."
+
+      - alert: OracleStalenessBreachAlert
+        expr: time() - sovereign_oracle_last_reveal_timestamp > 300
+        for: 5m
+        labels:
+          severity: critical
+          pagerduty: "true"
+        annotations:
+          summary: "Oracle Price Feeds Stale Invariant Breach"
+          description: "No oracle reveal commits received for more than 5 minutes."
+

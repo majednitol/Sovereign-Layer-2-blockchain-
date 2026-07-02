@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "setup_governance_address"
+      ],
+      "properties": {
+        "setup_governance_address": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_constitution"
+      ],
+      "properties": {
+        "update_constitution": {
+          "type": "object",
+          "required": [
+            "rules"
+          ],
+          "properties": {
+            "rules": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "emergency_pause"
+      ],
+      "properties": {
+        "emergency_pause": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "unpause"
+      ],
+      "properties": {
+        "unpause": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "rotate_cold_multisig"
+      ],
+      "properties": {
+        "rotate_cold_multisig": {
+          "type": "object",
+          "required": [
+            "new_address"
+          ],
+          "properties": {
+            "new_address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_governance_address"
+      ],
+      "properties": {
+        "update_governance_address": {
+          "type": "object",
+          "required": [
+            "new_address"
+          ],
+          "properties": {
+            "new_address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "check_proposal"
+      ],
+      "properties": {
+        "check_proposal": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}
