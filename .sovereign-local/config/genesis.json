@@ -18,7 +18,7 @@
       "accounts": [
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "address": "sov1sjuvu3ntz6mdq4fuj2tw60ujg9529a7p6ngjw4",
+          "address": "sov15cn503zu84eqxyctvwh53zshyf5e8rcudmt4fw",
           "pub_key": null,
           "account_number": "0",
           "sequence": "0"
@@ -59,7 +59,7 @@
           ]
         },
         {
-          "address": "sov1sjuvu3ntz6mdq4fuj2tw60ujg9529a7p6ngjw4",
+          "address": "sov15cn503zu84eqxyctvwh53zshyf5e8rcudmt4fw",
           "coins": [
             {
               "denom": "atoken",
@@ -254,10 +254,10 @@
                 },
                 "min_self_delegation": "1",
                 "delegator_address": "",
-                "validator_address": "sovvaloper1sjuvu3ntz6mdq4fuj2tw60ujg9529a7pgjy08s",
+                "validator_address": "sovvaloper15cn503zu84eqxyctvwh53zshyf5e8rcul68gqt",
                 "pubkey": {
                   "@type": "/cosmos.crypto.ed25519.PubKey",
-                  "key": "4iYW4Glex3KbxJaxaoeMfrg0HBfDe/EkP1eWlNn54NY="
+                  "key": "hA3GSF6ZG/+wUdKnZBn6gj/UyAKNwUxXp9moewvrYPQ="
                 },
                 "value": {
                   "denom": "utoken",
@@ -265,7 +265,7 @@
                 }
               }
             ],
-            "memo": "d4e32b3e6205dabb25b00ba3f3ce6206b4437c09@192.168.0.102:26656",
+            "memo": "1e8cbe4382024873185b4ced49a33440b39fb62b@192.168.0.102:26656",
             "timeout_height": "0",
             "unordered": false,
             "timeout_timestamp": null,
@@ -277,7 +277,7 @@
               {
                 "public_key": {
                   "@type": "/cosmos.evm.crypto.v1.ethsecp256k1.PubKey",
-                  "key": "AjzocUo4z+TR2FUikvpnNNjG3afgh1R6HZXWwNgoxnDk"
+                  "key": "AkPhyxXBVcf+j0pPpVe0S1pRy282fhc9ZmUcxhsEeIm8"
                 },
                 "mode_info": {
                   "single": {
@@ -296,7 +296,7 @@
             "tip": null
           },
           "signatures": [
-            "MV2zfZkV5A9/VWgZ9CR5X2TaRp5e50AaHnk4uWynVKJT/6ogO49XepZwrqY0JvaYeMnw+UPHv1S674YNCnCf5gA="
+            "cQsQsiiCkuC3sE1oLxp/88naI9yieIylL1i8GOtypFVpmDbgyFfCVVnw38bTUHB2Jxo/faI0sa1rot9y2vA9ywE="
           ]
         }
       ]
