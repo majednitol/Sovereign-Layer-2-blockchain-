@@ -1,6 +1,8 @@
 =============== Jul 2, 2026 (+06) ===============
-14:12:11.160657 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
-14:12:11.172491 db@open opening
-14:12:11.173583 version@stat F·[] S·0B[] Sc·[]
-14:12:11.177617 db@janitor F·2 G·0
-14:12:11.177632 db@open done T·5.1195ms
+18:13:06.818529 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+18:13:06.830327 db@open opening
+18:13:06.830485 version@stat F·[] S·0B[] Sc·[]
+18:13:06.834385 db@janitor F·2 G·0
+18:13:06.834396 db@open done T·4.045584ms
+18:15:17.832813 db@close closing
+18:15:17.833083 db@close done T·269.75µs
