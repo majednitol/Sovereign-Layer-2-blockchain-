@@ -117,28 +117,28 @@ echo "Deploying [13.envoy-gateway] API Envoy Gateway..."
 kubectl apply -f "$SCRIPT_DIR/13.envoy-gateway/" -n "$NAMESPACE"
 wait_for_deployment "envoy-gateway"
 
-# 14. Monitoring
+# 14. Frontend
+echo "Deploying [14.frontend] Next.js frontend..."
+kubectl apply -f "$SCRIPT_DIR/14.frontend/frontend.yaml" -n "$NAMESPACE"
+wait_for_deployment "frontend"
+
+# 15. Monitoring
 echo "Generating dynamically monitoring-config for Prometheus..."
 kubectl create configmap monitoring-config --from-file=prometheus.yml="$SCRIPT_DIR/../monitoring/prometheus.yml" --from-file=alerts.rules.yml="$SCRIPT_DIR/../monitoring/alerts.rules.yml" -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
 echo "Generating dynamically Grafana datasources, provider and dashboards JSON configmaps..."
-kubectl create configmap grafana-datasources-config --from-file=datasources.yaml="$SCRIPT_DIR/../monitoring/grafana-provisioning/datasources/datasources.yaml" -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+kubectl create configmap grafana-dashboards-config --from-file=datasources.yaml="$SCRIPT_DIR/../monitoring/grafana-provisioning/datasources/datasources.yaml" -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 kubectl create configmap grafana-dashboards-provider-config --from-file=dashboards.yaml="$SCRIPT_DIR/../monitoring/grafana-provisioning/dashboards/dashboards.yaml" -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 kubectl create configmap grafana-dashboards-json-config --from-file="$SCRIPT_DIR/../monitoring/dashboards/" -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-echo "Deploying [14.monitoring] Grafana & Prometheus..."
-kubectl apply -f "$SCRIPT_DIR/14.monitoring/" -n "$NAMESPACE"
+echo "Deploying [15.monitoring] Grafana & Prometheus..."
+kubectl apply -f "$SCRIPT_DIR/15.monitoring/" -n "$NAMESPACE"
 wait_for_deployment "prometheus"
 wait_for_deployment "grafana"
 
-# 15. Ingress
-echo "Deploying [15.ingress] Ingress Routing..."
-kubectl apply -f "$SCRIPT_DIR/15.ingress/" -n "$NAMESPACE"
-
-# 16. Frontend
-echo "Deploying [16.frontend] Next.js frontend..."
-kubectl apply -f "$SCRIPT_DIR/16.frontend/frontend.yaml" -n "$NAMESPACE"
-wait_for_deployment "frontend"
+# 16. Ingress
+echo "Deploying [16.ingress] Ingress Routing..."
+kubectl apply -f "$SCRIPT_DIR/16.ingress/" -n "$NAMESPACE"
 
 echo "============================================="
 echo "Sovereign K8s Setup Successfully Deployed!"

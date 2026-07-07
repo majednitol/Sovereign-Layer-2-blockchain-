@@ -6,6 +6,7 @@
 !backend/
 !scratch/
 !go.work
+!go.work.sum
 !explorer/
 !frontend/
 !explorer-api/
@@ -14,6 +15,8 @@
 !package.json
 !pnpm-workspace.yaml
 !pnpm-lock.yaml
+!oracle/
+!relayer/
 
 # Ignore intermediate build artifacts inside chain and scratch
 **/bin/
