@@ -28,3 +28,6 @@ implementation_plan.md .
 analysis or findout implemetion gap . 
 then create a test file which cover phase 1  all planed task and verify perfectly works
 note : every task do carefully . check every sub task carefully as well 
+
+
+review your plan for pahse 3 and 4 . if any mssimg or imcomplete from pahse 1 and 2 . add your plan . make best plan . apendex is important 

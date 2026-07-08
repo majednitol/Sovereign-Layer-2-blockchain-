@@ -1,0 +1,85 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sovereign L1 Explorer REST API Gateway",
+    "description": "Public REST gateway endpoints for Sovereign L1 chain data, blocks, transactions, and bridge tracking.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8082",
+      "description": "Local Developer REST Gateway"
+    }
+  ],
+  "paths": {
+    "/api/rest/v1/explorer/stats/summary": {
+      "get": {
+        "summary": "Get stats summary overview",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "liveTps": { "type": "number" },
+                    "activeValidators": { "type": "integer" },
+                    "totalValidators": { "type": "integer" },
+                    "avgBlockTimeSec": { "type": "number" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rest/v1/explorer/gas-tracker": {
+      "get": {
+        "summary": "Get active gas tracker levels and guzzling contracts",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "standard": { "type": "string" },
+                    "fast": { "type": "string" },
+                    "instant": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rest/v1/explorer/charts/{slug}": {
+      "get": {
+        "summary": "Get time-series coordinate points for a metric",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    }
+  }
+}

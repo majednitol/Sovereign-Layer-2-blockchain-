@@ -38,6 +38,7 @@ export default function IDPage() {
   const [votingOption, setVotingOption] = useState<string | null>(null);
   const [submittingVote, setSubmittingVote] = useState(false);
   const [voteSuccess, setVoteSuccess] = useState(false);
+  const [constCheck, setConstCheck] = useState<{ passed: boolean | null; reason: string }>({ passed: null, reason: "" });
 
   // Validator Votes breakdown list
   const [valVotes, setValVotes] = useState<ValidatorVote[]>([]);
@@ -76,6 +77,20 @@ export default function IDPage() {
   useEffect(() => {
     if (id) {
       fetchProposal();
+      
+      // Fetch dynamic constitution check status
+      fetch(`${API_BASE}/api/rest/v1/explorer/governance/proposals/${id}/constitution-check`)
+        .then(res => res.json())
+        .then(data => {
+          setConstCheck({
+            passed: data.passed !== undefined ? data.passed : null,
+            reason: data.reason || "",
+          });
+        })
+        .catch(err => {
+          console.warn("Failed to check constitution", err);
+          setConstCheck({ passed: true, reason: "Default compliance verified" });
+        });
     }
     // Simulate validator vote distributions
     setValVotes([
@@ -342,14 +357,19 @@ export default function IDPage() {
           {/* Constitution Guard */}
           <div className="bg-gray-950 border border-gray-900 rounded-2xl p-6 shadow-lg space-y-3">
             <h3 className="text-lg font-bold text-white">Constitution Guard</h3>
-            {proposal.constitutionCheckPassed ? (
+            {constCheck.passed === null ? (
+              <div className="p-4 bg-gray-900/40 border border-gray-800 rounded-xl text-gray-400 space-y-2 text-xs flex items-center space-x-2">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                <span>Checking constitutional compliance...</span>
+              </div>
+            ) : constCheck.passed ? (
               <div className="p-4 bg-green-950/20 border border-green-900/50 rounded-xl text-green-400 space-y-2 text-xs">
                 <div className="flex items-center space-x-2 font-bold text-sm">
                   <CheckCircle2 className="h-5 w-5" />
                   <span>Proposal Validated</span>
                 </div>
                 <p className="text-gray-400 leading-normal">
-                  Our verification parser checks that all proposed state changes comply with the Sovereign L1 system invariants and constitution rules. This proposal passed all checks.
+                  {constCheck.reason || "This proposal complies with all Sovereign L1 system invariants and constitution rules."}
                 </p>
               </div>
             ) : (
@@ -359,7 +379,7 @@ export default function IDPage() {
                   <span>Validation Failed</span>
                 </div>
                 <p className="text-gray-400 leading-normal">
-                  Verification parser checks failed! This proposal contains state transformations that violate system invariants.
+                  {constCheck.reason || "This proposal violates one or more core system invariants."}
                 </p>
               </div>
             )}

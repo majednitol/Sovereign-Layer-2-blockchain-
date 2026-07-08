@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Settings, ShieldAlert, Coins, Landmark, Calendar, RefreshCw, BarChart2 } from "lucide-react";
+import { Settings, ShieldAlert, Coins, Landmark, Calendar, RefreshCw, BarChart2, Layers, Activity } from "lucide-react";
 import { useWalletStore } from "@/store/wallet";
 
 interface ParamItem {
@@ -14,7 +14,7 @@ interface ParamItem {
 
 export default function PARAMSPage() {
   const { walletType, connected, address, connectWallet, disconnectWallet } = useWalletStore();
-  const [activeTab, setActiveTab] = useState<"staking" | "gov" | "slashing" | "bank">("staking");
+  const [activeTab, setActiveTab] = useState<"staking" | "gov" | "slashing" | "bank" | "bridge" | "oracle" | "milestone" | "feemarket">("staking");
   const [loading, setLoading] = useState(false);
 
   const initialStaking: ParamItem[] = [
@@ -48,10 +48,38 @@ export default function PARAMSPage() {
     { name: "Total Supply Limit", value: "1,000,000,000 SOV", type: "Coin", description: "Hardcap supply limit for native staking token." },
   ];
 
+  const initialBridge: ParamItem[] = [
+    { name: "Bridge Fee", value: "0.05%", type: "Percentage", description: "Standard transfer fee applied to bridging transactions." },
+    { name: "Escrow Wallet Address", value: "sovereign1bridgeescrowaddress", type: "Address", description: "System account where bridged assets are escrowed." },
+    { name: "Daily Limit Cap", value: "10,000,000 SOV", type: "Coin", description: "Maximum value of funds that can be bridged in a single 24-hour cycle." },
+  ];
+
+  const initialOracle: ParamItem[] = [
+    { name: "Update Threshold", value: "10 blocks", type: "Integer", description: "Maximum number of blocks allowed between price feed updates." },
+    { name: "Feeder SLA Score", value: "95.00%", type: "Percentage", description: "Required Service Level Agreement score for registered price feeders." },
+    { name: "Price Deviation Limit", value: "2.00%", type: "Percentage", description: "Maximum price fluctuation allowed in a single round before rejection." },
+  ];
+
+  const initialMilestone: ParamItem[] = [
+    { name: "Active Validator Limit", value: "30", type: "Integer", description: "Number of active validators required to commit checkpoint milestones." },
+    { name: "Checkpoint Frequency", value: "500 blocks", type: "Integer", description: "Block interval at which cryptographic consensus checkpoints are finalized." },
+    { name: "Upgrade Delay Period", value: "48 hours (172,800s)", type: "Duration", description: "Mandatory time lock before approved software upgrades are activated." },
+  ];
+
+  const initialFeemarket: ParamItem[] = [
+    { name: "Base Fee Denominator", value: "8", type: "Integer", description: "Divider determining block-by-block base fee volatility speed." },
+    { name: "Target Block Gas Limit", value: "15,000,000 gas", type: "Integer", description: "The targeted optimal block size in gas units." },
+    { name: "Min Gas Price", value: "0.0025 uSLT/gas", type: "Coin", description: "Minimum price threshold for transaction execution." },
+  ];
+
   const [staking, setStaking] = useState<ParamItem[]>(initialStaking);
   const [gov, setGov] = useState<ParamItem[]>(initialGov);
   const [slashing, setSlashing] = useState<ParamItem[]>(initialSlashing);
   const [bank, setBank] = useState<ParamItem[]>(initialBank);
+  const [bridge, setBridge] = useState<ParamItem[]>(initialBridge);
+  const [oracle, setOracle] = useState<ParamItem[]>(initialOracle);
+  const [milestone, setMilestone] = useState<ParamItem[]>(initialMilestone);
+  const [feemarket, setFeemarket] = useState<ParamItem[]>(initialFeemarket);
 
   const fetchParams = async () => {
     setLoading(true);
@@ -146,6 +174,10 @@ export default function PARAMSPage() {
       case "gov": return gov;
       case "slashing": return slashing;
       case "bank": return bank;
+      case "bridge": return bridge;
+      case "oracle": return oracle;
+      case "milestone": return milestone;
+      case "feemarket": return feemarket;
     }
   };
 
@@ -155,6 +187,10 @@ export default function PARAMSPage() {
       case "gov": return <Landmark className="h-4 w-4" />;
       case "slashing": return <ShieldAlert className="h-4 w-4" />;
       case "bank": return <Coins className="h-4 w-4" />;
+      case "bridge": return <Layers className="h-4 w-4" />;
+      case "oracle": return <Activity className="h-4 w-4" />;
+      case "milestone": return <Calendar className="h-4 w-4" />;
+      case "feemarket": return <Settings className="h-4 w-4" />;
     }
   };
 
@@ -188,8 +224,8 @@ export default function PARAMSPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-2 border-b border-gray-900 pb-px">
-        {(["staking", "gov", "slashing", "bank"] as const).map((tab) => (
+      <div className="flex space-x-2 border-b border-gray-900 pb-px overflow-x-auto scrollbar-thin">
+        {(["staking", "gov", "slashing", "bank", "bridge", "oracle", "milestone", "feemarket"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}

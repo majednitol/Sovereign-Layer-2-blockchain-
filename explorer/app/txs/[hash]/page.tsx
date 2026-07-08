@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Clock, Activity, ShieldAlert, FileText, CheckCircle2, XCircle } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 
 interface TxDetail {
   hash: string;
@@ -14,6 +15,79 @@ interface TxDetail {
   fee: number;
   gasUsed: number;
   status: number;
+}
+
+interface TokenTransfer {
+  token: string;
+  amount: string;
+  sender: string;
+  receiver: string;
+  type: "erc20" | "cw20" | "native" | "nft";
+}
+
+function extractTokenTransfers(events: any[]): TokenTransfer[] {
+  const transfers: TokenTransfer[] = [];
+  for (const e of events) {
+    if (e.type === "transfer") {
+      let sender = "", receiver = "", amount = "";
+      for (const a of e.attributes) {
+        if (a.key === "sender") sender = a.value;
+        if (a.key === "recipient") receiver = a.value;
+        if (a.key === "amount") amount = a.value;
+      }
+      if (sender && receiver && amount) {
+        transfers.push({
+          token: "SOV",
+          amount,
+          sender,
+          receiver,
+          type: "native",
+        });
+      }
+    } else if (e.type === "wasm" || e.type === "wasm-transfer") {
+      let contract = "", sender = "", receiver = "", amount = "", action = "";
+      for (const a of e.attributes) {
+        if (a.key === "_contract_address") contract = a.value;
+        if (a.key === "sender") sender = a.value;
+        if (a.key === "recipient") receiver = a.value;
+        if (a.key === "amount") amount = a.value;
+        if (a.key === "action") action = a.value;
+      }
+      if (contract && sender && receiver && amount) {
+        transfers.push({
+          token: contract.slice(0, 8) + "...",
+          amount,
+          sender,
+          receiver,
+          type: "cw20",
+        });
+      }
+    }
+  }
+  return transfers;
+}
+
+function getActionSummary(tx: TxDetail): string {
+  if (tx.msgTypes && tx.msgTypes.length > 0) {
+    const firstMsg = tx.msgTypes[0];
+    if (firstMsg.includes("MsgSend")) {
+      return `Sent tokens to ${tx.decoded?.to_address || "recipient"}`;
+    }
+    if (firstMsg.includes("MsgDelegate")) {
+      return `Delegated tokens to validator ${tx.decoded?.validator_address?.slice(0, 16)}...`;
+    }
+    if (firstMsg.includes("MsgBridgeOut")) {
+      return `Initiated outbound bridge to BSC`;
+    }
+    if (firstMsg.includes("MsgExecuteContract")) {
+      return `Executed CosmWasm contract ${tx.decoded?.contract?.slice(0, 16)}...`;
+    }
+    return `Executed msg: ${firstMsg.split('.').pop() || "Transaction"}`;
+  }
+  if (tx.type === "evm") {
+    return `EVM Transaction ${tx.decoded?.to ? `to ${tx.decoded.to.slice(0, 16)}...` : "Deployment"}`;
+  }
+  return "Standard L1 transaction execution";
 }
 
 interface Props {
@@ -238,10 +312,13 @@ export default function TxDetailPage({ params }: Props) {
     );
   }
 
+  const transfers = extractTokenTransfers(events);
+  const actionSummary = getActionSummary(tx);
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       {/* Breadcrumbs */}
-      <nav className="text-sm text-gray-400 flex items-center space-x-2">
+      <nav className="text-sm text-gray-400 flex items-center space-x-2 font-mono">
         <Link href="/" className="hover:text-white transition">Home</Link>
         <span>/</span>
         <Link href="/txs" className="hover:text-white transition">Transactions</Link>
@@ -261,6 +338,45 @@ export default function TxDetailPage({ params }: Props) {
           <p className="text-gray-400 mt-1 font-mono text-sm break-all">{tx.hash}</p>
         </div>
       </div>
+
+      {/* Action Summary Banner */}
+      <div className="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4 flex items-center space-x-3">
+        <Activity className="h-5 w-5 text-cyan-400 shrink-0" />
+        <div>
+          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider font-mono">Action Summary</span>
+          <p className="text-sm text-gray-200 font-medium font-sans mt-0.5">{actionSummary}</p>
+        </div>
+      </div>
+
+      {/* Token Transfers */}
+      {transfers.length > 0 && (
+        <div className="bg-gray-950 border border-gray-900 rounded-xl p-6 space-y-4 shadow-xl">
+          <h3 className="text-lg font-bold text-white border-b border-gray-900 pb-2">Token Transfers</h3>
+          <div className="space-y-3 font-mono text-xs">
+            {transfers.map((t, idx) => (
+              <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-900/30 pb-2 last:border-0 last:pb-0">
+                <div className="flex items-center space-x-2">
+                  <span className="capitalize px-1.5 py-0.5 bg-gray-900 rounded text-[10px] text-gray-400 font-bold">
+                    {t.type}
+                  </span>
+                  <span className="text-gray-300 font-bold">{t.amount}</span>
+                  <span className="text-cyan-400 font-semibold">{t.token}</span>
+                </div>
+                <div className="flex items-center space-x-2 text-gray-500 mt-1 sm:mt-0">
+                  <span>From:</span>
+                  <Link href={`/address/${t.sender}`} className="text-cyan-500 hover:text-cyan-400">
+                    {t.sender.slice(0, 10)}...{t.sender.slice(-6)}
+                  </Link>
+                  <span>To:</span>
+                  <Link href={`/address/${t.receiver}`} className="text-cyan-500 hover:text-cyan-400">
+                    {t.receiver.slice(0, 10)}...{t.receiver.slice(-6)}
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Details Card */}
       <div className="bg-gray-950 border border-gray-900 rounded-xl p-6 space-y-6 shadow-xl">
@@ -341,73 +457,75 @@ export default function TxDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Decoded Payload */}
-      <div className="bg-gray-950 border border-gray-900 rounded-xl p-6 space-y-4 shadow-xl">
-        <h3 className="text-lg font-bold text-white border-b border-gray-900 pb-2">
-          Decoded Payload
-        </h3>
+      {/* Decoded Payload and Events Tabs */}
+      <Tabs defaultValue="payload" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="payload">Decoded Payload</TabsTrigger>
+          <TabsTrigger value="events">Transaction Events ({events.length})</TabsTrigger>
+        </TabsList>
 
-        {tx.decoded && Object.keys(tx.decoded).length > 0 ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-black/30 border border-gray-900 rounded-xl p-4">
-              {Object.entries(tx.decoded).map(([key, val]) => (
-                <div key={key} className="space-y-1">
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{key}</span>
-                  <div className="text-sm font-mono text-gray-300 break-all">
-                    {typeof val === "object" ? JSON.stringify(val) : String(val)}
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            <details className="group">
-              <summary className="text-xs text-gray-500 hover:text-white cursor-pointer transition select-none">
-                View Raw JSON
-              </summary>
-              <pre className="mt-2 bg-black/50 border border-gray-900 rounded-xl p-4 overflow-x-auto text-xs font-mono text-green-400 leading-relaxed max-h-[300px]">
-                {JSON.stringify(tx.decoded, null, 2)}
-              </pre>
-            </details>
-          </div>
-        ) : (
-          <div className="py-6 text-center text-gray-500 text-sm">
-            No message payload data parsed for this transaction.
-          </div>
-        )}
-      </div>
-
-      {/* Transaction Events */}
-      <div className="bg-gray-950 border border-gray-900 rounded-xl p-6 space-y-4 shadow-xl">
-        <h3 className="text-lg font-bold text-white border-b border-gray-900 pb-2">
-          Transaction Events ({events.length})
-        </h3>
-
-        <div className="space-y-4 divide-y divide-gray-900 max-h-[500px] overflow-y-auto pr-2">
-          {events.length === 0 ? (
-            <div className="py-6 text-center text-gray-500 text-sm">
-              No events emitted by this transaction.
-            </div>
-          ) : (
-            events.map((ev, idx) => (
-              <div key={idx} className="pt-4 first:pt-0 space-y-2">
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-900 font-mono">
-                    {ev.type}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-2">
-                  {ev.attributes.map((attr, attrIdx) => (
-                    <div key={attrIdx} className="text-xs font-mono flex items-start space-x-2 bg-gray-900/20 p-1.5 rounded border border-gray-900/30">
-                      <span className="text-gray-500 font-medium shrink-0">{attr.key}:</span>
-                      <span className="text-gray-300 break-all">{attr.value}</span>
+        <TabsContent value="payload">
+          <div className="bg-gray-950 border border-gray-900 rounded-xl p-6 space-y-4 shadow-xl">
+            {tx.decoded && Object.keys(tx.decoded).length > 0 ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-black/30 border border-gray-900 rounded-xl p-4">
+                  {Object.entries(tx.decoded).map(([key, val]) => (
+                    <div key={key} className="space-y-1">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{key}</span>
+                      <div className="text-sm font-mono text-gray-300 break-all">
+                        {typeof val === "object" ? JSON.stringify(val) : String(val)}
+                      </div>
                     </div>
                   ))}
                 </div>
+                
+                <details className="group">
+                  <summary className="text-xs text-gray-500 hover:text-white cursor-pointer transition select-none">
+                    View Raw JSON
+                  </summary>
+                  <pre className="mt-2 bg-black/50 border border-gray-900 rounded-xl p-4 overflow-x-auto text-xs font-mono text-green-400 leading-relaxed max-h-[300px]">
+                    {JSON.stringify(tx.decoded, null, 2)}
+                  </pre>
+                </details>
               </div>
-            ))
-          )}
-        </div>
-      </div>
+            ) : (
+              <div className="py-6 text-center text-gray-500 text-sm">
+                No message payload data parsed for this transaction.
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="events">
+          <div className="bg-gray-950 border border-gray-900 rounded-xl p-6 space-y-4 shadow-xl">
+            <div className="space-y-4 divide-y divide-gray-900 max-h-[500px] overflow-y-auto pr-2">
+              {events.length === 0 ? (
+                <div className="py-6 text-center text-gray-500 text-sm">
+                  No events emitted by this transaction.
+                </div>
+              ) : (
+                events.map((ev, idx) => (
+                  <div key={idx} className="pt-4 first:pt-0 space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-900 font-mono">
+                        {ev.type}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-2">
+                      {ev.attributes.map((attr, attrIdx) => (
+                        <div key={attrIdx} className="text-xs font-mono flex items-start space-x-2 bg-gray-900/20 p-1.5 rounded border border-gray-900/30">
+                          <span className="text-gray-500 font-medium shrink-0">{attr.key}:</span>
+                          <span className="text-gray-300 break-all">{attr.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/txs/layout,_N_T_/txs/advanced-filter/layout,_N_T_/txs/advanced-filter/page,_N_T_/txs/advanced-filter"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/txs/advanced-filter/__PAGE__",
+    "/txs/advanced-filter",
+    "/txs",
+    "/_index",
+    "/_head"
+  ]
+}

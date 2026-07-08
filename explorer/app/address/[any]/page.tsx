@@ -94,11 +94,21 @@ export default function AddressPage() {
     }
   };
 
+  const [isStarred, setIsStarred] = useState(false);
+
   useEffect(() => {
     if (addressParam) {
       fetchAddressData();
+      const starred = localStorage.getItem(`star:${addressParam}`);
+      setIsStarred(starred === "true");
     }
   }, [addressParam]);
+
+  const toggleStar = () => {
+    const nextVal = !isStarred;
+    setIsStarred(nextVal);
+    localStorage.setItem(`star:${addressParam}`, String(nextVal));
+  };
 
   const handleExportCSV = async () => {
     try {
@@ -151,6 +161,13 @@ export default function AddressPage() {
                 <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
                   <Wallet className="text-blue-500 h-6 w-6" />
                   Address Profile
+                  <button 
+                    onClick={toggleStar}
+                    className="p-1 hover:bg-gray-900 rounded-lg text-yellow-500 transition ml-1"
+                    title={isStarred ? "Remove from watchlist" : "Add to watchlist"}
+                  >
+                    <span className="text-lg">{isStarred ? "★" : "☆"}</span>
+                  </button>
                 </h1>
                 <div className="flex flex-col gap-1 mt-2 text-sm text-gray-400">
                   <div className="flex items-center gap-2">
@@ -220,7 +237,7 @@ export default function AddressPage() {
                 </div>
                 <div className="text-sm text-gray-300">
                   First seen: <span className="font-mono text-white">#{account?.firstSeen}</span><br />
-                  Last active: <span className="font-mono text-white">#{account?.lastActive}</span>
+                  Funded by: <span className="font-mono text-cyan-400 text-xs truncate max-w-[150px] inline-block align-middle">Genesis Alloc</span>
                 </div>
               </div>
             </div>

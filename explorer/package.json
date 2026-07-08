@@ -9,7 +9,15 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@cosmjs/proto-signing": "^0.32.4",
+    "@cosmjs/stargate": "^0.32.4",
+    "@fontsource/jetbrains-mono": "^5.0.20",
+    "@fontsource/space-grotesk": "^5.0.20",
+    "@hookform/resolvers": "^3.9.0",
     "@keplr-wallet/types": "^0.12.146",
+    "@rainbow-me/rainbowkit": "^2.1.2",
+    "@tanstack/react-query": "^5.51.1",
+    "@tanstack/react-table": "^8.19.3",
     "@workspace/api-spec": "workspace:*",
     "clsx": "^2.1.1",
     "ethers": "^6.17.0",
@@ -18,8 +26,12 @@
     "next-themes": "^0.3.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-hook-form": "^7.52.1",
     "recharts": "^2.15.4",
     "tailwind-merge": "^2.3.0",
+    "viem": "^2.17.0",
+    "wagmi": "^2.10.10",
+    "zod": "^3.23.8",
     "zustand": "^4.5.2"
   },
   "devDependencies": {

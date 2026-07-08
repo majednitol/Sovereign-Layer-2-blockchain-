@@ -277,6 +277,12 @@
       "namedRegex": "^/_not\\-found(?:/)?$"
     },
     {
+      "page": "/accounts",
+      "regex": "^/accounts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/accounts(?:/)?$"
+    },
+    {
       "page": "/analytics",
       "regex": "^/analytics(?:/)?$",
       "routeKeys": {},
@@ -319,6 +325,12 @@
       "namedRegex": "^/certification(?:/)?$"
     },
     {
+      "page": "/charts",
+      "regex": "^/charts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts(?:/)?$"
+    },
+    {
       "page": "/codes",
       "regex": "^/codes(?:/)?$",
       "routeKeys": {},
@@ -341,6 +353,12 @@
       "regex": "^/contracts(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/contracts(?:/)?$"
+    },
+    {
+      "page": "/contracts/verified",
+      "regex": "^/contracts/verified(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/contracts/verified(?:/)?$"
     },
     {
       "page": "/developers",
@@ -397,10 +415,22 @@
       "namedRegex": "^/evm/verify(?:/)?$"
     },
     {
+      "page": "/exportData",
+      "regex": "^/exportData(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/exportData(?:/)?$"
+    },
+    {
       "page": "/faucet",
       "regex": "^/faucet(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/faucet(?:/)?$"
+    },
+    {
+      "page": "/gastracker",
+      "regex": "^/gastracker(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/gastracker(?:/)?$"
     },
     {
       "page": "/governance",
@@ -445,6 +475,12 @@
       "namedRegex": "^/network(?:/)?$"
     },
     {
+      "page": "/nfts",
+      "regex": "^/nfts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/nfts(?:/)?$"
+    },
+    {
       "page": "/oracle",
       "regex": "^/oracle(?:/)?$",
       "routeKeys": {},
@@ -487,16 +523,46 @@
       "namedRegex": "^/staking/history(?:/)?$"
     },
     {
+      "page": "/stat/supply",
+      "regex": "^/stat/supply(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/stat/supply(?:/)?$"
+    },
+    {
+      "page": "/stats",
+      "regex": "^/stats(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/stats(?:/)?$"
+    },
+    {
       "page": "/status",
       "regex": "^/status(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/status(?:/)?$"
     },
     {
+      "page": "/token-approvals",
+      "regex": "^/token\\-approvals(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/token\\-approvals(?:/)?$"
+    },
+    {
+      "page": "/tools",
+      "regex": "^/tools(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/tools(?:/)?$"
+    },
+    {
       "page": "/txs",
       "regex": "^/txs(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/txs(?:/)?$"
+    },
+    {
+      "page": "/txs/advanced-filter",
+      "regex": "^/txs/advanced\\-filter(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/txs/advanced\\-filter(?:/)?$"
     },
     {
       "page": "/txs/pending",

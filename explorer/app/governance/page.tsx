@@ -53,7 +53,7 @@ export default function GOVERNANCEPage() {
     if (activeTab !== "all") {
       filtered = proposals.filter((p) => p.status.toLowerCase() === activeTab);
     }
-    return filtered.filter((p) => !p.title.toLowerCase().includes("mock"));
+    return filtered;
   };
 
   const parseTally = (tallyResultStr: string) => {

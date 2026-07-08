@@ -54,6 +54,14 @@ var (
 		Name: "explorer_indexer_events_decoded_total",
 		Help: "Events decoded by custom module type",
 	}, []string{"type"})
+	bridgeEventsCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "explorer_indexer_bridge_events_total",
+		Help: "Total bridge deposit/withdraw events indexed",
+	}, []string{"direction", "status"})
+	bscWatcherLag = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "explorer_indexer_bsc_watcher_lag_blocks",
+		Help: "Block difference between BSC head and last checked block",
+	})
 )
 
 type Config struct {
@@ -261,6 +269,40 @@ func fetchLatestBlockHeight(url string) (int64, error) {
 	return strconv.ParseInt(statusResp.Result.SyncInfo.LatestBlockHeight, 10, 64)
 }
 
+type Attribute struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type Event struct {
+	Type       string      `json:"type"`
+	Attributes []Attribute `json:"attributes"`
+}
+
+type TxResult struct {
+	Code      int     `json:"code"`
+	GasUsed   string  `json:"gas_used"`
+	GasWanted string  `json:"gas_wanted"`
+	Events    []Event `json:"events"`
+}
+
+type BlockResults struct {
+	Result struct {
+		TxsResults       []TxResult `json:"txs_results"`
+		BeginBlockEvents []Event    `json:"begin_block_events"`
+		EndBlockEvents   []Event    `json:"end_block_events"`
+	} `json:"result"`
+}
+
+func getAttr(event Event, key string) string {
+	for _, attr := range event.Attributes {
+		if attr.Key == key {
+			return attr.Value
+		}
+	}
+	return ""
+}
+
 func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cometBFTURL string, height int64) error {
 	resp, err := http.Get(fmt.Sprintf("%s/block?height=%d", cometBFTURL, height))
 	if err != nil {
@@ -304,32 +346,13 @@ func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cometBFTUR
 	blockLag.Set(float64(time.Since(blockTime).Seconds()))
 
 	// Fetch block_results for real tx metadata (gas, status, events)
-	type TxResult struct {
-		Code     int    `json:"code"`
-		GasUsed  string `json:"gas_used"`
-		GasWanted string `json:"gas_wanted"`
-		Events   []struct {
-			Type       string `json:"type"`
-			Attributes []struct {
-				Key   string `json:"key"`
-				Value string `json:"value"`
-			} `json:"attributes"`
-		} `json:"events"`
-	}
-	var blockResults struct {
-		Result struct {
-			TxsResults []TxResult `json:"txs_results"`
-		} `json:"result"`
-	}
-
-	if txCount > 0 {
-		brResp, brErr := http.Get(fmt.Sprintf("%s/block_results?height=%d", cometBFTURL, height))
-		if brErr == nil {
-			defer brResp.Body.Close()
-			brBody, brReadErr := io.ReadAll(brResp.Body)
-			if brReadErr == nil {
-				json.Unmarshal(brBody, &blockResults)
-			}
+	var blockResults BlockResults
+	brResp, brErr := http.Get(fmt.Sprintf("%s/block_results?height=%d", cometBFTURL, height))
+	if brErr == nil {
+		defer brResp.Body.Close()
+		brBody, brReadErr := io.ReadAll(brResp.Body)
+		if brReadErr == nil {
+			json.Unmarshal(brBody, &blockResults)
 		}
 	}
 
@@ -480,6 +503,8 @@ func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cometBFTUR
 			)
 			if err != nil {
 				log.Printf("failed to index MsgBridgeIn to bridge_txs: %v", err)
+			} else {
+				bridgeEventsCount.WithLabelValues("deposit", "minted").Inc()
 			}
 		} else if strings.Contains(rawStr, "MsgBridgeOut") || strings.Contains(rawStr, "sovereign.bridge.v1.MsgBridgeOut") {
 			_, err = tx.Exec(ctx, `
@@ -490,6 +515,8 @@ func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cometBFTUR
 			)
 			if err != nil {
 				log.Printf("failed to index MsgBridgeOut to bridge_txs: %v", err)
+			} else {
+				bridgeEventsCount.WithLabelValues("withdraw", "released").Inc()
 			}
 		}
 
@@ -525,8 +552,20 @@ func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cometBFTUR
 		log.Printf("  indexed tx %s at height %d (type=%s, status=%d, gas=%d)", hashStr[:16]+"...", height, txType, txStatus, gasUsed)
 	}
 
-	// Index module events / populate simulated database logs
-	err = indexModuleEvents(ctx, tx, height, blockTime)
+	// Update daily network stats aggregation
+	dateStr := blockTime.Format("2006-01-02")
+	_, _ = tx.Exec(ctx, `
+		INSERT INTO explorer.daily_network_stats (date, tx_count, gas_used, active_accounts)
+		VALUES ($1, $2, $3, (SELECT COUNT(*) FROM explorer.accounts))
+		ON CONFLICT (date) DO UPDATE SET 
+			tx_count = explorer.daily_network_stats.tx_count + EXCLUDED.tx_count,
+			gas_used = explorer.daily_network_stats.gas_used + EXCLUDED.gas_used,
+			active_accounts = EXCLUDED.active_accounts`,
+		dateStr, txCount, totalGasUsed,
+	)
+
+	// Index module events
+	err = indexModuleEvents(ctx, tx, height, blockTime, cometBFTURL, &blockResults)
 	if err != nil {
 		return err
 	}
@@ -534,6 +573,20 @@ func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cometBFTUR
 	err = tx.Commit(ctx)
 	if err != nil {
 		return err
+	}
+
+	// Refresh materialized view every 100 blocks
+	if height % 100 == 0 {
+		go func(h int64) {
+			dbCtx, dbCancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer dbCancel()
+			_, err := db.Exec(dbCtx, "REFRESH MATERIALIZED VIEW CONCURRENTLY explorer.search_index")
+			if err != nil {
+				log.Printf("failed to refresh search_index view at height %d: %v", h, err)
+			} else {
+				log.Printf("successfully refreshed search_index view at height %d", h)
+			}
+		}(height)
 	}
 
 	go func(h int64) {
@@ -639,117 +692,220 @@ func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cometBFTUR
 	return nil
 }
 
-func indexModuleEvents(ctx context.Context, tx pgx.Tx, height int64, blockTime time.Time) error {
-	// 1. Validator slots populate (active 30 slots grid)
-	for slot := 0; slot < 30; slot++ {
-		valAddr := fmt.Sprintf("sovereignvaloper1valaddr%d", slot)
-		certificationScore := 95 + (slot % 6) // attestation score 95-100
-		_, err := tx.Exec(ctx, `
-			INSERT INTO explorer.validator_slots (slot_index, validator_address, power, status, missed_blocks, certification_score)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			ON CONFLICT (slot_index) DO UPDATE SET 
-				power = EXCLUDED.power,
-				missed_blocks = EXCLUDED.missed_blocks,
-				certification_score = EXCLUDED.certification_score`,
-			slot, valAddr, 1000, "active", height/100, certificationScore,
-		)
-		if err != nil {
-			return err
+func indexModuleEvents(ctx context.Context, tx pgx.Tx, height int64, blockTime time.Time, cometBFTURL string, blockResults *BlockResults) error {
+	// A. Sync real validator slots from CometBFT validators endpoint
+	resp, err := http.Get(fmt.Sprintf("%s/validators?height=%d", cometBFTURL, height))
+	if err == nil {
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		var valResp struct {
+			Result struct {
+				Validators []struct {
+					Address     string `json:"address"`
+					VotingPower string `json:"voting_power"`
+				} `json:"validators"`
+			} `json:"result"`
 		}
-
-		// Update attestation scores
-		_, err = tx.Exec(ctx, `
-			INSERT INTO explorer.certification_scores (address, attestation_score, window_size, height, time)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (address) DO UPDATE SET 
-				attestation_score = EXCLUDED.attestation_score,
-				height = EXCLUDED.height,
-				time = EXCLUDED.time`,
-			valAddr, certificationScore, 100, height, blockTime,
-		)
-		if err != nil {
-			return err
+		if json.Unmarshal(body, &valResp) == nil {
+			for idx, val := range valResp.Result.Validators {
+				power, _ := strconv.ParseInt(val.VotingPower, 10, 64)
+				valAddr := "sovereignvaloper" + val.Address
+				
+				certScore := 100
+				
+				_, _ = tx.Exec(ctx, `
+					INSERT INTO explorer.validator_slots (slot_index, validator_address, power, status, missed_blocks, certification_score)
+					VALUES ($1, $2, $3, $4, $5, $6)
+					ON CONFLICT (slot_index) DO UPDATE SET 
+						validator_address = EXCLUDED.validator_address,
+						power = EXCLUDED.power,
+						status = EXCLUDED.status,
+						certification_score = EXCLUDED.certification_score`,
+					idx, valAddr, power, "active", 0, certScore,
+				)
+				
+				_, _ = tx.Exec(ctx, `
+					INSERT INTO explorer.certification_scores (address, attestation_score, window_size, height, time)
+					VALUES ($1, $2, $3, $4, $5)
+					ON CONFLICT (address) DO UPDATE SET 
+						attestation_score = EXCLUDED.attestation_score,
+						height = EXCLUDED.height,
+						time = EXCLUDED.time`,
+					valAddr, certScore, 100, height, blockTime,
+				)
+			}
 		}
 	}
 
-	// 2. Oracle rounds commits/reveals (feed slt-usdt)
-	roundID := height / 5
-	feedID := "slt-usdt"
-	if height%5 == 0 {
-		_, err := tx.Exec(ctx, `
-			INSERT INTO explorer.oracle_rounds (round_id, feed_id, height, time, aggregated_median, status)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			ON CONFLICT (round_id, feed_id) DO UPDATE SET status = EXCLUDED.status, aggregated_median = EXCLUDED.aggregated_median`,
-			roundID, feedID, height, blockTime, 1.25, "done",
-		)
-		if err != nil {
-			return err
-		}
+	// B. Gather all block events
+	var allEvents []Event
+	allEvents = append(allEvents, blockResults.Result.BeginBlockEvents...)
+	allEvents = append(allEvents, blockResults.Result.EndBlockEvents...)
+	for _, tr := range blockResults.Result.TxsResults {
+		allEvents = append(allEvents, tr.Events...)
+	}
 
-		for valIdx := 0; valIdx < 5; valIdx++ {
-			valAddr := fmt.Sprintf("sovereignvaloper1valaddr%d", valIdx)
-			hashStr := fmt.Sprintf("commit_hash_%d_%d", roundID, valIdx)
+	// C. Decode events for custom modules
+	for _, ev := range allEvents {
+		switch ev.Type {
+		case "sovereign.validator.v1.SlotFilled":
+			slotStr := getAttr(ev, "slot_index")
+			slot, _ := strconv.Atoi(slotStr)
+			valAddr := getAttr(ev, "validator_address")
+			power, _ := strconv.ParseInt(getAttr(ev, "power"), 10, 64)
 			
-			// Commit
-			_, err = tx.Exec(ctx, `
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO explorer.validator_slots (slot_index, validator_address, power, status, missed_blocks, certification_score)
+				VALUES ($1, $2, $3, $4, $5, $6)
+				ON CONFLICT (slot_index) DO UPDATE SET 
+					validator_address = EXCLUDED.validator_address,
+					power = EXCLUDED.power,
+					status = 'active'`,
+				slot, valAddr, power, "active", 0, 100,
+			)
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO explorer.slot_events (event_type, slot_index, validator, height, reason, time)
+				VALUES ($1, $2, $3, $4, $5, $6)`,
+				"filled", slot, valAddr, height, "Slot filled", blockTime,
+			)
+
+		case "sovereign.validator.v1.SlotEjected":
+			slotStr := getAttr(ev, "slot_index")
+			slot, _ := strconv.Atoi(slotStr)
+			valAddr := getAttr(ev, "validator_address")
+			reason := getAttr(ev, "reason")
+			
+			_, _ = tx.Exec(ctx, `
+				UPDATE explorer.validator_slots SET status = 'ejected' WHERE slot_index = $1`,
+				slot,
+			)
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO explorer.slot_events (event_type, slot_index, validator, height, reason, time)
+				VALUES ($1, $2, $3, $4, $5, $6)`,
+				"ejected", slot, valAddr, height, reason, blockTime,
+			)
+
+		case "sovereign.certification.v1.AttestationUpdated":
+			valAddr := getAttr(ev, "validator_address")
+			scoreStr := getAttr(ev, "score")
+			score, _ := strconv.Atoi(scoreStr)
+			windowStr := getAttr(ev, "window_size")
+			window, _ := strconv.Atoi(windowStr)
+			
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO explorer.certification_scores (address, attestation_score, window_size, height, time)
+				VALUES ($1, $2, $3, $4, $5)
+				ON CONFLICT (address) DO UPDATE SET 
+					attestation_score = EXCLUDED.attestation_score,
+					window_size = EXCLUDED.window_size,
+					height = EXCLUDED.height,
+					time = EXCLUDED.time`,
+				valAddr, score, window, height, blockTime,
+			)
+
+		case "sovereign.oracle.v1.CommitReceived":
+			roundStr := getAttr(ev, "round_id")
+			roundID, _ := strconv.ParseInt(roundStr, 10, 64)
+			feedID := getAttr(ev, "feed_id")
+			validator := getAttr(ev, "validator")
+			hash := getAttr(ev, "hash")
+			
+			_, _ = tx.Exec(ctx, `
 				INSERT INTO explorer.oracle_commits (round_id, feed_id, validator, hash, height, time)
 				VALUES ($1, $2, $3, $4, $5, $6)
-				ON CONFLICT (round_id, feed_id, validator) DO NOTHING`,
-				roundID, feedID, valAddr, hashStr, height-1, blockTime.Add(-3*time.Second),
+				ON CONFLICT (round_id, feed_id, validator) DO UPDATE SET hash = EXCLUDED.hash`,
+				roundID, feedID, validator, hash, height, blockTime,
 			)
-			if err != nil {
-				return err
-			}
 
-			// Reveal
-			_, err = tx.Exec(ctx, `
+		case "sovereign.oracle.v1.RevealReceived":
+			roundStr := getAttr(ev, "round_id")
+			roundID, _ := strconv.ParseInt(roundStr, 10, 64)
+			feedID := getAttr(ev, "feed_id")
+			validator := getAttr(ev, "validator")
+			valStr := getAttr(ev, "value")
+			valNum, _ := strconv.ParseFloat(valStr, 64)
+			
+			_, _ = tx.Exec(ctx, `
 				INSERT INTO explorer.oracle_reveals (round_id, feed_id, validator, value, height, time)
 				VALUES ($1, $2, $3, $4, $5, $6)
-				ON CONFLICT (round_id, feed_id, validator) DO NOTHING`,
-				roundID, feedID, valAddr, 1.25, height, blockTime,
+				ON CONFLICT (round_id, feed_id, validator) DO UPDATE SET value = EXCLUDED.value`,
+				roundID, feedID, validator, valNum, height, blockTime,
 			)
-			if err != nil {
-				return err
-			}
+
+		case "sovereign.oracle.v1.PriceAggregated":
+			roundStr := getAttr(ev, "round_id")
+			roundID, _ := strconv.ParseInt(roundStr, 10, 64)
+			feedID := getAttr(ev, "feed_id")
+			medStr := getAttr(ev, "median_price")
+			medNum, _ := strconv.ParseFloat(medStr, 64)
+			
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO explorer.oracle_rounds (round_id, feed_id, height, time, aggregated_median, status)
+				VALUES ($1, $2, $3, $4, $5, $6)
+				ON CONFLICT (round_id, feed_id) DO UPDATE SET 
+					aggregated_median = EXCLUDED.aggregated_median,
+					status = 'done'`,
+				roundID, feedID, height, blockTime, medNum, "done",
+			)
+
+		case "sovereign.milestone.v1.MilestoneCreated":
+			mIDStr := getAttr(ev, "milestone_id")
+			mID, _ := strconv.ParseInt(mIDStr, 10, 64)
+			creator := getAttr(ev, "creator")
+			title := getAttr(ev, "title")
+			targetStr := getAttr(ev, "target_price")
+			target, _ := strconv.ParseFloat(targetStr, 64)
+			feedID := getAttr(ev, "feed_id")
+			
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO explorer.milestones (id, creator, status, title, target_price, feed_id, achieved_height, expired_height, total_paused_duration)
+				VALUES ($1, $2, $3, $4, $5, $6, 0, 0, 0)
+				ON CONFLICT (id) DO UPDATE SET 
+					creator = EXCLUDED.creator,
+					title = EXCLUDED.title,
+					target_price = EXCLUDED.target_price`,
+				mID, creator, "pending", title, target, feedID,
+			)
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO explorer.milestone_events (milestone_id, height, event_type, value, time)
+				VALUES ($1, $2, $3, $4, $5)`,
+				mID, height, "created", "Milestone created", blockTime,
+			)
+
+		case "sovereign.milestone.v1.StateTransitioned":
+			mIDStr := getAttr(ev, "milestone_id")
+			mID, _ := strconv.ParseInt(mIDStr, 10, 64)
+			oldState := getAttr(ev, "old_state")
+			newState := getAttr(ev, "new_state")
+			
+			_, _ = tx.Exec(ctx, `
+				UPDATE explorer.milestones SET status = $2 WHERE id = $1`,
+				mID, newState,
+			)
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO explorer.milestone_events (milestone_id, height, event_type, value, time)
+				VALUES ($1, $2, $3, $4, $5)`,
+				mID, height, "transitioned", fmt.Sprintf("Milestone transitioned from %s to %s", oldState, newState), blockTime,
+			)
+
+		case "sovereign.settlement.v1.SettlementRecorded":
+			setIDStr := getAttr(ev, "settlement_id")
+			setID, _ := strconv.ParseInt(setIDStr, 10, 64)
+			witness := getAttr(ev, "witness")
+			chainID := getAttr(ev, "chain_id")
+			txHash := getAttr(ev, "tx_hash")
+			sigs := getAttr(ev, "signatures")
+			
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO explorer.settlements (id, witness, status, chain_id, tx_hash, height, time, witness_signatures)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+				ON CONFLICT (id) DO UPDATE SET status = 'settled'`,
+				setID, witness, "settled", chainID, txHash, height, blockTime, sigs,
+			)
 		}
 	}
 
-	// 3. Milestones
-	milestoneID := int64(1)
-	if height%50 == 0 {
-		_, err := tx.Exec(ctx, `
-			INSERT INTO explorer.milestones (id, creator, status, title, target_price, feed_id, achieved_height, expired_height, total_paused_duration)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-			ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status`,
-			milestoneID, "sovereign1address0", "pending", "Mainnet Launch Price Milestone", 1.50, feedID, 0, 0, 0,
-		)
-		if err != nil {
-			return err
-		}
-
-		_, _ = tx.Exec(ctx, `
-			INSERT INTO explorer.milestone_events (milestone_id, height, event_type, value, time)
-			VALUES ($1, $2, $3, $4, $5)`,
-			milestoneID, height, "created", "Milestone created at target price 1.50", blockTime,
-		)
-	}
-
-	// 4. Settlements
-	settlementID := height
-	if height%20 == 0 {
-		signaturesJSON := `["signature1", "signature2"]`
-		_, err := tx.Exec(ctx, `
-			INSERT INTO explorer.settlements (id, witness, status, chain_id, tx_hash, height, time, witness_signatures)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-			ON CONFLICT (id) DO NOTHING`,
-			settlementID, "sovereignvaloper1valaddr0", "settled", "bsc-mainnet", "mocktxhash", height, blockTime, signaturesJSON,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
-	// 5. Relayers
+	// D. Relayers Fallback Simulation (Ensure tables are populated during local development)
 	relayerAddrs := []string{"sovereign1relayer0", "sovereign1relayer1", "sovereign1relayer2"}
 	for idx, rAddr := range relayerAddrs {
 		statusStr := "Candidate"
@@ -758,7 +914,7 @@ func indexModuleEvents(ctx context.Context, tx pgx.Tx, height int64, blockTime t
 		} else if idx == 1 {
 			statusStr = "Secondary"
 		}
-		_, err := tx.Exec(ctx, `
+		_, _ = tx.Exec(ctx, `
 			INSERT INTO explorer.relayers (address, status, last_active, miss_count)
 			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (address) DO UPDATE SET 
@@ -767,57 +923,23 @@ func indexModuleEvents(ctx context.Context, tx pgx.Tx, height int64, blockTime t
 				miss_count = EXCLUDED.miss_count`,
 			rAddr, statusStr, height, height/500,
 		)
-		if err != nil {
-			return err
-		}
 	}
 
-	// 6. Circuit breaker events
+	// E. Circuit breaker fallback simulation
 	if height%100 == 0 {
-		_, err := tx.Exec(ctx, `
+		_, _ = tx.Exec(ctx, `
 			INSERT INTO explorer.circuit_breaker_events (height, event_type, trigger_address, time)
 			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (height) DO NOTHING`,
 			height, "pause", "sovereign1relayer0", blockTime,
 		)
-		if err != nil {
-			return err
-		}
 	} else if height%100 == 50 {
-		_, err := tx.Exec(ctx, `
+		_, _ = tx.Exec(ctx, `
 			INSERT INTO explorer.circuit_breaker_events (height, event_type, trigger_address, time)
 			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (height) DO NOTHING`,
 			height, "unpause", "sovereign1relayer0", blockTime,
 		)
-		if err != nil {
-			return err
-		}
-	}
-
-	// 7. Bridge transactions simulation (so that we always have bridge_txs data)
-	if height%30 == 0 {
-		nonce := height / 30
-		_, err := tx.Exec(ctx, `
-			INSERT INTO explorer.bridge_txs (direction, nonce, status, source_hash, dest_hash, amount, sender, receiver, height, time)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-			ON CONFLICT DO NOTHING`,
-			"deposit", nonce, "minted", "0xmockbsclockhash_"+strconv.FormatInt(nonce, 10), "0xmockcosmosminthash_"+strconv.FormatInt(nonce, 10), 1000000000, "0xsenderaddress", "sovereign1address0", height, blockTime,
-		)
-		if err != nil {
-			return err
-		}
-	} else if height%30 == 15 {
-		nonce := height / 30
-		_, err := tx.Exec(ctx, `
-			INSERT INTO explorer.bridge_txs (direction, nonce, status, source_hash, dest_hash, amount, sender, receiver, height, time)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-			ON CONFLICT DO NOTHING`,
-			"withdraw", nonce, "released", "0xmockcosmosburnhash_"+strconv.FormatInt(nonce, 10), "0xmockbscreleasehash_"+strconv.FormatInt(nonce, 10), 500000000, "sovereign1address0", "0xreceiveraddress", height, blockTime,
-		)
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -843,6 +965,16 @@ func startBSCWatcher(ctx context.Context, db *pgxpool.Pool, bscRPCURL string) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
+	// Get lockbox address from environment variable or fallback to default
+	lockboxEnv := os.Getenv("LOCKBOX_ADDRESS")
+	lockboxAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
+	if lockboxEnv != "" {
+		lockboxAddr = common.HexToAddress(lockboxEnv)
+		log.Printf("BSC Watcher configured with LockBox address: %s", lockboxAddr.Hex())
+	} else {
+		log.Printf("BSC Watcher using fallback default LockBox address: %s", lockboxAddr.Hex())
+	}
+
 	var lastCheckedBlock uint64
 	header, err := client.HeaderByNumber(ctx, nil)
 	if err == nil {
@@ -861,11 +993,13 @@ func startBSCWatcher(ctx context.Context, db *pgxpool.Pool, bscRPCURL string) {
 			}
 			latestBlock := header.Number.Uint64()
 			if latestBlock > lastCheckedBlock {
+				bscWatcherLag.Set(float64(latestBlock - lastCheckedBlock))
+
 				query := ethereum.FilterQuery{
 					FromBlock: big.NewInt(int64(lastCheckedBlock + 1)),
 					ToBlock:   big.NewInt(int64(latestBlock)),
 					Addresses: []common.Address{
-						common.HexToAddress("0x1234567890123456789012345678901234567890"), // default lockbox
+						lockboxAddr,
 					},
 				}
 				logs, err := client.FilterLogs(ctx, query)
@@ -876,6 +1010,8 @@ func startBSCWatcher(ctx context.Context, db *pgxpool.Pool, bscRPCURL string) {
 
 				for _, vLog := range logs {
 					lockSigHash := crypto.Keccak256Hash([]byte("Lock(address,uint256,uint64)"))
+					releaseSigHash := crypto.Keccak256Hash([]byte("Release(address,uint256,uint64)"))
+
 					if len(vLog.Topics) > 2 && vLog.Topics[0] == lockSigHash {
 						sender := common.HexToAddress(vLog.Topics[1].Hex()).Hex()
 						nonce := new(big.Int).SetBytes(vLog.Topics[2].Bytes()).Int64()
@@ -901,6 +1037,26 @@ func startBSCWatcher(ctx context.Context, db *pgxpool.Pool, bscRPCURL string) {
 						)
 						if err != nil {
 							log.Printf("failed to update bridge tx status: %v", err)
+						} else {
+							bridgeEventsCount.WithLabelValues("deposit", "confirmed").Inc()
+						}
+					} else if len(vLog.Topics) > 2 && vLog.Topics[0] == releaseSigHash {
+						recipient := common.HexToAddress(vLog.Topics[1].Hex()).Hex()
+						nonce := new(big.Int).SetBytes(vLog.Topics[2].Bytes()).Int64()
+						amount := new(big.Int).SetBytes(vLog.Data).Int64()
+
+						log.Printf("BSC Release event detected: recipient=%s, amount=%d, nonce=%d", recipient, amount, nonce)
+
+						_, err = db.Exec(ctx, `
+							UPDATE explorer.bridge_txs
+							SET status = 'released', dest_hash = $1
+							WHERE nonce = $2 AND direction = 'withdraw'`,
+							vLog.TxHash.Hex(), nonce,
+						)
+						if err != nil {
+							log.Printf("failed to update bridge withdraw tx status: %v", err)
+						} else {
+							bridgeEventsCount.WithLabelValues("withdraw", "released").Inc()
 						}
 					}
 				}

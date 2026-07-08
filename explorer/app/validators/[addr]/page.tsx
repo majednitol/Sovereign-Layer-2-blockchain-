@@ -48,16 +48,11 @@ export default function ValidatorDetailPage() {
   const [delegations, setDelegations] = useState<Delegation[]>([]);
   const [events, setEvents] = useState<EventLog[]>([]);
   const [oracles, setOracles] = useState<OracleParticipation[]>([]);
+  const [heatmap, setHeatmap] = useState<{ height: number; signed: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"performance" | "staking" | "history">("performance");
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8082";
-
-  // Dynamic signing heatmap (50 blocks) based on actual missed blocks
-  const heatmap = Array.from({ length: 50 }, (_, i) => ({
-    height: 120500 + i,
-    signed: i >= (val?.missedBlocks || 0),
-  }));
 
   useEffect(() => {
     if (!addr) return;
@@ -81,6 +76,18 @@ export default function ValidatorDetailPage() {
           });
         } else {
           throw new Error("Validator not found");
+        }
+
+        // Fetch dynamic signing history heatmap
+        const historyResp = await fetch(`${API_BASE}/api/rest/v1/explorer/validators/${addr}/signing-history?blocks=100`);
+        if (historyResp.ok) {
+          const historyData = await historyResp.json();
+          if (historyData.blocks) {
+            setHeatmap(historyData.blocks.map((b: any) => ({
+              height: Number(b.height),
+              signed: Boolean(b.signed),
+            })));
+          }
         }
       } catch (err) {
         console.warn("Validator details query failed", err);

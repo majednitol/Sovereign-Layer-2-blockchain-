@@ -31,13 +31,15 @@ export default function PENDINGPage() {
     return hashArray.map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
   };
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8082";
+
   const fetchPendingTxs = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`${COMETBFT_RPC}/unconfirmed_txs?limit=100`);
+      const resp = await fetch(`${API_BASE}/api/rest/v1/explorer/mempool?limit=100`);
       if (resp.ok) {
         const data = await resp.json();
-        const rawTxs = data.result?.txs || [];
+        const rawTxs = data.txs || [];
         
         const mapped = await Promise.all(
           rawTxs.map(async (raw: string) => {

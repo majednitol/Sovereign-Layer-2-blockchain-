@@ -13,8 +13,32 @@ export default function FAUCETPage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [txHash, setTxHash] = useState("");
+  const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
 
-  const FAUCET_BASE = process.env.NEXT_PUBLIC_FAUCET_URL || "http://localhost:8000";
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8082";
+
+  // Check local storage for active cooldown
+  useEffect(() => {
+    if (!targetAddress) return;
+    const checkCooldown = () => {
+      const claimTime = localStorage.getItem(`faucet_next_claim_${targetAddress}`);
+      if (claimTime) {
+        const remaining = Math.ceil((Number(claimTime) - Date.now()) / 1000);
+        if (remaining > 0) {
+          setCooldownRemaining(remaining);
+        } else {
+          setCooldownRemaining(0);
+          localStorage.removeItem(`faucet_next_claim_${targetAddress}`);
+        }
+      } else {
+        setCooldownRemaining(0);
+      }
+    };
+
+    checkCooldown();
+    const interval = setInterval(checkCooldown, 1000);
+    return () => clearInterval(interval);
+  }, [targetAddress]);
 
   // Auto-fill address if wallet is connected
   useEffect(() => {
@@ -22,6 +46,13 @@ export default function FAUCETPage() {
       setTargetAddress(walletAddress);
     }
   }, [connected, walletAddress]);
+
+  const formatCooldown = (sec: number) => {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
 
   const handleRequestTokens = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +67,7 @@ export default function FAUCETPage() {
     setTxHash("");
 
     try {
-      const resp = await fetch(`${FAUCET_BASE}/faucet`, {
+      const resp = await fetch(`${API_BASE}/api/rest/v1/explorer/faucet`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -44,12 +75,28 @@ export default function FAUCETPage() {
         body: JSON.stringify({ address: targetAddress.trim() }),
       });
 
-      const data = await resp.json();
+      let data: any = {};
+      const contentType = resp.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await resp.json();
+      } else {
+        const text = await resp.text();
+        data = { error: text };
+      }
+
       if (resp.ok && data.success) {
-        setSuccessMsg("Tokens successfully requested!");
+        setSuccessMsg(data.message || "Tokens successfully requested!");
+        const cooldown = Number(data.cooldownSeconds || 86400);
+        localStorage.setItem(`faucet_next_claim_${targetAddress.trim()}`, String(Date.now() + cooldown * 1000));
+        setCooldownRemaining(cooldown);
         if (data.tx_hash) {
           setTxHash(data.tx_hash);
         }
+      } else if (resp.status === 429) {
+        const cooldown = Number(data.cooldownSeconds || 86400);
+        localStorage.setItem(`faucet_next_claim_${targetAddress.trim()}`, String(Date.now() + cooldown * 1000));
+        setCooldownRemaining(cooldown);
+        setErrorMsg(data.error || "Rate limit: 1 request per 24 hours.");
       } else {
         setErrorMsg(data.error || "Failed to claim tokens. Please try again.");
       }
@@ -148,7 +195,7 @@ export default function FAUCETPage() {
 
             <button
               type="submit"
-              disabled={loading || !targetAddress.trim()}
+              disabled={loading || !targetAddress.trim() || cooldownRemaining > 0}
               className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-850 disabled:text-gray-500 text-white font-medium rounded-xl transition shadow-lg shadow-blue-900/20 flex justify-center items-center space-x-2"
             >
               {loading ? (
@@ -156,6 +203,8 @@ export default function FAUCETPage() {
                   <Loader2 className="h-5 w-5 animate-spin" />
                   <span>Requesting...</span>
                 </>
+              ) : cooldownRemaining > 0 ? (
+                <span>Cooldown: {formatCooldown(cooldownRemaining)}</span>
               ) : (
                 <>
                   <span>Request 10 SOV</span>

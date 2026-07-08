@@ -29,7 +29,17 @@ export default function WithdrawPage() {
         if (resp.ok) {
           const data = await resp.json();
           if (data.withdraws) {
-            setWithdraws(data.withdraws);
+            setWithdraws(data.withdraws.map((w: any) => ({
+              nonce: Number(w.nonce),
+              cosmosHash: w.cosmosMintHash || w.sourceHash || "",
+              sender: w.sender,
+              receiver: w.receiver,
+              amount: w.amount ? (Number(w.amount) / 1000000.0).toLocaleString() + " SOV" : "0 SOV",
+              height: Number(w.cosmosBlock || w.height || 0),
+              time: w.time || new Date().toISOString(),
+              status: w.status,
+              bscHash: w.destHash || w.bscHash || "",
+            })));
           }
         }
       } catch (err) {
@@ -40,7 +50,7 @@ export default function WithdrawPage() {
             cosmosHash: "8d92a10be43210be892a10be892a10be892a10be892a10be892a10be892a10be",
             sender: "sovereign1address0bech32mock",
             receiver: "0x3f5c9e2b1d7a8d9e",
-            amount: "8,500 uSLT",
+            amount: "8,500 SOV",
             height: 121040,
             time: new Date().toISOString(),
             status: "released",
@@ -51,7 +61,7 @@ export default function WithdrawPage() {
             cosmosHash: "5f3a09e0129bcfe170298a09ee09ea090a908a908d098e09fcd090909e0909fe",
             sender: "sovereign1address0receiver3f5c9e",
             receiver: "0x8a7b6c5d4e3f281f",
-            amount: "1,200 uSLT",
+            amount: "1,200 SOV",
             height: 121085,
             time: new Date(Date.now() - 400000).toISOString(),
             status: "relaying"

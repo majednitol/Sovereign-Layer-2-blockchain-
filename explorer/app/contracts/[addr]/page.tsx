@@ -95,6 +95,25 @@ export default function ContractDetailPage({ params }: Props) {
         };
         setContract(contractData);
 
+        // Fetch holders if it is a CW-20 token contract
+        if (typeBadge === "CW-20") {
+          try {
+            const holdersResp = await fetch(`${API_BASE}/api/rest/v1/explorer/contracts/${addr}/holders`);
+            if (holdersResp.ok) {
+              const holdersData = await holdersResp.json();
+              if (holdersData.holders && holdersData.holders.length > 0) {
+                setHolders(holdersData.holders.map((h: any) => ({
+                  address: h.address,
+                  balance: `${Number(h.balance).toLocaleString()} ${data.symbol || "tokens"}`,
+                  share: Number(h.share || 0),
+                })));
+              }
+            }
+          } catch (e) {
+            console.warn("Failed to fetch CW-20 holders", e);
+          }
+        }
+
         // Fetch verification state and schemas
         try {
           const verifyResp = await fetch(`${API_BASE}/api/rest/v1/explorer/cosmwasm/codes/${contractData.codeId}`);
@@ -228,7 +247,7 @@ export default function ContractDetailPage({ params }: Props) {
     } else {
       setQueryJSON("{\n  \"token_info\": {}\n}");
       setExecJSON("{\n  \"transfer\": {\n    \"recipient\": \"sovereign1address1\",\n    \"amount\": \"1000000\"\n  }\n}");
-      setHolders([
+      setHolders(prev => prev.length > 0 ? prev : [
         { address: "sovereign1address0", balance: "7,500,000 SLT", share: 75 },
         { address: "sovereign1address1", balance: "2,000,000 SLT", share: 20 },
         { address: "sovereign1address2", balance: "500,000 SLT", share: 5 },

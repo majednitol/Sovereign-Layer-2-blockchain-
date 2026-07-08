@@ -51,7 +51,7 @@ function SearchResultsContent() {
   const addresses = results.filter(r => r.type === "address");
   const contracts = results.filter(r => r.type === "contract");
   const validators = results.filter(r => r.type === "validator");
-  const proposals = results.filter(r => r.type === "proposal" && !r.label.toLowerCase().includes("mock"));
+  const proposals = results.filter(r => r.type === "proposal");
   const nfts = results.filter(r => r.type === "nft");
 
   const getEntityLink = (item: SearchResultItem) => {

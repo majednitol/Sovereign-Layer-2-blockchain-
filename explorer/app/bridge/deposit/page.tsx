@@ -30,7 +30,18 @@ export default function DepositPage() {
         if (resp.ok) {
           const data = await resp.json();
           if (data.deposits) {
-            setDeposits(data.deposits);
+            setDeposits(data.deposits.map((d: any) => ({
+              nonce: Number(d.nonce),
+              bscHash: d.bscLockHash || d.bscHash || "",
+              sender: d.sender,
+              receiver: d.receiver,
+              amount: d.amount ? (Number(d.amount) / 1000000.0).toLocaleString() + " SOV" : "0 SOV",
+              height: Number(d.cosmosBlock || d.height || 0),
+              time: d.time || new Date().toISOString(),
+              confirmations: d.confirmations ? Number(d.confirmations) : (d.status === "minted" ? 15 : 4),
+              tier: d.amount && Number(d.amount) > 100000000000 ? "high-value" : "standard",
+              status: d.status,
+            })));
           }
         }
       } catch (err) {
@@ -41,7 +52,7 @@ export default function DepositPage() {
             bscHash: "0x3f5c9e2b1d7a8d9e8a7b6c5d4e3f281f449219d54e47fd8ad83861b464815d9d",
             sender: "0x3f5c9e2b1d7a8d9e",
             receiver: "sovereign1address0bech32mock",
-            amount: "15,000 uSLT",
+            amount: "15,000 SOV",
             height: 120530,
             time: new Date().toISOString(),
             confirmations: 15,
@@ -51,9 +62,9 @@ export default function DepositPage() {
           {
             nonce: 1046,
             bscHash: "0x8a7b6c5d4e3f281f449219d54e47fd8ad83861b464815d9d3f5c9e2b1d7a8d9e",
-            sender: "0x8a7b6c5d4e3f281f",
+            sender: "0x8a7b6c5d4e3f281",
             receiver: "sovereign1address0receiver3f5c9e",
-            amount: "250,000 uSLT",
+            amount: "250,000 SOV",
             height: 120545,
             time: new Date(Date.now() - 300000).toISOString(),
             confirmations: 32,

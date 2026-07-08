@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/gastracker/layout,_N_T_/gastracker/page,_N_T_/gastracker"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/gastracker/__PAGE__",
+    "/gastracker",
+    "/_index",
+    "/_head"
+  ]
+}
