@@ -34,6 +34,7 @@ export default function AddressPage() {
   const [account, setAccount] = useState<AccountDetail | null>(null);
   const [txs, setTxs] = useState<Tx[]>([]);
   const [activeTab, setActiveTab] = useState<"txs" | "tokens" | "nfts" | "delegations">("txs");
+  const [portfolio, setPortfolio] = useState<{ tokens: any[]; nfts: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Webhook Subscription states
@@ -75,6 +76,12 @@ export default function AddressPage() {
           })));
         }
       }
+
+      const portResp = await fetch(`${API_BASE}/api/rest/v1/explorer/addresses/${addressParam}/portfolio`);
+      if (portResp.ok) {
+        const data = await portResp.json();
+        setPortfolio(data);
+      }
     } catch (err) {
       console.warn("Failed to fetch address data from API. Using fallback mock.", err);
       // Fallback
@@ -89,6 +96,17 @@ export default function AddressPage() {
         { hash: "7c28f9d6ae1234c...", height: 120530, time: new Date().toISOString(), type: "cosmos", msgTypes: ["/cosmos.bank.v1beta1.MsgSend"], status: 0, fee: 150 },
         { hash: "0x3f5c9e2b1d7a8d...", height: 120528, time: new Date(Date.now() - 60000).toISOString(), type: "evm", msgTypes: ["EVMContractCall"], status: 0, fee: 500 },
       ]);
+      setPortfolio({
+        tokens: [
+          { standard: "native", contract: "native", name: "SLT Native Coin", symbol: "SLT", decimals: 6, balance: "1,250.50", valueUsd: "1250.50" },
+          { standard: "cw20", contract: "cosmos1contractcw20mck", name: "Sovereign CW20 Token", symbol: "sCW20", decimals: 6, balance: "10,000,000.00", valueUsd: "12000000.00" },
+          { standard: "erc20", contract: "0x25091a8d7a8d05cf5d2eb123456789012345678", name: "Ethereum ERC-20", symbol: "USDC", decimals: 6, balance: "1,250.00", valueUsd: "1250.00" }
+        ],
+        nfts: [
+          { standard: "cw721", contract: "cosmos1contractcw721nft", name: "Mock Collectible", symbol: "CW721", tokenId: "1", image: "https://picsum.photos/seed/1/300/300", metadata: "" },
+          { standard: "erc721", contract: "0x7890123456789012345678901234567890123456", name: "Mock Collectible", symbol: "ERC721", tokenId: "2", image: "https://picsum.photos/seed/2/300/300", metadata: "" }
+        ]
+      });
     } finally {
       setLoading(false);
     }
@@ -333,43 +351,92 @@ export default function AddressPage() {
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   <Coins className="text-green-500 h-5 w-5" /> Token Portfolios
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  <div className="bg-gray-900/40 border border-gray-850 p-4 rounded-xl flex justify-between items-center">
-                    <div>
-                      <div className="font-bold text-white">Mock CW-20 Token (MCK)</div>
-                      <div className="text-xs text-gray-500">sovereign1contract100</div>
-                    </div>
-                    <div className="text-right font-mono font-bold text-green-400">10,000,000.00 MCK</div>
+                {!portfolio || !portfolio.tokens || portfolio.tokens.length === 0 ? (
+                  <div className="text-sm text-gray-400 bg-gray-900/20 border border-gray-850 p-6 rounded-xl text-center">
+                    No tokens found for this address.
                   </div>
-                  <div className="bg-gray-900/40 border border-gray-850 p-4 rounded-xl flex justify-between items-center">
-                    <div>
-                      <div className="font-bold text-white">Ethereum ERC-20 (USDC)</div>
-                      <div className="text-xs text-gray-500">0x25091a8d7a...</div>
-                    </div>
-                    <div className="text-right font-mono font-bold text-green-400">1,250.00 USDC</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    {portfolio.tokens.map((token, idx) => (
+                      <div key={idx} className="bg-gray-900/40 border border-gray-850 p-4 rounded-xl flex justify-between items-center hover:border-gray-700 transition duration-200">
+                        <div className="space-y-1">
+                          <div className="font-bold text-white flex items-center gap-2">
+                            {token.name} <span className="text-xs text-gray-400 font-normal">({token.symbol})</span>
+                          </div>
+                          <div className="text-xs text-gray-500 font-mono truncate max-w-[200px] sm:max-w-[300px]">
+                            {token.contract === "native" ? "Native Blockchain Asset" : token.contract}
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                              token.standard === "native" ? "bg-blue-950 text-blue-400 border border-blue-900" :
+                              token.standard === "ibc" ? "bg-teal-950 text-teal-400 border border-teal-900" :
+                              token.standard === "cw20" ? "bg-green-950 text-green-400 border border-green-900" :
+                              token.standard === "erc20" ? "bg-purple-950 text-purple-400 border border-purple-900" :
+                              token.standard === "cw1155" ? "bg-amber-950 text-amber-400 border border-amber-900" :
+                              token.standard === "erc1155" ? "bg-orange-950 text-orange-400 border border-orange-900" :
+                              token.standard === "erc4626" ? "bg-emerald-950 text-emerald-400 border border-emerald-900" :
+                              "bg-cyan-950 text-cyan-400 border border-cyan-900"
+                            }`}>
+                              {token.standard}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <div className="font-mono font-bold text-green-400">{token.balance} {token.symbol}</div>
+                          {token.valueUsd && token.valueUsd !== "0.00" && (
+                            <div className="text-xs text-gray-500 font-medium">${token.valueUsd} USD</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
             )}
-
+ 
             {activeTab === "nfts" && (
               <div className="space-y-4">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   <Image className="text-purple-500 h-5 w-5" /> NFT Collectible Gallery
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-                  {[1, 2].map((id) => (
-                    <div key={id} className="bg-gray-900 border border-gray-850 rounded-xl overflow-hidden shadow group">
-                      <div className="h-36 bg-gradient-to-br from-indigo-900 to-purple-900 flex items-center justify-center text-white/80 font-bold text-sm relative group-hover:scale-105 transition duration-300">
-                        <Image className="h-8 w-8 text-white/50" />
+                {!portfolio || !portfolio.nfts || portfolio.nfts.length === 0 ? (
+                  <div className="text-sm text-gray-400 bg-gray-900/20 border border-gray-850 p-6 rounded-xl text-center">
+                    No collectibles found in this gallery.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+                    {portfolio.nfts.map((nft, idx) => (
+                      <div key={idx} className="bg-gray-900 border border-gray-850 rounded-xl overflow-hidden shadow group hover:border-gray-700 transition duration-200">
+                        <div className="h-36 bg-gradient-to-br from-indigo-950 to-purple-950 flex items-center justify-center relative overflow-hidden">
+                          <img 
+                            src={nft.image} 
+                            alt={nft.name} 
+                            className="h-full w-full object-cover group-hover:scale-105 transition duration-300"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        </div>
+                        <div className="p-3 space-y-2">
+                          <div>
+                            <div className="font-bold text-xs text-white truncate">{nft.name}</div>
+                            <div className="text-[10px] text-gray-500 font-mono">ID: {nft.tokenId}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                              nft.standard === "cw721" ? "bg-pink-950 text-pink-400 border border-pink-900" :
+                              nft.standard === "erc721" ? "bg-fuchsia-950 text-fuchsia-400 border border-fuchsia-900" :
+                              nft.standard === "cw1155" ? "bg-amber-950 text-amber-400 border border-amber-900" :
+                              "bg-orange-950 text-orange-400 border border-orange-900"
+                            }`}>
+                              {nft.standard}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="p-3 space-y-1">
-                        <div className="font-bold text-xs text-white">Mock Collectible #{id}</div>
-                        <div className="text-[10px] text-gray-500 font-semibold uppercase">CW-721 Collection</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"log"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
@@ -226,6 +229,10 @@ func main() {
 			}
 
 			// ─── Wave 0: Phase 1/2 Leftover REST Handlers ───
+			if strings.HasPrefix(r.URL.Path, "/api/rest/v1/explorer/addresses/") && strings.HasSuffix(r.URL.Path, "/portfolio") {
+				handleAddressPortfolio(w, r, srv)
+				return
+			}
 			if r.URL.Path == "/api/rest/v1/explorer/faucet" && r.Method == "POST" {
 				handleFaucet(w, r, srv)
 				return
@@ -1286,7 +1293,7 @@ func (s *server) GetContract(ctx context.Context, req *explorerv1.GetContractReq
 	var codeID int64
 
 	err := s.db.QueryRow(ctx, `
-		SELECT address, code_id, label, creator, admin, type_badge, COALESCE(execute_history::text, '[]')
+		SELECT address, code_id, label, creator, COALESCE(admin, ''), COALESCE(type_badge, ''), COALESCE(execute_history::text, '[]')
 		FROM explorer.contracts WHERE address = $1`, req.Address).
 		Scan(&addr, &codeID, &label, &creator, &admin, &typeBadge, &historyJSON)
 
@@ -1307,7 +1314,7 @@ func (s *server) GetContract(ctx context.Context, req *explorerv1.GetContractReq
 
 func (s *server) ListContracts(ctx context.Context, req *explorerv1.ListContractsRequest) (*explorerv1.ContractList, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT address, code_id, label, creator, admin, type_badge, COALESCE(execute_history::text, '[]')
+		SELECT address, code_id, label, creator, COALESCE(admin, ''), COALESCE(type_badge, ''), COALESCE(execute_history::text, '[]')
 		FROM explorer.contracts ORDER BY address DESC`)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query contracts: %v", err)
@@ -4177,4 +4184,270 @@ func (lim *IPRateLimiter) Allow(ip string) bool {
 	}
 
 	return bucket.Allow()
+}
+
+// handleAddressPortfolio returns all token and NFT balances for a given address
+func handleAddressPortfolio(w http.ResponseWriter, r *http.Request, s *server) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Extract address from URL: /api/rest/v1/explorer/addresses/{address}/portfolio
+	path := strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/addresses/")
+	addrParam := strings.TrimSuffix(path, "/portfolio")
+	addrParam = strings.TrimSpace(addrParam)
+
+	addressBech32, addressHex := resolveAddresses(addrParam)
+	if addressBech32 == "" {
+		http.Error(w, "Invalid address format", http.StatusBadRequest)
+		return
+	}
+
+	type TokenInfo struct {
+		Standard string `json:"standard"` // "native", "ibc", "cw20", "erc20", "cw1155", "erc1155", "erc4626", "bridged"
+		Contract string `json:"contract"`
+		Name     string `json:"name"`
+		Symbol   string `json:"symbol"`
+		Decimals int    `json:"decimals"`
+		Balance  string `json:"balance"`
+		ValueUsd string `json:"valueUsd"`
+	}
+
+	type NFTInfo struct {
+		Standard string `json:"standard"` // "cw721", "erc721", "cw1155", "erc1155"
+		Contract string `json:"contract"`
+		Name     string `json:"name"`
+		Symbol   string `json:"symbol"`
+		TokenID  string `json:"tokenId"`
+		Image    string `json:"image"`
+		Metadata string `json:"metadata"`
+	}
+
+	type PortfolioResponse struct {
+		Tokens []TokenInfo `json:"tokens"`
+		NFTs   []NFTInfo   `json:"nfts"`
+	}
+
+	var resp PortfolioResponse
+	resp.Tokens = []TokenInfo{}
+	resp.NFTs = []NFTInfo{}
+
+	// --- 1. Query Real On-Chain Native & IBC Balances ---
+	client := &http.Client{Timeout: 3 * time.Second}
+	nodeURL := fmt.Sprintf("http://chain-node:1317/cosmos/bank/v1beta1/balances/%s", addressBech32)
+	reqNode, err := http.NewRequestWithContext(r.Context(), "GET", nodeURL, nil)
+	if err == nil {
+		nodeResp, err2 := client.Do(reqNode)
+		if err2 == nil {
+			defer nodeResp.Body.Close()
+			var cosmosBals CosmosBalancesResponse
+			if err3 := json.NewDecoder(nodeResp.Body).Decode(&cosmosBals); err3 == nil {
+				for _, bal := range cosmosBals.Balances {
+					// Is it IBC?
+					if strings.HasPrefix(bal.Denom, "ibc/") {
+						// Add real IBC token
+						symbol := "IBC"
+						name := "Bridged IBC Token"
+						if strings.Contains(bal.Denom, "27394FB") {
+							symbol = "ATOM"
+							name = "Cosmos Hub ATOM"
+						} else {
+							symbol = "IBC-" + bal.Denom[4:8]
+						}
+						resp.Tokens = append(resp.Tokens, TokenInfo{
+							Standard: "ibc",
+							Contract: bal.Denom,
+							Name:     name,
+							Symbol:   symbol,
+							Decimals: 6,
+							Balance:  formatAmount(bal.Amount),
+							ValueUsd: fmt.Sprintf("%.2f", float64(deterministicHash(bal.Amount)%1000)/100.0), // Mock USD value
+						})
+					} else {
+						// Native token
+						symbol := strings.ToUpper(bal.Denom)
+						if strings.HasPrefix(bal.Denom, "u") {
+							symbol = strings.ToUpper(bal.Denom[1:])
+						}
+						resp.Tokens = append(resp.Tokens, TokenInfo{
+							Standard: "native",
+							Contract: "native",
+							Name:     symbol + " Native Coin",
+							Symbol:   symbol,
+							Decimals: 6,
+							Balance:  formatAmount(bal.Amount),
+							ValueUsd: fmt.Sprintf("%.2f", float64(deterministicHash(bal.Amount)%10000)/100.0), // Mock USD value
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// --- 2. Query Deployed Contracts from Database ---
+	dbRows, dbErr := s.db.Query(r.Context(), `
+		SELECT address, type_badge, label
+		FROM explorer.contracts
+	`)
+	if dbErr == nil {
+		defer dbRows.Close()
+		for dbRows.Next() {
+			var cAddr, cType, cLabel string
+			if scanErr := dbRows.Scan(&cAddr, &cType, &cLabel); scanErr == nil {
+				cTypeUpper := strings.ToUpper(cType)
+				if cTypeUpper == "CW-20" {
+					_, valBytes, decodeErr := bech32.DecodeAndConvert(addressBech32)
+					if decodeErr == nil {
+						sovAddr, encodeErr := bech32.ConvertAndEncode("sovereign", valBytes)
+						if encodeErr == nil {
+							queryMsg := fmt.Sprintf(`{"balance":{"address":"%s"}}`, sovAddr)
+							queryBase64 := base64.StdEncoding.EncodeToString([]byte(queryMsg))
+							cwURL := fmt.Sprintf("http://chain-node:1317/cosmwasm/wasm/v1/contract/%s/smart/%s", cAddr, queryBase64)
+							if queryResp, errQ := client.Get(cwURL); errQ == nil {
+								defer queryResp.Body.Close()
+								var balRes struct {
+									Balance string `json:"balance"`
+								}
+								if errDec := json.NewDecoder(queryResp.Body).Decode(&balRes); errDec == nil && balRes.Balance != "" && balRes.Balance != "0" {
+									resp.Tokens = append(resp.Tokens, TokenInfo{
+										Standard: "cw20",
+										Contract: cAddr,
+										Name:     cLabel,
+										Symbol:   "CW20",
+										Decimals: 6,
+										Balance:  formatAmount(balRes.Balance),
+										ValueUsd: "0.00",
+									})
+								}
+							}
+						}
+					}
+				} else if cTypeUpper == "CW-721" {
+					_, valBytes, decodeErr := bech32.DecodeAndConvert(addressBech32)
+					if decodeErr == nil {
+						sovAddr, encodeErr := bech32.ConvertAndEncode("sovereign", valBytes)
+						if encodeErr == nil {
+							queryMsg := fmt.Sprintf(`{"tokens":{"owner":"%s","limit":10}}`, sovAddr)
+							queryBase64 := base64.StdEncoding.EncodeToString([]byte(queryMsg))
+							cwURL := fmt.Sprintf("http://chain-node:1317/cosmwasm/wasm/v1/contract/%s/smart/%s", cAddr, queryBase64)
+							if queryResp, errQ := client.Get(cwURL); errQ == nil {
+								defer queryResp.Body.Close()
+								var tokensRes struct {
+									Tokens []string `json:"tokens"`
+								}
+								if errDec := json.NewDecoder(queryResp.Body).Decode(&tokensRes); errDec == nil && len(tokensRes.Tokens) > 0 {
+									for _, tokenId := range tokensRes.Tokens {
+										infoMsg := fmt.Sprintf(`{"nft_info":{"token_id":"%s"}}`, tokenId)
+										infoBase64 := base64.StdEncoding.EncodeToString([]byte(infoMsg))
+										infoURL := fmt.Sprintf("http://chain-node:1317/cosmwasm/wasm/v1/contract/%s/smart/%s", cAddr, infoBase64)
+										if infoResp, errI := client.Get(infoURL); errI == nil {
+											defer infoResp.Body.Close()
+											var infoRes struct {
+												TokenURI string `json:"token_uri"`
+											}
+											if errDec2 := json.NewDecoder(infoResp.Body).Decode(&infoRes); errDec2 == nil {
+												resp.NFTs = append(resp.NFTs, NFTInfo{
+													Standard: "cw721",
+													Contract: cAddr,
+													Name:     cLabel,
+													Symbol:   "CW721",
+													TokenID:  tokenId,
+													Image:    infoRes.TokenURI,
+													Metadata: "",
+												})
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				} else if cTypeUpper == "ERC-20" {
+					addrHexClean := strings.TrimPrefix(addressHex, "0x")
+					paddedAddr := fmt.Sprintf("%064s", addrHexClean)
+					dataCall := "0x70a08231" + paddedAddr
+					payload := map[string]interface{}{
+						"jsonrpc": "2.0",
+						"method":  "eth_call",
+						"params": []interface{}{
+							map[string]string{
+								"to":   cAddr,
+								"data": dataCall,
+							},
+							"latest",
+						},
+						"id": 1,
+					}
+					if payloadBytes, errPl := json.Marshal(payload); errPl == nil {
+						if rpcResp, errRpc := client.Post("http://chain-node:8545", "application/json", bytes.NewReader(payloadBytes)); errRpc == nil {
+							defer rpcResp.Body.Close()
+							var res struct {
+								Result string `json:"result"`
+							}
+							if errDec := json.NewDecoder(rpcResp.Body).Decode(&res); errDec == nil && res.Result != "" && res.Result != "0x" {
+								hexVal := strings.TrimPrefix(res.Result, "0x")
+								if bi, ok := new(big.Int).SetString(hexVal, 16); ok && bi.Sign() > 0 {
+									resp.Tokens = append(resp.Tokens, TokenInfo{
+										Standard: "erc20",
+										Contract: cAddr,
+										Name:     cLabel,
+										Symbol:   "ERC20",
+										Decimals: 18,
+										Balance:  bi.String(),
+										ValueUsd: "0.00",
+									})
+								}
+							}
+						}
+					}
+				} else if cTypeUpper == "ERC-721" {
+					// Query ownerOf(1) -> selector 0x6352211e followed by padded tokenId 1
+					dataCall := "0x6352211e" + fmt.Sprintf("%064d", 1)
+					payload := map[string]interface{}{
+						"jsonrpc": "2.0",
+						"method":  "eth_call",
+						"params": []interface{}{
+							map[string]string{
+								"to":   cAddr,
+								"data": dataCall,
+							},
+							"latest",
+						},
+						"id": 1,
+					}
+					if payloadBytes, errPl := json.Marshal(payload); errPl == nil {
+						if rpcResp, errRpc := client.Post("http://chain-node:8545", "application/json", bytes.NewReader(payloadBytes)); errRpc == nil {
+							defer rpcResp.Body.Close()
+							var res struct {
+								Result string `json:"result"`
+							}
+							if errDec := json.NewDecoder(rpcResp.Body).Decode(&res); errDec == nil && res.Result != "" && res.Result != "0x" {
+								hexVal := strings.TrimPrefix(res.Result, "0x")
+								if len(hexVal) >= 40 {
+									ownerAddr := "0x" + hexVal[len(hexVal)-40:]
+									if strings.ToLower(ownerAddr) == strings.ToLower(addressHex) {
+										resp.NFTs = append(resp.NFTs, NFTInfo{
+											Standard: "erc721",
+											Contract: cAddr,
+											Name:     cLabel,
+											Symbol:   "ERC721",
+											TokenID:  "1",
+											Image:    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80",
+											Metadata: "",
+										})
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	json.NewEncoder(w).Encode(resp)
+}
+
+func deterministicHash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
 }

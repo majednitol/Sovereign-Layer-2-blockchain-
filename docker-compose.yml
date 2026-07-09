@@ -266,7 +266,6 @@ services:
 
   # --- Unified Custom Explorer: API Server ---
   explorer-api:
-    platform: linux/amd64
     build:
       context: .
       dockerfile: ./explorer-api/Dockerfile

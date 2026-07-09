@@ -1,0 +1,15 @@
+[package]
+name = "cw721-nft"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = "1.5.0"
+cw721-base = { version = "0.18.0", features = ["library"] }
+schemars = "0.8.15"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+zeroize = "=1.7.0"
+base64ct = "=1.6.0"

@@ -4,6 +4,9 @@ members = [
     "treasury",
     "reserve-fund",
     "governance",
-    "cw-counter"
+    "cw-counter",
+    "cw20",
+    "cw721",
+    "cw1155"
 ]
 resolver = "2"

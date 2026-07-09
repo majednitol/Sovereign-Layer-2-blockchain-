@@ -1,0 +1,17 @@
+[package]
+name = "cw1155-multi"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = "1.5.0"
+cw1155 = "0.16.0"
+schemars = "0.8.15"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+cw-storage-plus = "1.2.0"
+thiserror = "1.0"
+zeroize = "=1.7.0"
+base64ct = "=1.6.0"
