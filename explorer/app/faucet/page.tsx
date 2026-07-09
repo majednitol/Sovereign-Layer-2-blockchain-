@@ -5,6 +5,13 @@ import Link from "next/link";
 import { Coins, CheckCircle, AlertCircle, RefreshCw, ArrowRight, Loader2 } from "lucide-react";
 import { useWalletStore } from "@/store/wallet";
 
+const formatSuccessMessage = (msg: string) => {
+  if (!msg) return "";
+  // Match any 64-character hex string, capturing the first 10 and last 10 characters
+  const hexRegex = /\b([a-fA-F0-9]{10})[a-fA-F0-9]{44}([a-fA-F0-9]{10})\b/;
+  return msg.replace(hexRegex, "$1...$2");
+};
+
 export default function FAUCETPage() {
   const { walletType, connected, address: walletAddress, connectWallet, disconnectWallet } = useWalletStore();
   
@@ -219,15 +226,18 @@ export default function FAUCETPage() {
             <div className="p-4 bg-green-950/20 border border-green-900 rounded-xl space-y-2 text-green-400">
               <div className="flex items-center space-x-2 font-bold">
                 <CheckCircle className="h-5 w-5" />
-                <span>{successMsg}</span>
+                <span>{formatSuccessMessage(successMsg)}</span>
               </div>
               {txHash && (
-                <p className="text-xs leading-normal">
-                  Transaction Hash:{" "}
-                  <Link href={`/txs/${txHash}`} className="underline font-mono text-green-300 break-all">
-                    {txHash}
+                <div className="pt-2">
+                  <Link 
+                    href={`/txs/${txHash}`}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-900/40 hover:bg-green-900/60 border border-green-800 text-green-300 hover:text-green-200 text-xs font-bold uppercase tracking-wider rounded-lg transition"
+                  >
+                    <span>View Transaction</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
-                </p>
+                </div>
               )}
             </div>
           )}

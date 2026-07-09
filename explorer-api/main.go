@@ -3126,14 +3126,14 @@ func handleStatsSummary(w http.ResponseWriter, r *http.Request, s *server) {
 	// Average block time (last 100 blocks)
 	_ = s.db.QueryRow(r.Context(), `
 		WITH recent AS (
-			SELECT time, LAG(time) OVER (ORDER BY height) AS prev_time
+			SELECT height, time, LAG(time) OVER (ORDER BY height) AS prev_time
 			FROM explorer.blocks
 			ORDER BY height DESC
 			LIMIT 100
 		)
 		SELECT COALESCE(AVG(EXTRACT(EPOCH FROM time - prev_time)), 3.0)
 		FROM recent
-		WHERE prev_time IS NOT NULL
+		WHERE prev_time IS NOT NULL AND height > 2
 	`).Scan(&stats.AvgBlockTimeSec)
 
 	// Live TPS (last 60 seconds)

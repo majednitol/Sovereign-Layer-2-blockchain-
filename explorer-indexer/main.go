@@ -65,11 +65,13 @@ var (
 )
 
 type Config struct {
-	ReadDBURL      string
-	NatsURL        string
-	CometBFTURL    string
-	BSCRPCURL      string
-	PollIntervalMS int
+	ReadDBURL              string
+	NatsURL                string
+	CometBFTURL            string
+	BSCRPCURL              string
+	PollIntervalMS         int
+	FeeCollectorCosmosAddr string
+	FeeCollectorEvmAddr    string
 }
 
 func main() {
@@ -79,6 +81,8 @@ func main() {
 	flag.StringVar(&cfg.CometBFTURL, "cometbft-url", os.Getenv("COMETBFT_RPC_URL"), "CometBFT RPC URL")
 	flag.StringVar(&cfg.BSCRPCURL, "bsc-rpc-url", os.Getenv("BSC_RPC_URL"), "BSC RPC URL")
 	flag.IntVar(&cfg.PollIntervalMS, "poll-interval-ms", 500, "Block polling interval in ms")
+	flag.StringVar(&cfg.FeeCollectorCosmosAddr, "fee-collector-cosmos-addr", os.Getenv("FEE_COLLECTOR_COSMOS_ADDRESS"), "Fee Collector Cosmos Address")
+	flag.StringVar(&cfg.FeeCollectorEvmAddr, "fee-collector-evm-addr", os.Getenv("FEE_COLLECTOR_EVM_ADDRESS"), "Fee Collector EVM Address")
 	flag.Parse()
 
 	if cfg.ReadDBURL == "" {
@@ -89,6 +93,12 @@ func main() {
 	}
 	if cfg.CometBFTURL == "" {
 		cfg.CometBFTURL = "http://chain-node:26657"
+	}
+	if cfg.FeeCollectorCosmosAddr == "" {
+		cfg.FeeCollectorCosmosAddr = "cosmos17xpfvakm2amg962yls6f84z3kell8c5lserqta"
+	}
+	if cfg.FeeCollectorEvmAddr == "" {
+		cfg.FeeCollectorEvmAddr = "0xf1829676db577682e944fc3493d451b67ff3e29f"
 	}
 
 	log.Printf("Starting Explorer Indexer...")
@@ -225,7 +235,7 @@ func main() {
 				if latestHeight > lastProcessedHeight {
 					for h := lastProcessedHeight + 1; h <= latestHeight; h++ {
 						log.Printf("Explorer indexing height %d...", h)
-						err := indexBlock(ctx, db, nc, cfg.CometBFTURL, h)
+						err := indexBlock(ctx, db, nc, &cfg, h)
 						if err != nil {
 							log.Printf("Error indexing block at height %d: %v", h, err)
 							break
@@ -303,8 +313,8 @@ func getAttr(event Event, key string) string {
 	return ""
 }
 
-func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cometBFTURL string, height int64) error {
-	resp, err := http.Get(fmt.Sprintf("%s/block?height=%d", cometBFTURL, height))
+func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cfg *Config, height int64) error {
+	resp, err := http.Get(fmt.Sprintf("%s/block?height=%d", cfg.CometBFTURL, height))
 	if err != nil {
 		return err
 	}
@@ -347,7 +357,7 @@ func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cometBFTUR
 
 	// Fetch block_results for real tx metadata (gas, status, events)
 	var blockResults BlockResults
-	brResp, brErr := http.Get(fmt.Sprintf("%s/block_results?height=%d", cometBFTURL, height))
+	brResp, brErr := http.Get(fmt.Sprintf("%s/block_results?height=%d", cfg.CometBFTURL, height))
 	if brErr == nil {
 		defer brResp.Body.Close()
 		brBody, brReadErr := io.ReadAll(brResp.Body)
@@ -425,20 +435,44 @@ func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cometBFTUR
 						}
 					}
 				case "transfer":
+					var tempSender, tempReceiver, tempAmount string
 					for _, attr := range ev.Attributes {
 						switch attr.Key {
 						case "sender":
-							if sender == "" {
-								sender = attr.Value
+							if tempSender == "" {
+								tempSender = attr.Value
 							}
 						case "recipient":
-							if receiver == "" {
-								receiver = attr.Value
+							if tempReceiver == "" {
+								tempReceiver = attr.Value
 							}
 						case "amount":
-							if amount == "" {
-								amount = attr.Value
+							if tempAmount == "" {
+								tempAmount = attr.Value
 							}
+						}
+					}
+					isFeeCollector := strings.HasSuffix(tempReceiver, cfg.FeeCollectorCosmosAddr) ||
+						strings.ToLower(tempReceiver) == strings.ToLower(cfg.FeeCollectorEvmAddr)
+					if isFeeCollector {
+						if sender == "" {
+							sender = tempSender
+						}
+						if receiver == "" {
+							receiver = tempReceiver
+						}
+						if amount == "" {
+							amount = tempAmount
+						}
+					} else {
+						if tempSender != "" {
+							sender = tempSender
+						}
+						if tempReceiver != "" {
+							receiver = tempReceiver
+						}
+						if tempAmount != "" {
+							amount = tempAmount
 						}
 					}
 				case "tx":
@@ -565,7 +599,7 @@ func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cometBFTUR
 	)
 
 	// Index module events
-	err = indexModuleEvents(ctx, tx, height, blockTime, cometBFTURL, &blockResults)
+	err = indexModuleEvents(ctx, tx, height, blockTime, cfg.CometBFTURL, &blockResults)
 	if err != nil {
 		return err
 	}

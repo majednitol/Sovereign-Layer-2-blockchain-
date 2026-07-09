@@ -158,7 +158,7 @@ func handleFaucet(w http.ResponseWriter, r *http.Request) {
 		"--broadcast-mode", "sync",
 		"--gas", "auto",
 		"--gas-adjustment", "1.5",
-		"--gas-prices", "0atoken",
+		"--gas-prices", "1000000000atoken",
 		"--output", "json",
 	}
 	if seqErr == nil {

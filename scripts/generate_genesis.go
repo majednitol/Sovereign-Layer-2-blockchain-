@@ -590,7 +590,7 @@ func buildAppState() map[string]interface{} {
 			params["elasticity_multiplier"] = 2
 			params["enable_height"] = "0"
 			params["base_fee"] = "1000000000"
-			params["min_gas_price"] = "0.000000000000000000"
+			params["min_gas_price"] = "0.025000000000000000"
 			params["min_gas_multiplier"] = "0.500000000000000000"
 		}
 		feemarket["block_gas"] = "0"

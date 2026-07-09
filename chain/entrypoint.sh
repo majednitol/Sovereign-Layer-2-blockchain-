@@ -49,7 +49,7 @@ if [ ! -f "${CHAIN_HOME}/config/config.toml" ]; then
 
   echo "Generating validator genesis transaction (gentx)..."
   # Generate gentx (delegate 400,000,000 TOKEN = 400,000,000,000,000 utoken to validator)
-  chaind genesis gentx validator 400000000000000utoken --keyring-backend test --chain-id "${CHAIN_ID}" --home "${CHAIN_HOME}"
+  chaind genesis gentx validator 400000000000000utoken --fees 5000atoken --keyring-backend test --chain-id "${CHAIN_ID}" --home "${CHAIN_HOME}"
 
   echo "Collecting gentxs..."
   # Collect gentxs into genesis.json
@@ -69,7 +69,7 @@ if [ -f "${APP_TOML}" ]; then
   sed -i 's|^address = "127.0.0.1:8545"|address = "0.0.0.0:8545"|' "${APP_TOML}"
   sed -i 's|^ws-address = "127.0.0.1:8546"|ws-address = "0.0.0.0:8546"|' "${APP_TOML}"
   # Set minimum gas prices
-  sed -i 's|^minimum-gas-prices =.*|minimum-gas-prices = "0atoken"|' "${APP_TOML}"
+  sed -i 's|^minimum-gas-prices =.*|minimum-gas-prices = "0.025usov,0atoken"|' "${APP_TOML}"
   # Enable EVM indexer for transaction receipts/queries
   sed -i 's|^enable-indexer = false|enable-indexer = true|' "${APP_TOML}"
   # Enable app-side mempool (required when mempool.type = "app" in config.toml)
@@ -95,6 +95,9 @@ if [ -f "${CONFIG_TOML}" ]; then
   sed -i 's|^cors_allowed_origins = \[\]|cors_allowed_origins = ["*"]|' "${CONFIG_TOML}"
   # EVM mempool requires CometBFT mempool.type = "app" (not the default "flood")
   sed -i 's|^type = "flood"|type = "app"|' "${CONFIG_TOML}"
+  # Optimize block commit settings for production-grade speed and stability (Cosmos SDK v0.54)
+  sed -i 's|^timeout_commit =.*|timeout_commit = "1s"|' "${CONFIG_TOML}"
+  sed -i 's|^skip_timeout_commit =.*|skip_timeout_commit = false|' "${CONFIG_TOML}"
 fi
 
 # Extract chain ID dynamically from genesis.json if it exists

@@ -258,6 +258,8 @@ services:
       COMET_RPC: "http://chain-node:26657"
       EVM_RPC: "http://chain-node:8545"
       BSC_RPC: "https://bsc-dataseed.binance.org"
+      FEE_COLLECTOR_COSMOS_ADDRESS: "cosmos17xpfvakm2amg962yls6f84z3kell8c5lserqta"
+      FEE_COLLECTOR_EVM_ADDRESS: "0xf1829676db577682e944fc3493d451b67ff3e29f"
     networks:
       - sovereign-net
     restart: unless-stopped

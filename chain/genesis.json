@@ -179,8 +179,8 @@
         "elasticity_multiplier": 2,
         "enable_height": "0",
         "min_gas_multiplier": "0.500000000000000000",
-        "min_gas_price": "0.000000000000000000",
-        "no_base_fee": true
+        "min_gas_price": "0.025000000000000000",
+        "no_base_fee": false
       }
     },
     "genutil": {
