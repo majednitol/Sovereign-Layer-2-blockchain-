@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { QueryServiceClient, StreamServiceClient } from "@workspace/api-spec";
+import { QueryServiceClient, StreamServiceClient, StreamChainStatsRequest, ChainStatsEvent } from "@workspace/api-spec";
 import { transport, startStreamWithReconnect } from "../../config/grpc-client";
 
 
@@ -394,7 +394,7 @@ export default function Dashboard() {
     const interval = setInterval(fetchLiveData, 10000);
 
     // Connect to real-time stats stream via gRPC
-    const stream = startStreamWithReconnect(
+    const stream = startStreamWithReconnect<StreamChainStatsRequest, ChainStatsEvent>(
       (input, options) => streamClient.streamChainStats(input, options),
       {
         request: {},

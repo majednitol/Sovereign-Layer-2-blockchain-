@@ -23,3 +23,6 @@
 **/obj/
 **/*.test
 **/.git/
+**/node_modules/
+**/.next/
+**/dist/

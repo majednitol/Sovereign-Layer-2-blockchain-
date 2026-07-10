@@ -45,10 +45,10 @@ if [ ! -f "${CHAIN_HOME}/config/config.toml" ]; then
 
   echo "Funding validator, faucet and relayer accounts in genesis..."
   # Fund validator in genesis (500,000,000 CSOV = 500,000,000,000,000 ucsov, and 1,000,000 ESOV for EVM)
-  chaind genesis add-genesis-account "${VAL_ADDR}" 500000000000000ucsov,1000000000000000000000000aesov --home "${CHAIN_HOME}"
+  chaind genesis add-genesis-account "${VAL_ADDR}" 1000000000000000000000000aesov,500000000000000ucsov --home "${CHAIN_HOME}"
 
   # Fund faucet in genesis (1,000,000,000 WSOV = 1,000,000,000,000,000 uwsov, 1,000,000,000 CSOV = 1,000,000,000,000,000 ucsov for gas, and 1,000,000 ESOV for EVM)
-  chaind genesis add-genesis-account "${FAUCET_ADDR}" 1000000000000000uwsov,1000000000000000ucsov,1000000000000000000000000aesov --home "${CHAIN_HOME}"
+  chaind genesis add-genesis-account "${FAUCET_ADDR}" 1000000000000000000000000aesov,1000000000000000ucsov,1000000000000000uwsov --home "${CHAIN_HOME}"
 
   # Extract relayer address from genesis and fund it
   RELAYER_ADDR=$(grep -A 2 '"relayers"' "${CHAIN_HOME}/config/genesis.json" | grep '"address"' | head -n 1 | cut -d '"' -f 4 || true)
@@ -79,7 +79,7 @@ if [ -f "${APP_TOML}" ]; then
   sed -i 's|^address = "127.0.0.1:8545"|address = "0.0.0.0:8545"|' "${APP_TOML}"
   sed -i 's|^ws-address = "127.0.0.1:8546"|ws-address = "0.0.0.0:8546"|' "${APP_TOML}"
   # Set minimum gas prices
-  sed -i 's|^minimum-gas-prices =.*|minimum-gas-prices = "0.025ucsov,0aesov"|' "${APP_TOML}"
+  sed -i 's|^minimum-gas-prices =.*|minimum-gas-prices = "0aesov,0.025ucsov"|' "${APP_TOML}"
   # Enable EVM indexer for transaction receipts/queries
   sed -i 's|^enable-indexer = false|enable-indexer = true|' "${APP_TOML}"
   # Enable app-side mempool (required when mempool.type = "app" in config.toml)
