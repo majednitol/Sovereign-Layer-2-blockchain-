@@ -261,6 +261,55 @@ func main() {
 				handleCw20Holders(w, r, srv)
 				return
 			}
+
+			// ─── Phase 2 REST Routes ───
+			if strings.HasPrefix(r.URL.Path, "/api/rest/v1/explorer/tokens/evm/") {
+				path := strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/tokens/evm/")
+				if strings.HasSuffix(path, "/transfers") {
+					handleEvmTokenTransfers(w, r, srv)
+					return
+				}
+				if strings.HasSuffix(path, "/holders") {
+					handleEvmTokenHolders(w, r, srv)
+					return
+				}
+				handleEvmTokenDetail(w, r, srv)
+				return
+			}
+			if strings.HasPrefix(r.URL.Path, "/api/rest/v1/explorer/tokens/cw20/") {
+				path := strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/tokens/cw20/")
+				if strings.HasSuffix(path, "/transfers") {
+					handleCwTokenTransfers(w, r, srv)
+					return
+				}
+				if strings.HasSuffix(path, "/holders") {
+					handleCwTokenHolders(w, r, srv)
+					return
+				}
+				handleCwTokenDetail(w, r, srv)
+				return
+			}
+			if strings.HasPrefix(r.URL.Path, "/api/rest/v1/explorer/nfts/evm/") {
+				handleEvmNFTDetail(w, r, srv)
+				return
+			}
+			if strings.HasPrefix(r.URL.Path, "/api/rest/v1/explorer/nfts/cw721/") {
+				handleCwNFTDetail(w, r, srv)
+				return
+			}
+			if strings.HasPrefix(r.URL.Path, "/api/rest/v1/explorer/vaults/evm/") {
+				handleEvmVaultDetail(w, r, srv)
+				return
+			}
+			if r.URL.Path == "/api/rest/v1/explorer/contracts/deployments" {
+				handleContractDeployments(w, r, srv)
+				return
+			}
+			if strings.HasPrefix(r.URL.Path, "/api/rest/v1/explorer/txs/") && strings.HasSuffix(r.URL.Path, "/transfers") {
+				handleTxTransfers(w, r, srv)
+				return
+			}
+
 			if strings.HasPrefix(r.URL.Path, "/api/rest/v1/explorer/governance/proposals/") && strings.HasSuffix(r.URL.Path, "/constitution-check") {
 				handleGovernanceConstitutionCheck(w, r, srv)
 				return
@@ -1583,58 +1632,164 @@ func (s *server) ListIbcAssets(ctx context.Context, req *explorerv1.ListIbcAsset
 }
 
 func (s *server) GetCw20Token(ctx context.Context, req *explorerv1.GetCw20TokenRequest) (*explorerv1.Cw20TokenDetail, error) {
+	var decimals int
+	var name, symbol, totalSupply, minter, owner string
+	err := s.db.QueryRow(ctx, `
+		SELECT COALESCE(decimals, 6), COALESCE(token_name, ''), COALESCE(token_symbol, ''), 
+		       COALESCE(total_supply::TEXT, '0'), COALESCE(minter_address, ''), COALESCE(owner_address, '')
+		FROM explorer.contracts
+		WHERE address = $1`, req.Address,
+	).Scan(&decimals, &name, &symbol, &totalSupply, &minter, &owner)
+
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "CW-20 token not found: %v", err)
+	}
+
+	// Fetch transfers limit 50
+	tRows, err := s.db.Query(ctx, `
+		SELECT tx_hash, block_time, from_address, to_address, amount::TEXT
+		FROM explorer.cw_token_transfers
+		WHERE contract_address = $1
+		ORDER BY block_height DESC
+		LIMIT 50`, req.Address,
+	)
+	var transfers []*explorerv1.Cw20Transfer
+	if err == nil {
+		defer tRows.Close()
+		for tRows.Next() {
+			var txHash, from, to, amount string
+			var blockTime time.Time
+			if errScan := tRows.Scan(&txHash, &blockTime, &from, &to, &amount); errScan == nil {
+				transfers = append(transfers, &explorerv1.Cw20Transfer{
+					From:   from,
+					To:     to,
+					Amount: amount,
+					TxHash: txHash,
+					Time:   blockTime.Format(time.RFC3339),
+				})
+			}
+		}
+	}
+
+	// Fetch holders limit 50
+	hRows, err := s.db.Query(ctx, `
+		SELECT holder_address, balance::TEXT
+		FROM explorer.cw_token_holders
+		WHERE contract_address = $1
+		ORDER BY balance DESC
+		LIMIT 50`, req.Address,
+	)
+	var holders []*explorerv1.Cw20Holder
+	if err == nil {
+		defer hRows.Close()
+		for hRows.Next() {
+			var holderAddress, balance string
+			if errScan := hRows.Scan(&holderAddress, &balance); errScan == nil {
+				holders = append(holders, &explorerv1.Cw20Holder{
+					Address: holderAddress,
+					Balance: balance,
+				})
+			}
+		}
+	}
+
 	return &explorerv1.Cw20TokenDetail{
 		Address:     req.Address,
-		Name:        "Mock CosmWasm Token",
-		Symbol:      "MCK",
-		Decimals:    6,
-		TotalSupply: "10000000000000",
-		Balance:     "10000000",
-		Transfers: []*explorerv1.Cw20Transfer{
-			{
-				From:    "sovereign1address0",
-				To:      "sovereign1address1",
-				Amount:  "500000",
-				TxHash:  "mocktxhashcw20",
-				Time:    time.Now().Format(time.RFC3339),
-			},
-		},
-		Holders: []*explorerv1.Cw20Holder{
-			{Address: "sovereign1address0", Balance: "9000000"},
-			{Address: "sovereign1address1", Balance: "1000000"},
-		},
+		Name:        name,
+		Symbol:      symbol,
+		Decimals:    int32(decimals),
+		TotalSupply: totalSupply,
+		Balance:     "0",
+		Transfers:   transfers,
+		Holders:     holders,
 	}, nil
 }
 
 func (s *server) GetCw721Collection(ctx context.Context, req *explorerv1.GetCw721CollectionRequest) (*explorerv1.Cw721CollectionDetail, error) {
+	var name, symbol string
+	err := s.db.QueryRow(ctx, "SELECT COALESCE(token_name, ''), COALESCE(token_symbol, '') FROM explorer.contracts WHERE address = $1", req.Address).Scan(&name, &symbol)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "collection not found: %v", err)
+	}
+
+	rows, err := s.db.Query(ctx, "SELECT token_id, owner_address, COALESCE(token_uri, '') FROM explorer.cw_nft_ownership WHERE contract_address = $1", req.Address)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to query tokens: %v", err)
+	}
+	defer rows.Close()
+
+	var tokens []*explorerv1.Cw721TokenSummary
+	for rows.Next() {
+		var tokenID, owner, image string
+		if errScan := rows.Scan(&tokenID, &owner, &image); errScan == nil {
+			tokens = append(tokens, &explorerv1.Cw721TokenSummary{
+				TokenId: tokenID,
+				Owner:   owner,
+				Image:   image,
+			})
+		}
+	}
+
 	return &explorerv1.Cw721CollectionDetail{
 		Address:     req.Address,
-		Name:        "Mock CosmWasm NFT Collection",
-		Symbol:      "MNFT",
-		TotalTokens: 2,
-		Tokens: []*explorerv1.Cw721TokenSummary{
-			{TokenId: "1", Owner: "sovereign1address0", Image: "ipfs://mockimagehash1"},
-			{TokenId: "2", Owner: "sovereign1address1", Image: "ipfs://mockimagehash2"},
-		},
+		Name:        name,
+		Symbol:      symbol,
+		TotalTokens: int64(len(tokens)),
+		Tokens:      tokens,
 	}, nil
 }
 
 func (s *server) GetCw721Token(ctx context.Context, req *explorerv1.GetCw721TokenRequest) (*explorerv1.Cw721TokenDetail, error) {
+	var owner, tokenURI string
+	var metadata []byte
+	err := s.db.QueryRow(ctx, `
+		SELECT owner_address, COALESCE(token_uri, ''), metadata_json
+		FROM explorer.cw_nft_ownership
+		WHERE contract_address = $1 AND token_id = $2`, req.Address, req.TokenId,
+	).Scan(&owner, &tokenURI, &metadata)
+
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "token not found: %v", err)
+	}
+
+	rows, err := s.db.Query(ctx, `
+		SELECT tx_hash, block_time, from_address, to_address
+		FROM explorer.cw_nft_transfers
+		WHERE contract_address = $1 AND token_id = $2
+		ORDER BY block_height DESC
+		LIMIT 100`, req.Address, req.TokenId,
+	)
+
+	var transfers []*explorerv1.Cw721Transfer
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var txHash, from, to string
+			var blockTime time.Time
+			if errScan := rows.Scan(&txHash, &blockTime, &from, &to); errScan == nil {
+				transfers = append(transfers, &explorerv1.Cw721Transfer{
+					From:   from,
+					To:     to,
+					TxHash: txHash,
+					Time:   blockTime.Format(time.RFC3339),
+				})
+			}
+		}
+	}
+
+	metadataJSON := "{}"
+	if len(metadata) > 0 {
+		metadataJSON = string(metadata)
+	}
+
 	return &explorerv1.Cw721TokenDetail{
 		Address:      req.Address,
 		TokenId:      req.TokenId,
-		Owner:        "sovereign1address0",
-		Image:        "ipfs://mockimagehash1",
-		MetadataUri:  "ipfs://mockmetadatahash",
-		MetadataJson: `{"name":"Mock NFT #1","attributes":[]}`,
-		Transfers: []*explorerv1.Cw721Transfer{
-			{
-				From:   "sovereign1address1",
-				To:     "sovereign1address0",
-				TxHash: "mocktxhashcw721",
-				Time:   time.Now().Format(time.RFC3339),
-			},
-		},
+		Owner:        owner,
+		Image:        tokenURI,
+		MetadataUri:  tokenURI,
+		MetadataJson: metadataJSON,
+		Transfers:    transfers,
 	}, nil
 }
 
@@ -4451,3 +4606,885 @@ func deterministicHash(s string) uint32 {
 	h.Write([]byte(s))
 	return h.Sum32()
 }
+
+// ─── Phase 2 REST API Handlers ───
+
+func handleEvmTokenDetail(w http.ResponseWriter, r *http.Request, s *server) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.URL.Query().Get("download") == "true" {
+		w.Header().Set("Content-Disposition", "attachment; filename=token_evm.json")
+	}
+
+	addr := strings.ToLower(strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/tokens/evm/"))
+	
+	var (
+		decimals int
+		name, symbol, totalSupply, minter, owner, typeBadge, metadataStatus string
+		verified bool
+		holderCount int64
+		transferCount int64
+	)
+
+	err := s.db.QueryRow(r.Context(), `
+		SELECT COALESCE(decimals, 18), COALESCE(token_name, ''), COALESCE(token_symbol, ''), 
+		       COALESCE(total_supply::TEXT, '0'), COALESCE(minter_address, ''), COALESCE(owner_address, ''), 
+		       COALESCE(type_badge, 'EVM'), COALESCE(metadata_status, 'pending'), verified
+		FROM explorer.contracts
+		WHERE address = $1`, addr,
+	).Scan(&decimals, &name, &symbol, &totalSupply, &minter, &owner, &typeBadge, &metadataStatus, &verified)
+
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "token not found"})
+		return
+	}
+
+	_ = s.db.QueryRow(r.Context(), "SELECT COUNT(*) FROM explorer.evm_token_holders WHERE token_address = $1", addr).Scan(&holderCount)
+	_ = s.db.QueryRow(r.Context(), "SELECT COUNT(*) FROM explorer.evm_token_transfers WHERE token_address = $1 AND block_time > NOW() - INTERVAL '24 HOURS'", addr).Scan(&transferCount)
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"address":       addr,
+		"name":          name,
+		"symbol":        symbol,
+		"decimals":      decimals,
+		"totalSupply":   totalSupply,
+		"minterAddress": minter,
+		"ownerAddress":  owner,
+		"typeBadge":     typeBadge,
+		"verified":      verified,
+		"holderCount":   holderCount,
+		"transferCount": transferCount,
+		"status":        metadataStatus,
+	})
+}
+
+func handleEvmTokenTransfers(w http.ResponseWriter, r *http.Request, s *server) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.URL.Query().Get("download") == "true" {
+		w.Header().Set("Content-Disposition", "attachment; filename=transfers_evm.json")
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/tokens/evm/")
+	addr := strings.ToLower(strings.TrimSuffix(path, "/transfers"))
+
+	limit := 20
+	if l, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && l > 0 && l <= 100 {
+		limit = l
+	}
+
+	cursor := r.URL.Query().Get("cursor")
+	var cursorHeight int64 = 0
+	var cursorLogIdx int = 0
+	if cursor != "" {
+		if decoded, err := base64.StdEncoding.DecodeString(cursor); err == nil {
+			parts := strings.Split(string(decoded), ",")
+			if len(parts) == 2 {
+				h, _ := strconv.ParseInt(parts[0], 10, 64)
+				l, _ := strconv.Atoi(parts[1])
+				cursorHeight = h
+				cursorLogIdx = l
+			}
+		}
+	}
+
+	var rows pgx.Rows
+	var err error
+	if cursorHeight > 0 {
+		rows, err = s.db.Query(r.Context(), `
+			SELECT tx_hash, log_index, block_height, block_time, from_address, to_address, value::TEXT, token_standard, COALESCE(token_id::TEXT, '')
+			FROM explorer.evm_token_transfers
+			WHERE token_address = $1 AND (block_height < $2 OR (block_height = $2 AND log_index < $3))
+			ORDER BY block_height DESC, log_index DESC
+			LIMIT $4`, addr, cursorHeight, cursorLogIdx, limit,
+		)
+	} else {
+		rows, err = s.db.Query(r.Context(), `
+			SELECT tx_hash, log_index, block_height, block_time, from_address, to_address, value::TEXT, token_standard, COALESCE(token_id::TEXT, '')
+			FROM explorer.evm_token_transfers
+			WHERE token_address = $1
+			ORDER BY block_height DESC, log_index DESC
+			LIMIT $2`, addr, limit,
+		)
+	}
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "database query failed: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	type Transfer struct {
+		TxHash        string    `json:"txHash"`
+		LogIndex      int       `json:"logIndex"`
+		BlockHeight   int64     `json:"blockHeight"`
+		BlockTime     time.Time `json:"blockTime"`
+		FromAddress   string    `json:"fromAddress"`
+		ToAddress     string    `json:"toAddress"`
+		Value         string    `json:"value"`
+		TokenStandard string    `json:"tokenStandard"`
+		TokenID       string    `json:"tokenId,omitempty"`
+	}
+
+	var transfers []Transfer
+	for rows.Next() {
+		var t Transfer
+		if errScan := rows.Scan(&t.TxHash, &t.LogIndex, &t.BlockHeight, &t.BlockTime, &t.FromAddress, &t.ToAddress, &t.Value, &t.TokenStandard, &t.TokenID); errScan == nil {
+			transfers = append(transfers, t)
+		}
+	}
+
+	nextCursor := ""
+	hasMore := len(transfers) == limit
+	if hasMore && len(transfers) > 0 {
+		last := transfers[len(transfers)-1]
+		nextCursor = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%d,%d", last.BlockHeight, last.LogIndex)))
+	}
+
+	if transfers == nil {
+		transfers = []Transfer{}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"transfers":  transfers,
+		"nextCursor": nextCursor,
+		"hasMore":    hasMore,
+	})
+}
+
+func handleEvmTokenHolders(w http.ResponseWriter, r *http.Request, s *server) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.URL.Query().Get("download") == "true" {
+		w.Header().Set("Content-Disposition", "attachment; filename=holders_evm.json")
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/tokens/evm/")
+	addr := strings.ToLower(strings.TrimSuffix(path, "/holders"))
+
+	limit := 20
+	if l, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && l > 0 && l <= 100 {
+		limit = l
+	}
+
+	var totalSupply float64 = 1.0
+	_ = s.db.QueryRow(r.Context(), "SELECT COALESCE(CAST(total_supply AS FLOAT), 1.0) FROM explorer.contracts WHERE address = $1", addr).Scan(&totalSupply)
+	if totalSupply <= 0 {
+		totalSupply = 1.0
+	}
+
+	cursor := r.URL.Query().Get("cursor")
+	var cursorBalance *big.Float
+	var cursorHolder string
+	if cursor != "" {
+		if decoded, err := base64.StdEncoding.DecodeString(cursor); err == nil {
+			parts := strings.Split(string(decoded), ",")
+			if len(parts) == 2 {
+				bf, ok := new(big.Float).SetString(parts[0])
+				if ok {
+					cursorBalance = bf
+				}
+				cursorHolder = parts[1]
+			}
+		}
+	}
+
+	var rows pgx.Rows
+	var err error
+	if cursorBalance != nil {
+		rows, err = s.db.Query(r.Context(), `
+			SELECT holder_address, balance::TEXT, 
+			       CAST(balance AS FLOAT) / $1 * 100 as share_pct
+			FROM explorer.evm_token_holders
+			WHERE token_address = $2 AND (balance < $3 OR (balance = $3 AND holder_address > $4))
+			ORDER BY balance DESC, holder_address ASC
+			LIMIT $5`, totalSupply, addr, cursorBalance.String(), cursorHolder, limit,
+		)
+	} else {
+		rows, err = s.db.Query(r.Context(), `
+			SELECT holder_address, balance::TEXT, 
+			       CAST(balance AS FLOAT) / $1 * 100 as share_pct
+			FROM explorer.evm_token_holders
+			WHERE token_address = $2
+			ORDER BY balance DESC, holder_address ASC
+			LIMIT $3`, totalSupply, addr, limit,
+		)
+	}
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "database query failed: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	type Holder struct {
+		Address string  `json:"address"`
+		Balance string  `json:"balance"`
+		Share   float64 `json:"share"`
+	}
+
+	var holders []Holder
+	for rows.Next() {
+		var h Holder
+		if errScan := rows.Scan(&h.Address, &h.Balance, &h.Share); errScan == nil {
+			holders = append(holders, h)
+		}
+	}
+
+	nextCursor := ""
+	hasMore := len(holders) == limit
+	if hasMore && len(holders) > 0 {
+		last := holders[len(holders)-1]
+		nextCursor = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s,%s", last.Balance, last.Address)))
+	}
+
+	if holders == nil {
+		holders = []Holder{}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"holders":    holders,
+		"nextCursor": nextCursor,
+		"hasMore":    hasMore,
+	})
+}
+
+func handleEvmNFTDetail(w http.ResponseWriter, r *http.Request, s *server) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.URL.Query().Get("download") == "true" {
+		w.Header().Set("Content-Disposition", "attachment; filename=nft_evm.json")
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/nfts/evm/")
+	parts := strings.Split(path, "/")
+	if len(parts) != 2 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "invalid path parameters"})
+		return
+	}
+	addr := strings.ToLower(parts[0])
+	tokenID := parts[1]
+
+	var owner, tokenURI string
+	var metadata []byte
+	err := s.db.QueryRow(r.Context(), `
+		SELECT owner_address, COALESCE(token_uri, ''), metadata_json
+		FROM explorer.evm_nft_ownership
+		WHERE token_address = $1 AND token_id = $2`, addr, tokenID,
+	).Scan(&owner, &tokenURI, &metadata)
+
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "NFT not found"})
+		return
+	}
+
+	rows, err := s.db.Query(r.Context(), `
+		SELECT tx_hash, block_height, block_time, from_address, to_address
+		FROM explorer.evm_token_transfers
+		WHERE token_address = $1 AND token_id = $2
+		ORDER BY block_height DESC
+		LIMIT 100`, addr, tokenID,
+	)
+	
+	type TxHistory struct {
+		TxHash      string    `json:"txHash"`
+		BlockHeight int64     `json:"blockHeight"`
+		BlockTime   time.Time `json:"blockTime"`
+		FromAddress string    `json:"fromAddress"`
+		ToAddress   string    `json:"toAddress"`
+	}
+
+	var history []TxHistory
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var h TxHistory
+			if errScan := rows.Scan(&h.TxHash, &h.BlockHeight, &h.BlockTime, &h.FromAddress, &h.ToAddress); errScan == nil {
+				history = append(history, h)
+			}
+		}
+	}
+
+	if history == nil {
+		history = []TxHistory{}
+	}
+
+	var metadataMap map[string]interface{}
+	if len(metadata) > 0 {
+		json.Unmarshal(metadata, &metadataMap)
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"address":         addr,
+		"tokenId":         tokenID,
+		"ownerAddress":    owner,
+		"tokenUri":        tokenURI,
+		"metadata":        metadataMap,
+		"transferHistory": history,
+	})
+}
+
+func handleEvmVaultDetail(w http.ResponseWriter, r *http.Request, s *server) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.URL.Query().Get("download") == "true" {
+		w.Header().Set("Content-Disposition", "attachment; filename=vault_evm.json")
+	}
+
+	addr := strings.ToLower(strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/vaults/evm/"))
+
+	var underlying, totalShares, totalAssets string
+	err := s.db.QueryRow(r.Context(), `
+		SELECT COALESCE(admin, ''), COALESCE(total_supply::TEXT, '0')
+		FROM explorer.contracts
+		WHERE address = $1 AND type_badge = 'ERC4626'`, addr,
+	).Scan(&underlying, &totalShares)
+
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "vault not found"})
+		return
+	}
+
+	_ = s.db.QueryRow(r.Context(), `
+		SELECT COALESCE(assets::TEXT, '0')
+		FROM explorer.evm_vault_events
+		WHERE vault_address = $1
+		ORDER BY log_index DESC
+		LIMIT 1`, addr,
+	).Scan(&totalAssets)
+
+	sharesF, _ := new(big.Float).SetString(totalShares)
+	assetsF, _ := new(big.Float).SetString(totalAssets)
+	sharePrice := "1.0000"
+	if sharesF != nil && assetsF != nil && sharesF.Cmp(big.NewFloat(0)) > 0 {
+		res := new(big.Float).Quo(assetsF, sharesF)
+		sharePrice = res.Text('f', 4)
+	}
+
+	rows, err := s.db.Query(r.Context(), `
+		SELECT tx_hash, log_index, sender, owner, assets::TEXT, shares::TEXT, event_type
+		FROM explorer.evm_vault_events
+		WHERE vault_address = $1
+		ORDER BY log_index DESC
+		LIMIT 50`, addr,
+	)
+
+	type VaultEvent struct {
+		TxHash    string `json:"txHash"`
+		LogIndex  int    `json:"logIndex"`
+		Sender    string `json:"sender"`
+		Owner     string `json:"owner"`
+		Assets    string `json:"assets"`
+		Shares    string `json:"shares"`
+		EventType string `json:"eventType"`
+	}
+
+	var events []VaultEvent
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var e VaultEvent
+			if errScan := rows.Scan(&e.TxHash, &e.LogIndex, &e.Sender, &e.Owner, &e.Assets, &e.Shares, &e.EventType); errScan == nil {
+				events = append(events, e)
+			}
+		}
+	}
+
+	if events == nil {
+		events = []VaultEvent{}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"vaultAddress":            addr,
+		"underlyingAssetAddress": underlying,
+		"totalAssets":            totalAssets,
+		"totalShares":            totalShares,
+		"sharePrice":             sharePrice,
+		"history":                 events,
+	})
+}
+
+func handleCwTokenDetail(w http.ResponseWriter, r *http.Request, s *server) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.URL.Query().Get("download") == "true" {
+		w.Header().Set("Content-Disposition", "attachment; filename=token_cw20.json")
+	}
+
+	addr := strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/tokens/cw20/")
+	
+	var (
+		decimals int
+		name, symbol, totalSupply, minter, owner, typeBadge, metadataStatus string
+		verified bool
+		holderCount int64
+		transferCount int64
+	)
+
+	err := s.db.QueryRow(r.Context(), `
+		SELECT COALESCE(decimals, 6), COALESCE(token_name, ''), COALESCE(token_symbol, ''), 
+		       COALESCE(total_supply::TEXT, '0'), COALESCE(minter_address, ''), COALESCE(owner_address, ''), 
+		       COALESCE(type_badge, 'CW20'), COALESCE(metadata_status, 'pending'), verified
+		FROM explorer.contracts
+		WHERE address = $1`, addr,
+	).Scan(&decimals, &name, &symbol, &totalSupply, &minter, &owner, &typeBadge, &metadataStatus, &verified)
+
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "token not found"})
+		return
+	}
+
+	_ = s.db.QueryRow(r.Context(), "SELECT COUNT(*) FROM explorer.cw_token_holders WHERE contract_address = $1", addr).Scan(&holderCount)
+	_ = s.db.QueryRow(r.Context(), "SELECT COUNT(*) FROM explorer.cw_token_transfers WHERE contract_address = $1 AND block_time > NOW() - INTERVAL '24 HOURS'", addr).Scan(&transferCount)
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"address":       addr,
+		"name":          name,
+		"symbol":        symbol,
+		"decimals":      decimals,
+		"totalSupply":   totalSupply,
+		"minterAddress": minter,
+		"ownerAddress":  owner,
+		"typeBadge":     typeBadge,
+		"verified":      verified,
+		"holderCount":   holderCount,
+		"transferCount": transferCount,
+		"status":        metadataStatus,
+	})
+}
+
+func handleCwTokenTransfers(w http.ResponseWriter, r *http.Request, s *server) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.URL.Query().Get("download") == "true" {
+		w.Header().Set("Content-Disposition", "attachment; filename=transfers_cw20.json")
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/tokens/cw20/")
+	addr := strings.TrimSuffix(path, "/transfers")
+
+	limit := 20
+	if l, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && l > 0 && l <= 100 {
+		limit = l
+	}
+
+	cursor := r.URL.Query().Get("cursor")
+	var cursorID int64 = 0
+	if cursor != "" {
+		if decoded, err := base64.StdEncoding.DecodeString(cursor); err == nil {
+			if id, errParse := strconv.ParseInt(string(decoded), 10, 64); errParse == nil {
+				cursorID = id
+			}
+		}
+	}
+
+	var rows pgx.Rows
+	var err error
+	if cursorID > 0 {
+		rows, err = s.db.Query(r.Context(), `
+			SELECT id, tx_hash, block_height, block_time, from_address, to_address, amount::TEXT
+			FROM explorer.cw_token_transfers
+			WHERE contract_address = $1 AND id < $2
+			ORDER BY id DESC
+			LIMIT $3`, addr, cursorID, limit,
+		)
+	} else {
+		rows, err = s.db.Query(r.Context(), `
+			SELECT id, tx_hash, block_height, block_time, from_address, to_address, amount::TEXT
+			FROM explorer.cw_token_transfers
+			WHERE contract_address = $1
+			ORDER BY id DESC
+			LIMIT $2`, addr, limit,
+		)
+	}
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "database query failed: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	type CWTransfer struct {
+		ID          int64     `json:"id"`
+		TxHash      string    `json:"txHash"`
+		BlockHeight int64     `json:"blockHeight"`
+		BlockTime   time.Time `json:"blockTime"`
+		FromAddress string    `json:"fromAddress"`
+		ToAddress   string    `json:"toAddress"`
+		Amount      string    `json:"amount"`
+	}
+
+	var transfers []CWTransfer
+	for rows.Next() {
+		var t CWTransfer
+		if errScan := rows.Scan(&t.ID, &t.TxHash, &t.BlockHeight, &t.BlockTime, &t.FromAddress, &t.ToAddress, &t.Amount); errScan == nil {
+			transfers = append(transfers, t)
+		}
+	}
+
+	nextCursor := ""
+	hasMore := len(transfers) == limit
+	if hasMore && len(transfers) > 0 {
+		last := transfers[len(transfers)-1]
+		nextCursor = base64.StdEncoding.EncodeToString([]byte(strconv.FormatInt(last.ID, 10)))
+	}
+
+	if transfers == nil {
+		transfers = []CWTransfer{}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"transfers":  transfers,
+		"nextCursor": nextCursor,
+		"hasMore":    hasMore,
+	})
+}
+
+func handleCwTokenHolders(w http.ResponseWriter, r *http.Request, s *server) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.URL.Query().Get("download") == "true" {
+		w.Header().Set("Content-Disposition", "attachment; filename=holders_cw20.json")
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/tokens/cw20/")
+	addr := strings.TrimSuffix(path, "/holders")
+
+	limit := 20
+	if l, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && l > 0 && l <= 100 {
+		limit = l
+	}
+
+	var totalSupply float64 = 1.0
+	_ = s.db.QueryRow(r.Context(), "SELECT COALESCE(CAST(total_supply AS FLOAT), 1.0) FROM explorer.contracts WHERE address = $1", addr).Scan(&totalSupply)
+	if totalSupply <= 0 {
+		totalSupply = 1.0
+	}
+
+	cursor := r.URL.Query().Get("cursor")
+	var cursorBalance *big.Float
+	var cursorHolder string
+	if cursor != "" {
+		if decoded, err := base64.StdEncoding.DecodeString(cursor); err == nil {
+			parts := strings.Split(string(decoded), ",")
+			if len(parts) == 2 {
+				bf, ok := new(big.Float).SetString(parts[0])
+				if ok {
+					cursorBalance = bf
+				}
+				cursorHolder = parts[1]
+			}
+		}
+	}
+
+	var rows pgx.Rows
+	var err error
+	if cursorBalance != nil {
+		rows, err = s.db.Query(r.Context(), `
+			SELECT holder_address, balance::TEXT, 
+			       CAST(balance AS FLOAT) / $1 * 100 as share_pct
+			FROM explorer.cw_token_holders
+			WHERE contract_address = $2 AND (balance < $3 OR (balance = $3 AND holder_address > $4))
+			ORDER BY balance DESC, holder_address ASC
+			LIMIT $5`, totalSupply, addr, cursorBalance.String(), cursorHolder, limit,
+		)
+	} else {
+		rows, err = s.db.Query(r.Context(), `
+			SELECT holder_address, balance::TEXT, 
+			       CAST(balance AS FLOAT) / $1 * 100 as share_pct
+			FROM explorer.cw_token_holders
+			WHERE contract_address = $2
+			ORDER BY balance DESC, holder_address ASC
+			LIMIT $3`, totalSupply, addr, limit,
+		)
+	}
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "database query failed: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	type Holder struct {
+		Address string  `json:"address"`
+		Balance string  `json:"balance"`
+		Share   float64 `json:"share"`
+	}
+
+	var holders []Holder
+	for rows.Next() {
+		var h Holder
+		if errScan := rows.Scan(&h.Address, &h.Balance, &h.Share); errScan == nil {
+			holders = append(holders, h)
+		}
+	}
+
+	nextCursor := ""
+	hasMore := len(holders) == limit
+	if hasMore && len(holders) > 0 {
+		last := holders[len(holders)-1]
+		nextCursor = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s,%s", last.Balance, last.Address)))
+	}
+
+	if holders == nil {
+		holders = []Holder{}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"holders":    holders,
+		"nextCursor": nextCursor,
+		"hasMore":    hasMore,
+	})
+}
+
+func handleCwNFTDetail(w http.ResponseWriter, r *http.Request, s *server) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.URL.Query().Get("download") == "true" {
+		w.Header().Set("Content-Disposition", "attachment; filename=nft_cw721.json")
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/nfts/cw721/")
+	parts := strings.Split(path, "/")
+	if len(parts) != 2 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "invalid path parameters"})
+		return
+	}
+	addr := parts[0]
+	tokenID := parts[1]
+
+	var owner, tokenURI string
+	var metadata []byte
+	err := s.db.QueryRow(r.Context(), `
+		SELECT owner_address, COALESCE(token_uri, ''), metadata_json
+		FROM explorer.cw_nft_ownership
+		WHERE contract_address = $1 AND token_id = $2`, addr, tokenID,
+	).Scan(&owner, &tokenURI, &metadata)
+
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "NFT not found"})
+		return
+	}
+
+	rows, err := s.db.Query(r.Context(), `
+		SELECT tx_hash, block_height, block_time, from_address, to_address
+		FROM explorer.cw_nft_transfers
+		WHERE contract_address = $1 AND token_id = $2
+		ORDER BY block_height DESC
+		LIMIT 100`, addr, tokenID,
+	)
+	
+	type TxHistory struct {
+		TxHash      string    `json:"txHash"`
+		BlockHeight int64     `json:"blockHeight"`
+		BlockTime   time.Time `json:"blockTime"`
+		FromAddress string    `json:"fromAddress"`
+		ToAddress   string    `json:"toAddress"`
+	}
+
+	var history []TxHistory
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var h TxHistory
+			if errScan := rows.Scan(&h.TxHash, &h.BlockHeight, &h.BlockTime, &h.FromAddress, &h.ToAddress); errScan == nil {
+				history = append(history, h)
+			}
+		}
+	}
+
+	if history == nil {
+		history = []TxHistory{}
+	}
+
+	var metadataMap map[string]interface{}
+	if len(metadata) > 0 {
+		json.Unmarshal(metadata, &metadataMap)
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"address":         addr,
+		"tokenId":         tokenID,
+		"ownerAddress":    owner,
+		"tokenUri":        tokenURI,
+		"metadata":        metadataMap,
+		"transferHistory": history,
+	})
+}
+
+func handleContractDeployments(w http.ResponseWriter, r *http.Request, s *server) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.URL.Query().Get("download") == "true" {
+		w.Header().Set("Content-Disposition", "attachment; filename=deployments.json")
+	}
+
+	limit := 20
+	if l, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && l > 0 && l <= 100 {
+		limit = l
+	}
+
+	cursor := r.URL.Query().Get("cursor")
+	var cursorHeight int64 = 0
+	var cursorAddr string
+	if cursor != "" {
+		if decoded, err := base64.StdEncoding.DecodeString(cursor); err == nil {
+			parts := strings.Split(string(decoded), ",")
+			if len(parts) == 2 {
+				h, _ := strconv.ParseInt(parts[0], 10, 64)
+				cursorHeight = h
+				cursorAddr = parts[1]
+			}
+		}
+	}
+
+	var rows pgx.Rows
+	var err error
+	if cursorHeight > 0 {
+		rows, err = s.db.Query(r.Context(), `
+			SELECT d.address, d.standard, d.deployer, d.tx_hash, d.block_height, d.block_time, c.verified
+			FROM explorer.contract_deployments d
+			JOIN explorer.contracts c ON d.address = c.address
+			WHERE d.block_height < $1 OR (d.block_height = $1 AND d.address < $2)
+			ORDER BY d.block_height DESC, d.address DESC
+			LIMIT $3`, cursorHeight, cursorAddr, limit,
+		)
+	} else {
+		rows, err = s.db.Query(r.Context(), `
+			SELECT d.address, d.standard, d.deployer, d.tx_hash, d.block_height, d.block_time, c.verified
+			FROM explorer.contract_deployments d
+			JOIN explorer.contracts c ON d.address = c.address
+			ORDER BY d.block_height DESC, d.address DESC
+			LIMIT $1`, limit,
+		)
+	}
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "database query failed: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	type Deployment struct {
+		Address     string    `json:"address"`
+		Standard    string    `json:"standard"`
+		Deployer    string    `json:"deployer"`
+		TxHash      string    `json:"txHash"`
+		BlockHeight int64     `json:"blockHeight"`
+		BlockTime   time.Time `json:"blockTime"`
+		Verified    bool      `json:"verified"`
+	}
+
+	var deployments []Deployment
+	for rows.Next() {
+		var d Deployment
+		if errScan := rows.Scan(&d.Address, &d.Standard, &d.Deployer, &d.TxHash, &d.BlockHeight, &d.BlockTime, &d.Verified); errScan == nil {
+			deployments = append(deployments, d)
+		}
+	}
+
+	nextCursor := ""
+	hasMore := len(deployments) == limit
+	if hasMore && len(deployments) > 0 {
+		last := deployments[len(deployments)-1]
+		nextCursor = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%d,%s", last.BlockHeight, last.Address)))
+	}
+
+	if deployments == nil {
+		deployments = []Deployment{}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"deployments": deployments,
+		"nextCursor":  nextCursor,
+		"hasMore":     hasMore,
+	})
+}
+
+func handleTxTransfers(w http.ResponseWriter, r *http.Request, s *server) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	path := strings.TrimPrefix(r.URL.Path, "/api/rest/v1/explorer/txs/")
+	txHash := strings.TrimSuffix(path, "/transfers")
+	if txHash == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "missing tx hash"})
+		return
+	}
+
+	type TokenTransfer struct {
+		TokenAddress  string `json:"tokenAddress"`
+		TokenSymbol   string `json:"tokenSymbol"`
+		From          string `json:"from"`
+		To            string `json:"to"`
+		Amount        string `json:"amount"`
+		TokenStandard string `json:"tokenStandard"` // 'erc20' | 'erc721' | 'erc1155' | 'cw20' | 'cw721'
+		TokenID       string `json:"tokenId,omitempty"`
+	}
+
+	var transfers []TokenTransfer
+
+	// 1. Fetch EVM transfers
+	eRows, err := s.db.Query(r.Context(), `
+		SELECT t.token_address, COALESCE(c.token_symbol, 'EVM'), t.from_address, t.to_address, t.value::TEXT, t.token_standard, COALESCE(t.token_id::TEXT, '')
+		FROM explorer.evm_token_transfers t
+		LEFT JOIN explorer.contracts c ON t.token_address = c.address
+		WHERE t.tx_hash = $1`, txHash,
+	)
+	if err == nil {
+		defer eRows.Close()
+		for eRows.Next() {
+			var t TokenTransfer
+			if errScan := eRows.Scan(&t.TokenAddress, &t.TokenSymbol, &t.From, &t.To, &t.Amount, &t.TokenStandard, &t.TokenID); errScan == nil {
+				transfers = append(transfers, t)
+			}
+		}
+	}
+
+	// 2. Fetch CW20 transfers
+	cwRows, err := s.db.Query(r.Context(), `
+		SELECT t.contract_address, COALESCE(c.token_symbol, 'CW20'), t.from_address, t.to_address, t.amount::TEXT
+		FROM explorer.cw_token_transfers t
+		LEFT JOIN explorer.contracts c ON t.contract_address = c.address
+		WHERE t.tx_hash = $1`, txHash,
+	)
+	if err == nil {
+		defer cwRows.Close()
+		for cwRows.Next() {
+			var t TokenTransfer
+			t.TokenStandard = "cw20"
+			if errScan := cwRows.Scan(&t.TokenAddress, &t.TokenSymbol, &t.From, &t.To, &t.Amount); errScan == nil {
+				transfers = append(transfers, t)
+			}
+		}
+	}
+
+	// 3. Fetch CW721 transfers
+	nftRows, err := s.db.Query(r.Context(), `
+		SELECT t.contract_address, COALESCE(c.token_symbol, 'CW721'), t.from_address, t.to_address, t.token_id
+		FROM explorer.cw_nft_transfers t
+		LEFT JOIN explorer.contracts c ON t.contract_address = c.address
+		WHERE t.tx_hash = $1`, txHash,
+	)
+	if err == nil {
+		defer nftRows.Close()
+		for nftRows.Next() {
+			var t TokenTransfer
+			t.TokenStandard = "cw721"
+			t.Amount = "1"
+			if errScan := nftRows.Scan(&t.TokenAddress, &t.TokenSymbol, &t.From, &t.To, &t.TokenID); errScan == nil {
+				transfers = append(transfers, t)
+			}
+		}
+	}
+
+	if transfers == nil {
+		transfers = []TokenTransfer{}
+	}
+
+	json.NewEncoder(w).Encode(transfers)
+}
+
+

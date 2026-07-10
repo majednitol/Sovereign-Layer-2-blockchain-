@@ -3,6 +3,7 @@ WORKDIR /app
 ENV GOWORK=off
 COPY chain/go.mod chain/go.sum ./chain/
 COPY explorer-api/go.mod explorer-api/go.sum ./explorer-api/
+RUN cd explorer-api && go mod download
 COPY chain ./chain
 COPY explorer-api ./explorer-api
 RUN cd explorer-api && go build -o /app/api main.go

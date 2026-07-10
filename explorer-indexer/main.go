@@ -69,6 +69,7 @@ type Config struct {
 	NatsURL                string
 	CometBFTURL            string
 	BSCRPCURL              string
+	EVMRPCURL              string
 	PollIntervalMS         int
 	FeeCollectorCosmosAddr string
 	FeeCollectorEvmAddr    string
@@ -80,6 +81,7 @@ func main() {
 	flag.StringVar(&cfg.NatsURL, "nats-url", os.Getenv("NATS_URL"), "NATS URL")
 	flag.StringVar(&cfg.CometBFTURL, "cometbft-url", os.Getenv("COMETBFT_RPC_URL"), "CometBFT RPC URL")
 	flag.StringVar(&cfg.BSCRPCURL, "bsc-rpc-url", os.Getenv("BSC_RPC_URL"), "BSC RPC URL")
+	flag.StringVar(&cfg.EVMRPCURL, "evm-rpc-url", os.Getenv("EVM_RPC"), "EVM RPC URL")
 	flag.IntVar(&cfg.PollIntervalMS, "poll-interval-ms", 500, "Block polling interval in ms")
 	flag.StringVar(&cfg.FeeCollectorCosmosAddr, "fee-collector-cosmos-addr", os.Getenv("FEE_COLLECTOR_COSMOS_ADDRESS"), "Fee Collector Cosmos Address")
 	flag.StringVar(&cfg.FeeCollectorEvmAddr, "fee-collector-evm-addr", os.Getenv("FEE_COLLECTOR_EVM_ADDRESS"), "Fee Collector EVM Address")
@@ -94,6 +96,12 @@ func main() {
 	if cfg.CometBFTURL == "" {
 		cfg.CometBFTURL = "http://chain-node:26657"
 	}
+	if cfg.EVMRPCURL == "" {
+		cfg.EVMRPCURL = os.Getenv("EVM_RPC_URL")
+	}
+	if cfg.EVMRPCURL == "" {
+		cfg.EVMRPCURL = "http://chain-node:8545"
+	}
 	if cfg.FeeCollectorCosmosAddr == "" {
 		cfg.FeeCollectorCosmosAddr = "cosmos17xpfvakm2amg962yls6f84z3kell8c5lserqta"
 	}
@@ -106,6 +114,7 @@ func main() {
 	log.Printf("NATS URL: %s", cfg.NatsURL)
 	log.Printf("CometBFT URL: %s", cfg.CometBFTURL)
 	log.Printf("BSC RPC URL: %s", cfg.BSCRPCURL)
+	log.Printf("EVM RPC URL: %s", cfg.EVMRPCURL)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -116,6 +125,16 @@ func main() {
 		log.Fatalf("failed to connect to Read DB: %v", err)
 	}
 	defer db.Close()
+
+	// Connect to EVM RPC
+	var evmClient *ethclient.Client
+	evmClient, err = ethclient.Dial(cfg.EVMRPCURL)
+	if err != nil {
+		log.Printf("warning: failed to connect to EVM RPC: %v", err)
+	} else {
+		log.Printf("Successfully connected to EVM RPC.")
+		defer evmClient.Close()
+	}
 
 	// Start BSC watcher
 	go startBSCWatcher(ctx, db, cfg.BSCRPCURL)
@@ -221,7 +240,16 @@ func main() {
 							explorer.relayers, 
 							explorer.circuit_breaker_events, 
 							explorer.bsc_lock_events, 
-							explorer.webhooks 
+							explorer.webhooks,
+							explorer.evm_token_transfers,
+							explorer.evm_vault_events,
+							explorer.evm_token_holders,
+							explorer.evm_nft_ownership,
+							explorer.cw_token_transfers,
+							explorer.cw_token_holders,
+							explorer.cw_nft_ownership,
+							explorer.cw_nft_transfers,
+							explorer.contract_deployments
 						CASCADE`)
 					if err != nil {
 						log.Printf("Error truncating explorer tables on chain reset: %v", err)
@@ -235,7 +263,7 @@ func main() {
 				if latestHeight > lastProcessedHeight {
 					for h := lastProcessedHeight + 1; h <= latestHeight; h++ {
 						log.Printf("Explorer indexing height %d...", h)
-						err := indexBlock(ctx, db, nc, &cfg, h)
+						err := indexBlock(ctx, db, nc, &cfg, evmClient, h)
 						if err != nil {
 							log.Printf("Error indexing block at height %d: %v", h, err)
 							break
@@ -313,7 +341,7 @@ func getAttr(event Event, key string) string {
 	return ""
 }
 
-func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cfg *Config, height int64) error {
+func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cfg *Config, evmClient *ethclient.Client, height int64) error {
 	resp, err := http.Get(fmt.Sprintf("%s/block?height=%d", cfg.CometBFTURL, height))
 	if err != nil {
 		return err
@@ -513,6 +541,52 @@ func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cfg *Confi
 			"amount":   amount,
 			"fee":      fee,
 		}
+
+		if txType == "evm" && evmClient != nil {
+			evmTx, _, txErr := evmClient.TransactionByHash(ctx, common.HexToHash(hashStr))
+			if txErr == nil && evmTx != nil {
+				decodedMap["nonce"] = evmTx.Nonce()
+				decodedMap["gas_limit"] = evmTx.Gas()
+				decodedMap["gas_price"] = evmTx.GasPrice().String()
+				
+				input := evmTx.Data()
+				methodName := "Contract Call"
+				if len(input) >= 4 {
+					selector := hex.EncodeToString(input[:4])
+					switch selector {
+					case "a9059cbb":
+						methodName = "Transfer"
+					case "095ea7b3":
+						methodName = "Approve"
+					case "23b872dd":
+						methodName = "TransferFrom"
+					case "a22cb77d":
+						methodName = "SetApprovalForAll"
+					case "42842717", "f242432a":
+						methodName = "SafeTransferFrom"
+					case "2eb2c2d6":
+						methodName = "SafeBatchTransferFrom"
+					case "6e55357e":
+						methodName = "Deposit"
+					case "b3c3c135":
+						methodName = "Withdraw"
+					case "854fd49a":
+						methodName = "Mint"
+					default:
+						methodName = "0x" + selector
+					}
+				} else if len(input) == 0 {
+					methodName = "Transfer (Native)"
+				}
+				decodedMap["method"] = methodName
+			}
+
+			receipt, rErr := evmClient.TransactionReceipt(ctx, common.HexToHash(hashStr))
+			if rErr == nil && receipt != nil {
+				decodedMap["position_in_block"] = receipt.TransactionIndex
+			}
+		}
+
 		decodedBytes, _ := json.Marshal(decodedMap)
 		decodedJSON := string(decodedBytes)
 
@@ -583,8 +657,278 @@ func indexBlock(ctx context.Context, db *pgxpool.Pool, nc *nats.Conn, cfg *Confi
 			)
 		}
 
+		// Index CosmWasm deployments & events
+		if txType == "cosmwasm" && i < len(blockResults.Result.TxsResults) {
+			tr := blockResults.Result.TxsResults[i]
+			for _, ev := range tr.Events {
+				if ev.Type == "wasm" {
+					contractAddr := getAttr(ev, "_contract_address")
+					if contractAddr == "" {
+						continue
+					}
+
+					var exists bool
+					_ = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM explorer.contracts WHERE address = $1)", contractAddr).Scan(&exists)
+					if !exists {
+						_, _ = tx.Exec(ctx, `
+							INSERT INTO explorer.contracts (address, code_id, label, creator, admin, type_badge, metadata_status)
+							VALUES ($1, 0, 'CW Contract', '', '', 'CosmWasm', 'pending')
+							ON CONFLICT (address) DO NOTHING`, contractAddr,
+						)
+						syncCWContractMetadata(ctx, tx, cfg.CometBFTURL, contractAddr)
+					}
+
+					action := getAttr(ev, "action")
+					switch action {
+					case "transfer", "mint", "burn", "send":
+						from := getAttr(ev, "sender")
+						if from == "" {
+							from = getAttr(ev, "from")
+						}
+						to := getAttr(ev, "recipient")
+						if to == "" {
+							to = getAttr(ev, "to")
+						}
+						amountStr := getAttr(ev, "amount")
+						tokenID := getAttr(ev, "token_id")
+
+						if tokenID != "" {
+							_, _ = tx.Exec(ctx, `
+								INSERT INTO explorer.cw_nft_transfers (tx_hash, block_height, block_time, contract_address, from_address, to_address, token_id)
+								VALUES ($1, $2, $3, $4, $5, $6, $7)
+								ON CONFLICT DO NOTHING`,
+								hashStr, height, blockTime, contractAddr, from, to, tokenID,
+							)
+							_, _ = tx.Exec(ctx, `
+								INSERT INTO explorer.cw_nft_ownership (contract_address, token_id, owner_address)
+								VALUES ($1, $2, $3)
+								ON CONFLICT (contract_address, token_id)
+								DO UPDATE SET owner_address = EXCLUDED.owner_address`,
+								contractAddr, tokenID, to,
+							)
+						} else if amountStr != "" {
+							val, _ := new(big.Int).SetString(amountStr, 10)
+							if val == nil {
+								val = big.NewInt(0)
+							}
+							_, _ = tx.Exec(ctx, `
+								INSERT INTO explorer.cw_token_transfers (tx_hash, block_height, block_time, contract_address, from_address, to_address, amount)
+								VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+								hashStr, height, blockTime, contractAddr, from, to, val.String(),
+							)
+							if from != "" && from != "mint" {
+								_, _ = tx.Exec(ctx, `
+									INSERT INTO explorer.cw_token_holders (contract_address, holder_address, balance)
+									VALUES ($1, $2, $3)
+									ON CONFLICT (contract_address, holder_address)
+									DO UPDATE SET balance = explorer.cw_token_holders.balance - EXCLUDED.balance`,
+									contractAddr, from, val.String(),
+								)
+							}
+							if to != "" && to != "burn" {
+								_, _ = tx.Exec(ctx, `
+									INSERT INTO explorer.cw_token_holders (contract_address, holder_address, balance)
+									VALUES ($1, $2, $3)
+									ON CONFLICT (contract_address, holder_address)
+									DO UPDATE SET balance = explorer.cw_token_holders.balance + EXCLUDED.balance`,
+									contractAddr, to, val.String(),
+								)
+							}
+						}
+					}
+				} else if ev.Type == "instantiate" || ev.Type == "wasm-instantiate" {
+					contractAddr := getAttr(ev, "_contract_address")
+					codeIDStr := getAttr(ev, "code_id")
+					codeID, _ := strconv.ParseInt(codeIDStr, 10, 64)
+					creator := getAttr(ev, "creator")
+
+					if contractAddr != "" {
+						_, _ = tx.Exec(ctx, `
+							INSERT INTO explorer.contracts (address, code_id, label, creator, admin, type_badge, metadata_status)
+							VALUES ($1, $2, 'CW Contract', $3, '', 'CosmWasm', 'pending')
+							ON CONFLICT (address) DO NOTHING`,
+							contractAddr, codeID, creator,
+						)
+						_, _ = tx.Exec(ctx, `
+							INSERT INTO explorer.contract_deployments (address, standard, deployer, tx_hash, block_height, block_time)
+							VALUES ($1, 'unknown', $2, $3, $4, $5)
+							ON CONFLICT (address) DO NOTHING`,
+							contractAddr, creator, hashStr, height, blockTime,
+						)
+						syncCWContractMetadata(ctx, tx, cfg.CometBFTURL, contractAddr)
+					}
+				}
+			}
+		}
+
+		// Index EVM deployments
+		if txType == "evm" && evmClient != nil {
+			receipt, rErr := evmClient.TransactionReceipt(ctx, common.HexToHash(hashStr))
+			if rErr == nil && receipt != nil && receipt.ContractAddress != (common.Address{}) {
+				contractAddr := strings.ToLower(receipt.ContractAddress.Hex())
+				_, _ = tx.Exec(ctx, `
+					INSERT INTO explorer.contracts (address, code_id, label, creator, admin, type_badge, metadata_status)
+					VALUES ($1, 0, 'EVM Contract', $2, '', 'EVM', 'pending')
+					ON CONFLICT (address) DO NOTHING`,
+					contractAddr, sender,
+				)
+				_, _ = tx.Exec(ctx, `
+					INSERT INTO explorer.contract_deployments (address, standard, deployer, tx_hash, block_height, block_time)
+					VALUES ($1, 'unknown', $2, $3, $4, $5)
+					ON CONFLICT (address) DO NOTHING`,
+					contractAddr, sender, hashStr, height, blockTime,
+				)
+				syncEVMContractMetadata(ctx, tx, evmClient, contractAddr)
+			}
+		}
+
 		log.Printf("  indexed tx %s at height %d (type=%s, status=%d, gas=%d)", hashStr[:16]+"...", height, txType, txStatus, gasUsed)
 	}
+
+	// ─── EVM LOG INGESTION ───
+	if evmClient != nil {
+		query := ethereum.FilterQuery{
+			FromBlock: big.NewInt(height),
+			ToBlock:   big.NewInt(height),
+		}
+		logs, err := evmClient.FilterLogs(ctx, query)
+		if err != nil {
+			log.Printf("failed to fetch EVM logs for block %d: %v", height, err)
+		} else {
+			for _, l := range logs {
+				if len(l.Topics) == 0 {
+					continue
+				}
+				eventSig := l.Topics[0].Hex()
+				tokenAddr := strings.ToLower(l.Address.Hex())
+				txHash := strings.ToUpper(l.TxHash.Hex())
+				logIdx := int(l.Index)
+
+				var exists bool
+				_ = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM explorer.contracts WHERE address = $1)", tokenAddr).Scan(&exists)
+				if !exists {
+					_, _ = tx.Exec(ctx, `
+						INSERT INTO explorer.contracts (address, code_id, label, creator, admin, type_badge, metadata_status)
+						VALUES ($1, 0, 'EVM Contract', '', '', 'EVM', 'pending')
+						ON CONFLICT (address) DO NOTHING`, tokenAddr,
+					)
+					syncEVMContractMetadata(ctx, tx, evmClient, tokenAddr)
+				}
+
+				switch eventSig {
+				case "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef": // Transfer(address,address,uint256)
+					if len(l.Topics) == 3 { // ERC-20
+						from := strings.ToLower(common.BytesToAddress(l.Topics[1].Bytes()).Hex())
+						to := strings.ToLower(common.BytesToAddress(l.Topics[2].Bytes()).Hex())
+						val := new(big.Int).SetBytes(l.Data)
+
+						var typeBadge string
+						_ = tx.QueryRow(ctx, "SELECT COALESCE(type_badge, 'ERC20') FROM explorer.contracts WHERE address = $1", tokenAddr).Scan(&typeBadge)
+						if typeBadge == "" {
+							typeBadge = "ERC-20"
+						}
+
+						_, err = tx.Exec(ctx, `
+							INSERT INTO explorer.evm_token_transfers (tx_hash, log_index, block_height, block_time, token_address, from_address, to_address, value, token_standard)
+							VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+							ON CONFLICT (tx_hash, log_index) DO NOTHING`,
+							txHash, logIdx, height, blockTime, tokenAddr, from, to, val.String(), typeBadge,
+						)
+
+						if from != "0x0000000000000000000000000000000000000000" {
+							_, _ = tx.Exec(ctx, `
+								INSERT INTO explorer.evm_token_holders (token_address, holder_address, balance)
+								VALUES ($1, $2, $3)
+								ON CONFLICT (token_address, holder_address)
+								DO UPDATE SET balance = explorer.evm_token_holders.balance - EXCLUDED.balance`,
+								tokenAddr, from, val.String(),
+							)
+						}
+						if to != "0x0000000000000000000000000000000000000000" {
+							_, _ = tx.Exec(ctx, `
+								INSERT INTO explorer.evm_token_holders (token_address, holder_address, balance)
+								VALUES ($1, $2, $3)
+								ON CONFLICT (token_address, holder_address)
+								DO UPDATE SET balance = explorer.evm_token_holders.balance + EXCLUDED.balance`,
+								tokenAddr, to, val.String(),
+							)
+						}
+					} else if len(l.Topics) == 4 { // ERC-721
+						from := strings.ToLower(common.BytesToAddress(l.Topics[1].Bytes()).Hex())
+						to := strings.ToLower(common.BytesToAddress(l.Topics[2].Bytes()).Hex())
+						tokenID := new(big.Int).SetBytes(l.Topics[3].Bytes())
+
+						_, err = tx.Exec(ctx, `
+							INSERT INTO explorer.evm_token_transfers (tx_hash, log_index, block_height, block_time, token_address, from_address, to_address, value, token_standard, token_id)
+							VALUES ($1, $2, $3, $4, $5, $6, $7, 1, 'ERC721', $8)
+							ON CONFLICT (tx_hash, log_index) DO NOTHING`,
+							txHash, logIdx, height, blockTime, tokenAddr, from, to, tokenID.String(),
+						)
+
+						_, _ = tx.Exec(ctx, `
+							INSERT INTO explorer.evm_nft_ownership (token_address, token_id, owner_address)
+							VALUES ($1, $2, $3)
+							ON CONFLICT (token_address, token_id)
+							DO UPDATE SET owner_address = EXCLUDED.owner_address`,
+							tokenAddr, tokenID.String(), to,
+						)
+					}
+				case "0xc3d58168c5ae7397731d063d5bbf3d65785442f347aebfb57f274087b70a83f9": // TransferSingle(address,address,address,uint256,uint256)
+					if len(l.Topics) == 4 {
+						from := strings.ToLower(common.BytesToAddress(l.Topics[2].Bytes()).Hex())
+						to := strings.ToLower(common.BytesToAddress(l.Topics[3].Bytes()).Hex())
+						if len(l.Data) >= 64 {
+							tokenID := new(big.Int).SetBytes(l.Data[0:32])
+							val := new(big.Int).SetBytes(l.Data[32:64])
+
+							_, err = tx.Exec(ctx, `
+								INSERT INTO explorer.evm_token_transfers (tx_hash, log_index, block_height, block_time, token_address, from_address, to_address, value, token_standard, token_id)
+								VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ERC1155', $9)
+								ON CONFLICT (tx_hash, log_index) DO NOTHING`,
+								txHash, logIdx, height, blockTime, tokenAddr, from, to, val.String(), tokenID.String(),
+							)
+						}
+					}
+				case "0xdcbc1c0524027e1270e59f7c14c969db79f323a2e1a3b19bda17876a3b200b39": // Deposit(address,address,uint256,uint256)
+					if len(l.Topics) >= 3 && len(l.Data) >= 64 {
+						sender := strings.ToLower(common.BytesToAddress(l.Topics[1].Bytes()).Hex())
+						owner := strings.ToLower(common.BytesToAddress(l.Topics[2].Bytes()).Hex())
+						assets := new(big.Int).SetBytes(l.Data[0:32])
+						shares := new(big.Int).SetBytes(l.Data[32:64])
+
+						var underlying string
+						_ = tx.QueryRow(ctx, "SELECT COALESCE(admin, '') FROM explorer.contracts WHERE address = $1", tokenAddr).Scan(&underlying)
+
+						_, err = tx.Exec(ctx, `
+							INSERT INTO explorer.evm_vault_events (tx_hash, log_index, vault_address, underlying_asset_address, sender, owner, assets, shares, event_type)
+							VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'deposit')
+							ON CONFLICT (tx_hash, log_index) DO NOTHING`,
+							txHash, logIdx, tokenAddr, underlying, sender, owner, assets.String(), shares.String(),
+						)
+					}
+				case "0xfbde797d844c27f547c3fd796434a8c6ae6c99c372634d40e2cf771d9dcb8e3d": // Withdraw(address,address,address,uint256,uint256)
+					if len(l.Topics) >= 4 && len(l.Data) >= 64 {
+						sender := strings.ToLower(common.BytesToAddress(l.Topics[1].Bytes()).Hex())
+						owner := strings.ToLower(common.BytesToAddress(l.Topics[3].Bytes()).Hex())
+						assets := new(big.Int).SetBytes(l.Data[0:32])
+						shares := new(big.Int).SetBytes(l.Data[32:64])
+
+						var underlying string
+						_ = tx.QueryRow(ctx, "SELECT COALESCE(admin, '') FROM explorer.contracts WHERE address = $1", tokenAddr).Scan(&underlying)
+
+						_, err = tx.Exec(ctx, `
+							INSERT INTO explorer.evm_vault_events (tx_hash, log_index, vault_address, underlying_asset_address, sender, owner, assets, shares, event_type)
+							VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'withdraw')
+							ON CONFLICT (tx_hash, log_index) DO NOTHING`,
+							txHash, logIdx, tokenAddr, underlying, sender, owner, assets.String(), shares.String(),
+						)
+					}
+				}
+			}
+		}
+	}
+	_, _ = tx.Exec(ctx, "DELETE FROM explorer.evm_token_holders WHERE balance = 0")
+	_, _ = tx.Exec(ctx, "DELETE FROM explorer.cw_token_holders WHERE balance = 0")
 
 	// Update daily network stats aggregation
 	dateStr := blockTime.Format("2006-01-02")
@@ -1136,4 +1480,212 @@ func runBSCSimulation(ctx context.Context, db *pgxpool.Pool) {
 			}
 		}
 	}
+}
+
+// ─── CONTRACT METADATA SYNC HELPERS ───
+
+func syncEVMContractMetadata(ctx context.Context, tx pgx.Tx, client *ethclient.Client, address string) {
+	if client == nil {
+		return
+	}
+	contract := common.HexToAddress(address)
+
+	// Fetch decimals
+	decimals := 18
+	decRes, err := queryEVMContract(ctx, client, contract, "0x313ce567") // decimals()
+	if err == nil && len(decRes) == 32 {
+		decimals = int(new(big.Int).SetBytes(decRes).Int64())
+	}
+
+	// Fetch name
+	name := "EVM Token"
+	nameRes, err := queryEVMContract(ctx, client, contract, "0x06fdde03") // name()
+	if err == nil {
+		if decoded, decErr := decodeString(nameRes); decErr == nil {
+			name = decoded
+		}
+	}
+
+	// Fetch symbol
+	symbol := "TOKEN"
+	symRes, err := queryEVMContract(ctx, client, contract, "0x95d89b41") // symbol()
+	if err == nil {
+		if decoded, decErr := decodeString(symRes); decErr == nil {
+			symbol = decoded
+		}
+	}
+
+	// Fetch total supply
+	var totalSupply *big.Int
+	supplyRes, err := queryEVMContract(ctx, client, contract, "0x18160ddd") // totalSupply()
+	if err == nil && len(supplyRes) == 32 {
+		totalSupply = new(big.Int).SetBytes(supplyRes)
+	} else {
+		totalSupply = big.NewInt(0)
+	}
+
+	// Fetch owner
+	var owner string
+	ownerRes, err := queryEVMContract(ctx, client, contract, "0x8da87903") // owner()
+	if err == nil && len(ownerRes) == 32 {
+		owner = strings.ToLower(common.BytesToAddress(ownerRes).Hex())
+	}
+
+	// Determine standard badge
+	standard := "ERC20"
+	erc721Res, err := queryEVMContract(ctx, client, contract, "0x01ffc9a780ac58cd000000000000000000000000000000000000000000000000")
+	if err == nil && len(erc721Res) == 32 && erc721Res[31] == 1 {
+		standard = "ERC721"
+	} else {
+		erc1155Res, err := queryEVMContract(ctx, client, contract, "0x01ffc9a7d9b67a26000000000000000000000000000000000000000000000000")
+		if err == nil && len(erc1155Res) == 32 && erc1155Res[31] == 1 {
+			standard = "ERC1155"
+		} else {
+			assetRes, err := queryEVMContract(ctx, client, contract, "0x3850c7bd")
+			if err == nil && len(assetRes) == 32 {
+				standard = "ERC4626"
+				underlying := strings.ToLower(common.BytesToAddress(assetRes).Hex())
+				_, _ = tx.Exec(ctx, "UPDATE explorer.contracts SET admin = $2 WHERE address = $1", address, underlying)
+			}
+		}
+	}
+
+	_, _ = tx.Exec(ctx, `
+		UPDATE explorer.contracts 
+		SET token_name = $2, token_symbol = $3, decimals = $4, total_supply = $5, owner_address = $6, type_badge = $7, metadata_status = 'synced'
+		WHERE address = $1`,
+		address, name, symbol, decimals, totalSupply.String(), owner, standard,
+	)
+
+	_, _ = tx.Exec(ctx, `
+		UPDATE explorer.contract_deployments
+		SET standard = $2
+		WHERE address = $1`,
+		address, standard,
+	)
+}
+
+func queryEVMContract(ctx context.Context, client *ethclient.Client, contract common.Address, signature string) ([]byte, error) {
+	data, err := hex.DecodeString(strings.TrimPrefix(signature, "0x"))
+	if err != nil {
+		return nil, err
+	}
+	msg := ethereum.CallMsg{
+		To:   &contract,
+		Data: data,
+	}
+	return client.CallContract(ctx, msg, nil)
+}
+
+func decodeString(res []byte) (string, error) {
+	if len(res) < 64 {
+		cleanStr := strings.TrimRight(string(res), "\x00")
+		if len(cleanStr) > 0 {
+			return cleanStr, nil
+		}
+		return "", fmt.Errorf("invalid response length")
+	}
+	offset := new(big.Int).SetBytes(res[0:32]).Int64()
+	if int(offset)+32 > len(res) {
+		return "", fmt.Errorf("invalid offset")
+	}
+	length := new(big.Int).SetBytes(res[offset : offset+32]).Int64()
+	if int(offset+32+length) > len(res) {
+		return string(bytes.TrimRight(res[32:], "\x00")), nil
+	}
+	return string(res[offset+32 : offset+32+length]), nil
+}
+
+func syncCWContractMetadata(ctx context.Context, tx pgx.Tx, cometURL string, address string) {
+	restURL := strings.Replace(cometURL, ":26657", ":1317", 1)
+
+	tokenInfoBytes, err := queryCWContract(ctx, restURL, address, `{"token_info":{}}`)
+	if err == nil {
+		var tokenInfoResp struct {
+			Data struct {
+				Name        string `json:"name"`
+				Symbol      string `json:"symbol"`
+				Decimals    int    `json:"decimals"`
+				TotalSupply string `json:"total_supply"`
+			} `json:"data"`
+		}
+		if json.Unmarshal(tokenInfoBytes, &tokenInfoResp) == nil && tokenInfoResp.Data.Symbol != "" {
+			var minter string
+			minterBytes, mErr := queryCWContract(ctx, restURL, address, `{"minter":{}}`)
+			if mErr == nil {
+				var minterResp struct {
+					Data struct {
+						Minter string `json:"minter"`
+					} `json:"data"`
+				}
+				json.Unmarshal(minterBytes, &minterResp)
+				minter = minterResp.Data.Minter
+			}
+
+			_, _ = tx.Exec(ctx, `
+				UPDATE explorer.contracts 
+				SET token_name = $2, token_symbol = $3, decimals = $4, total_supply = $5, minter_address = $6, type_badge = 'CW20', metadata_status = 'synced'
+				WHERE address = $1`,
+				address, tokenInfoResp.Data.Name, tokenInfoResp.Data.Symbol, tokenInfoResp.Data.Decimals, tokenInfoResp.Data.TotalSupply, minter,
+			)
+			_, _ = tx.Exec(ctx, `
+				UPDATE explorer.contract_deployments
+				SET standard = 'CW20'
+				WHERE address = $1`,
+				address,
+			)
+			return
+		}
+	}
+
+	contractInfoBytes, err := queryCWContract(ctx, restURL, address, `{"contract_info":{}}`)
+	if err == nil {
+		var contractInfoResp struct {
+			Data struct {
+				Name   string `json:"name"`
+				Symbol string `json:"symbol"`
+			} `json:"data"`
+		}
+		if json.Unmarshal(contractInfoBytes, &contractInfoResp) == nil && contractInfoResp.Data.Symbol != "" {
+			var minter string
+			minterBytes, mErr := queryCWContract(ctx, restURL, address, `{"minter":{}}`)
+			if mErr == nil {
+				var minterResp struct {
+					Data struct {
+						Minter string `json:"minter"`
+					} `json:"data"`
+				}
+				json.Unmarshal(minterBytes, &minterResp)
+				minter = minterResp.Data.Minter
+			}
+
+			_, _ = tx.Exec(ctx, `
+				UPDATE explorer.contracts 
+				SET token_name = $2, token_symbol = $3, minter_address = $4, type_badge = 'CW721', metadata_status = 'synced'
+				WHERE address = $1`,
+				address, contractInfoResp.Data.Name, contractInfoResp.Data.Symbol, minter,
+			)
+			_, _ = tx.Exec(ctx, `
+				UPDATE explorer.contract_deployments
+				SET standard = 'CW721'
+				WHERE address = $1`,
+				address,
+			)
+			return
+		}
+	}
+}
+
+func queryCWContract(ctx context.Context, restURL string, contract string, queryJSON string) ([]byte, error) {
+	queryBase64 := base64.StdEncoding.EncodeToString([]byte(queryJSON))
+	url := fmt.Sprintf("%s/cosmwasm/wasm/v1/contract/%s/smart/%s", restURL, contract, queryBase64)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("status code %d", resp.StatusCode)
+	}
+	return io.ReadAll(resp.Body)
 }

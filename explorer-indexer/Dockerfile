@@ -3,6 +3,7 @@ WORKDIR /app
 ENV GOWORK=off
 COPY chain/go.mod chain/go.sum ./chain/
 COPY explorer-indexer/go.mod explorer-indexer/go.sum ./explorer-indexer/
+RUN cd explorer-indexer && go mod download
 COPY chain ./chain
 COPY explorer-indexer ./explorer-indexer
 RUN cd explorer-indexer && go build -o /app/indexer main.go

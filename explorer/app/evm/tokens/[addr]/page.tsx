@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Coins, Activity, Users, ArrowLeft, History, TrendingUp } from "lucide-react";
-import { ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, AreaChart, Area } from "recharts";
+import { Coins, Activity, Users, ArrowLeft, History, Download, Award, ChevronLeft, ChevronRight } from "lucide-react";
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 
 interface EvmToken {
   address: string;
@@ -13,6 +13,12 @@ interface EvmToken {
   decimals: number;
   totalSupply: string;
   balance: string;
+  minterAddress?: string;
+  ownerAddress?: string;
+  verified?: boolean;
+  typeBadge?: string;
+  holderCount?: number;
+  transferCount?: number;
 }
 
 interface HolderData {
@@ -38,73 +44,153 @@ export default function EvmTokenDetailPage() {
   const [token, setToken] = useState<EvmToken | null>(null);
   const [holders, setHolders] = useState<HolderData[]>([]);
   const [transfers, setTransfers] = useState<TransferLog[]>([]);
-  const [priceHistory, setPriceHistory] = useState<{ time: string; price: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Pagination states
+  const [tCursor, setTCursor] = useState<string>("");
+  const [tHasMore, setTHasMore] = useState<boolean>(false);
+  const [tPrevCursors, setTPrevCursors] = useState<string[]>([]);
+
+  const [hCursor, setHCursor] = useState<string>("");
+  const [hHasMore, setHHasMore] = useState<boolean>(false);
+  const [hPrevCursors, setHPrevCursors] = useState<string[]>([]);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8082";
 
+  // Fetch token detail
   useEffect(() => {
     if (!addr) return;
     const fetchTokenDetails = async () => {
       try {
-        const resp = await fetch(`${API_BASE}/api/rest/v1/explorer/tokens/cw20/${addr}`);
+        const resp = await fetch(`${API_BASE}/api/rest/v1/explorer/tokens/evm/${addr}`);
         if (resp.ok) {
           const data = await resp.json();
           setToken({
-            address: data.address || addr,
-            name: data.name || "Sovereign Stablecoin",
-            symbol: data.symbol || "sUSDT",
-            decimals: Number(data.decimals || 18),
-            totalSupply: data.totalSupply || "10,000,000",
-            balance: data.balance || "0",
+            address: data.address,
+            name: data.name,
+            symbol: data.symbol,
+            decimals: Number(data.decimals),
+            totalSupply: data.totalSupply,
+            balance: "0",
+            minterAddress: data.minterAddress,
+            ownerAddress: data.ownerAddress,
+            verified: data.verified,
+            typeBadge: data.typeBadge,
+            holderCount: Number(data.holderCount || 0),
+            transferCount: Number(data.transferCount || 0)
           });
         } else {
-          throw new Error("Token details not found");
+          setError("Token not found");
         }
       } catch (err) {
-        console.warn("Using simulated token details", err);
-        setToken({
-          address: addr,
-          name: "Sovereign Wrapped Ether Token",
-          symbol: "sWETH",
-          decimals: 18,
-          totalSupply: "1,000,000",
-          balance: "150",
-        });
+        console.error("Failed to fetch token details", err);
+        setError("Network error");
+      }
+    };
+    fetchTokenDetails();
+  }, [addr, API_BASE]);
 
-        setHolders([
-          { address: "0x3f5c9e2b1d7a8d9e8a7b6c5d4e3f281f449219d5", percentage: 55, balance: "550,000" },
-          { address: "0x25091a8d7a8b6c5d4e3f281f449219d54e47fd8a", percentage: 25, balance: "250,000" },
-          { address: "0x1234567890abcdef1234567890abcdef12345678", percentage: 10, balance: "100,000" },
-          { address: "0x892a10be892a10be892a10be892a10be892a10be8", percentage: 7, balance: "70,000" },
-          { address: "Others", percentage: 3, balance: "30,000" }
-        ]);
+  // Fetch transfers
+  useEffect(() => {
+    if (!addr) return;
+    const fetchTransfers = async () => {
+      try {
+        const url = `${API_BASE}/api/rest/v1/explorer/tokens/evm/${addr}/transfers?limit=10${tCursor ? `&cursor=${tCursor}` : ""}`;
+        const resp = await fetch(url);
+        if (resp.ok) {
+          const data = await resp.json();
+          setTransfers(data.transfers.map((tx: any) => ({
+            hash: tx.txHash,
+            from: tx.fromAddress,
+            to: tx.toAddress,
+            amount: tx.value,
+            time: tx.blockTime
+          })));
+          setTHasMore(data.hasMore);
+        }
+      } catch (err) {
+        console.error("Failed to fetch transfers", err);
+      }
+    };
+    fetchTransfers();
+  }, [addr, tCursor, API_BASE]);
 
-        setTransfers([
-          { hash: "0x3f5c9e2b1d7a8d9e8a7b6c5d4e3f281f449219d54e47fd8ad83861b464815d9d", from: "0x3f5c9e2b1d7a", to: "0x25091a8d7a8b", amount: "5.00", time: new Date().toISOString() },
-          { hash: "0x8a7b6c5d4e3f281f449219d54e47fd8ad83861b464815d9d3f5c9e2b1d7a8d9e", from: "0x25091a8d7a8b", to: "0x1234567890ab", amount: "1.25", time: new Date(Date.now() - 60000).toISOString() },
-        ]);
-
-        setPriceHistory([
-          { time: "09:00", price: 3450 },
-          { time: "10:00", price: 3480 },
-          { time: "11:00", price: 3465 },
-          { time: "12:00", price: 3495 },
-          { time: "13:00", price: 3510 },
-          { time: "14:00", price: 3505 },
-          { time: "15:00", price: 3530 },
-        ]);
+  // Fetch holders
+  useEffect(() => {
+    if (!addr) return;
+    const fetchHolders = async () => {
+      try {
+        const url = `${API_BASE}/api/rest/v1/explorer/tokens/evm/${addr}/holders?limit=5${hCursor ? `&cursor=${hCursor}` : ""}`;
+        const resp = await fetch(url);
+        if (resp.ok) {
+          const data = await resp.json();
+          setHolders(data.holders.map((h: any) => ({
+            address: h.address,
+            percentage: Number(Number(h.share || 0).toFixed(2)),
+            balance: h.balance
+          })));
+          setHHasMore(data.hasMore);
+        }
+      } catch (err) {
+        console.error("Failed to fetch holders", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchTokenDetails();
-  }, [addr]);
+    fetchHolders();
+  }, [addr, hCursor, API_BASE]);
+
+  const handleNextTransfers = () => {
+    if (transfers.length > 0 && tHasMore) {
+      const last = transfers[transfers.length - 1];
+      const nextCursorStr = btoa(`${last.hash}`); // simplified cursor representation
+      setTPrevCursors([...tPrevCursors, tCursor]);
+      setTCursor(nextCursorStr);
+    }
+  };
+
+  const handlePrevTransfers = () => {
+    if (tPrevCursors.length > 0) {
+      const prev = tPrevCursors[tPrevCursors.length - 1];
+      setTPrevCursors(tPrevCursors.slice(0, -1));
+      setTCursor(prev);
+    }
+  };
+
+  const handleNextHolders = () => {
+    if (holders.length > 0 && hHasMore) {
+      const last = holders[holders.length - 1];
+      const nextCursorStr = btoa(`${last.balance},${last.address}`);
+      setHPrevCursors([...hPrevCursors, hCursor]);
+      setHCursor(nextCursorStr);
+    }
+  };
+
+  const handlePrevHolders = () => {
+    if (hPrevCursors.length > 0) {
+      const prev = hPrevCursors[hPrevCursors.length - 1];
+      setHPrevCursors(hPrevCursors.slice(0, -1));
+      setHCursor(prev);
+    }
+  };
 
   if (loading) {
     return (
       <div className="p-6 max-w-6xl mx-auto flex items-center justify-center min-h-[400px]">
         <div className="text-gray-400">Loading token details...</div>
+      </div>
+    );
+  }
+
+  if (error || !token) {
+    return (
+      <div className="p-6 max-w-6xl mx-auto text-center space-y-4 py-32">
+        <h2 className="text-2xl font-bold text-white">Token Not Found</h2>
+        <p className="text-gray-400">{error || "The requested EVM token does not exist in the registry."}</p>
+        <Link href="/evm" className="inline-block px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white hover:bg-gray-800 transition">
+          Back to EVM Tokens
+        </Link>
       </div>
     );
   }
@@ -117,9 +203,7 @@ export default function EvmTokenDetailPage() {
         <span>/</span>
         <Link href="/evm" className="hover:text-white transition">EVM</Link>
         <span>/</span>
-        <Link href="/evm/tokens" className="hover:text-white transition">Tokens</Link>
-        <span>/</span>
-        <span className="text-gray-300 font-mono text-xs">{addr.slice(0, 10)}...</span>
+        <span className="text-gray-300 font-mono text-xs">{addr}</span>
       </nav>
 
       {/* Header */}
@@ -130,104 +214,167 @@ export default function EvmTokenDetailPage() {
           </Link>
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
-              <Coins className="w-8 h-8 text-purple-500 animate-pulse" />
-              {token?.name} ({token?.symbol})
+              <Coins className="w-8 h-8 text-purple-500" />
+              {token.name} ({token.symbol})
+              {token.verified && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] bg-green-950 border border-green-900 rounded text-green-400 font-semibold uppercase">
+                  <Award className="h-3 w-3" /> Verified
+                </span>
+              )}
             </h1>
-            <p className="text-gray-400 mt-1 font-mono text-xs break-all">Contract: {token?.address}</p>
+            <p className="text-gray-400 mt-1 font-mono text-xs break-all">Contract: {token.address}</p>
           </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <a
+            href={`${API_BASE}/api/rest/v1/explorer/tokens/evm/${addr}?download=true`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 px-3 py-1.5 bg-gray-950 hover:bg-gray-900 border border-gray-900 rounded-lg text-xs text-gray-300 hover:text-white transition"
+          >
+            <Download className="h-3.5 w-3.5" /> Download JSON
+          </a>
         </div>
       </div>
 
       {/* Stats Panel */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div className="bg-gray-950 border border-gray-900 p-5 rounded-xl space-y-2 shadow-md">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
+        <div className="bg-gray-950 border border-gray-900 p-5 rounded-xl space-y-1 shadow-md">
           <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">Total Supply</div>
-          <div className="text-2xl font-bold text-white font-mono">{token?.totalSupply}</div>
+          <div className="text-lg font-bold text-white font-mono">{token.totalSupply}</div>
         </div>
-        <div className="bg-gray-950 border border-gray-900 p-5 rounded-xl space-y-2 shadow-md">
+        <div className="bg-gray-950 border border-gray-900 p-5 rounded-xl space-y-1 shadow-md">
           <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">Decimals</div>
-          <div className="text-2xl font-bold text-white font-mono">{token?.decimals}</div>
+          <div className="text-lg font-bold text-white font-mono">{token.decimals}</div>
         </div>
-        <div className="bg-gray-950 border border-gray-900 p-5 rounded-xl space-y-2 shadow-md">
+        <div className="bg-gray-950 border border-gray-900 p-5 rounded-xl space-y-1 shadow-md">
+          <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">Token Holders</div>
+          <div className="text-lg font-bold text-white font-mono">{token.holderCount}</div>
+        </div>
+        <div className="bg-gray-950 border border-gray-900 p-5 rounded-xl space-y-1 shadow-md">
           <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">Contract Standard</div>
-          <div className="text-2xl font-bold text-white font-mono">ERC-20</div>
+          <div className="text-lg font-bold text-white font-mono">{token.typeBadge || "EVM"}</div>
         </div>
       </div>
 
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Simulated Price Chart */}
-        <div className="bg-gray-950 border border-gray-900 p-6 rounded-2xl shadow-lg space-y-4">
+      {/* Owner & Minter info */}
+      <div className="bg-gray-950 border border-gray-900 rounded-xl p-6 space-y-4 text-xs font-mono">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <span className="text-gray-500 uppercase font-bold block">Owner / Admin</span>
+            <span className="text-gray-300 mt-1 block select-all break-all">{token.ownerAddress || "None"}</span>
+          </div>
+          <div>
+            <span className="text-gray-500 uppercase font-bold block">Minter Address</span>
+            <span className="text-gray-300 mt-1 block select-all break-all">{token.minterAddress || "None"}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Chart & Holders */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Token Holders Donut Chart */}
+        <div className="bg-gray-950 border border-gray-900 p-6 rounded-2xl shadow-lg space-y-4 flex flex-col justify-between">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-green-500" />
-            Market Price Chart (24h)
+            <Activity className="h-5 w-5 text-indigo-500" />
+            Holders Distribution
           </h3>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={priceHistory}>
-                <defs>
-                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="time" stroke="#4b5563" fontSize={11} tickLine={false} />
-                <YAxis stroke="#4b5563" fontSize={11} domain={["auto", "auto"]} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: "#09090b", borderColor: "#18181b" }} labelClassName="text-white" />
-                <Area type="monotone" dataKey="price" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="flex items-center justify-center py-4">
+            {holders.length > 0 ? (
+              <div className="h-44 w-44 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={holders}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={3}
+                      dataKey="percentage"
+                    >
+                      {holders.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ backgroundColor: "#09090b", borderColor: "#18181b" }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <span className="text-gray-600">No holder metrics available</span>
+            )}
           </div>
         </div>
 
-        {/* Token Holders Donut Chart */}
-        <div className="bg-gray-950 border border-gray-900 p-6 rounded-2xl shadow-lg space-y-4">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <Activity className="h-5 w-5 text-indigo-500" />
-            Top Token Holders Breakdown
-          </h3>
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="h-48 w-48 shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={holders}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={3}
-                    dataKey="percentage"
-                  >
-                    {holders.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: "#09090b", borderColor: "#18181b" }} />
-                </PieChart>
-              </ResponsiveContainer>
+        {/* Holders List Table */}
+        <div className="lg:col-span-2 bg-gray-950 border border-gray-900 p-6 rounded-2xl shadow-lg space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-900 pb-3">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <Users className="h-5 w-5 text-purple-500" />
+              Token Holders
+            </h3>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handlePrevHolders}
+                disabled={hPrevCursors.length === 0}
+                className="p-1.5 bg-gray-900 border border-gray-800 rounded-lg text-gray-400 hover:text-white disabled:opacity-30 disabled:hover:text-gray-400 transition"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={handleNextHolders}
+                disabled={!hHasMore}
+                className="p-1.5 bg-gray-900 border border-gray-800 rounded-lg text-gray-400 hover:text-white disabled:opacity-30 disabled:hover:text-gray-400 transition"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
-            <div className="space-y-2 text-xs w-full">
-              {holders.map((h, idx) => (
+          </div>
+          <div className="space-y-2 text-xs">
+            {holders.length === 0 ? (
+              <div className="py-8 text-center text-gray-500 font-mono">No token holders listed</div>
+            ) : (
+              holders.map((h, idx) => (
                 <div key={idx} className="flex items-center justify-between font-mono bg-gray-900/30 p-2 border border-gray-900 rounded-lg">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                    <span className="text-gray-300 font-bold">{h.address.slice(0, 10)}...</span>
+                    <Link href={`/address/${h.address}`} className="text-blue-500 hover:underline">
+                      {h.address}
+                    </Link>
                   </div>
-                  <span className="text-white font-semibold">{h.percentage}% ({h.balance} {token?.symbol})</span>
+                  <span className="text-white font-semibold">{h.percentage}% ({h.balance} {token.symbol})</span>
                 </div>
-              ))}
-            </div>
+              ))
+            )}
           </div>
         </div>
       </div>
 
       {/* Transfer History Table */}
       <div className="bg-gray-950 border border-gray-900 p-6 rounded-2xl shadow-lg space-y-4">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-          <History className="h-5 w-5 text-blue-500" />
-          Transfer Activity Logs
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <History className="h-5 w-5 text-blue-500" />
+            Transfer Logs
+          </h3>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handlePrevTransfers}
+              disabled={tPrevCursors.length === 0}
+              className="p-1.5 bg-gray-900 border border-gray-800 rounded-lg text-gray-400 hover:text-white disabled:opacity-30 disabled:hover:text-gray-400 transition"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={handleNextTransfers}
+              disabled={!tHasMore}
+              className="p-1.5 bg-gray-900 border border-gray-800 rounded-lg text-gray-400 hover:text-white disabled:opacity-30 disabled:hover:text-gray-400 transition"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
         <div className="overflow-x-auto border border-gray-900 rounded-xl">
           <table className="w-full text-left text-sm text-gray-400 font-mono">
             <thead className="bg-black/50 text-xs text-gray-500 uppercase tracking-wider font-bold">
@@ -240,19 +387,33 @@ export default function EvmTokenDetailPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-900">
-              {transfers.map((tx) => (
-                <tr key={tx.hash} className="hover:bg-gray-900/30 transition text-xs">
-                  <td className="p-4 font-bold text-white">
-                    <Link href={`/evm/txs/${tx.hash}`} className="text-blue-500 hover:underline">
-                      {tx.hash.slice(0, 12)}...
-                    </Link>
-                  </td>
-                  <td className="p-4">{tx.from}</td>
-                  <td className="p-4">{tx.to}</td>
-                  <td className="p-4 text-white font-bold">{tx.amount} {token?.symbol}</td>
-                  <td className="p-4 text-right text-gray-500">{new Date(tx.time).toLocaleTimeString()}</td>
+              {transfers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-gray-500 font-mono">No transfers found</td>
                 </tr>
-              ))}
+              ) : (
+                transfers.map((tx) => (
+                  <tr key={tx.hash} className="hover:bg-gray-900/30 transition text-xs">
+                    <td className="p-4 font-bold text-white">
+                      <Link href={`/evm/txs/${tx.hash}`} className="text-blue-500 hover:underline">
+                        {tx.hash.slice(0, 16)}...
+                      </Link>
+                    </td>
+                    <td className="p-4">
+                      <Link href={`/address/${tx.from}`} className="text-blue-500 hover:underline">
+                        {tx.from.slice(0, 10)}...{tx.from.slice(-6)}
+                      </Link>
+                    </td>
+                    <td className="p-4">
+                      <Link href={`/address/${tx.to}`} className="text-blue-500 hover:underline">
+                        {tx.to.slice(0, 10)}...{tx.to.slice(-6)}
+                      </Link>
+                    </td>
+                    <td className="p-4 text-white font-bold">{tx.amount} {token.symbol}</td>
+                    <td className="p-4 text-right text-gray-500">{new Date(tx.time).toLocaleString()}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

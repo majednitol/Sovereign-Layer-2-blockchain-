@@ -155,9 +155,9 @@ func VerifyInvariants() []string {
 // ---------------------------------------------------------------------------
 
 // BuildGenesisDoc builds a minimal genesis document with all Phase 1 app_state.
-func BuildGenesisDoc(chainID string) GenesisDoc {
+func BuildGenesisDoc(chainID string, env string, genesisTime time.Time) GenesisDoc {
 	return GenesisDoc{
-		GenesisTime:   time.Now().UTC(),
+		GenesisTime:   genesisTime,
 		ChainID:       chainID,
 		InitialHeight: "1",
 		ConsensusParams: ConsensusParams{
@@ -180,7 +180,7 @@ func BuildGenesisDoc(chainID string) GenesisDoc {
 				"vote_extensions_enable_height": "0",
 			},
 		},
-		AppState: buildAppState(),
+		AppState: buildAppState(env),
 	}
 }
 
@@ -224,9 +224,9 @@ func sha256Hash(data []byte) []byte {
 }
 
 // buildAppState constructs the genesis app_state with all Phase 1 module params and Phase 3 CosmWasm smart contracts.
-func buildAppState() map[string]interface{} {
+func buildAppState(env string) map[string]interface{} {
 	if err := compileContracts(); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to compile contracts: %v. Using existing compiled WASM files if present.\n", err)
+		panic(fmt.Sprintf("failed to compile contracts: %v", err))
 	}
 
 	contractsDir := "contracts/target/wasm32-unknown-unknown/release"
@@ -638,8 +638,66 @@ func buildAppState() map[string]interface{} {
 		"relayers":      []interface{}{},
 		"cosmos_minted": 0,
 	}
+	if env == "dev" {
+		// Inject into auth accounts
+		if auth, ok := appState["auth"].(map[string]interface{}); ok {
+			var accounts []interface{}
+			if accs, ok := auth["accounts"].([]interface{}); ok {
+				accounts = accs
+			}
+			accounts = append(accounts, createGenesisAccount("cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr"))
+			accounts = append(accounts, createGenesisAccount("cosmos1dwkz0xnx4akzv8vnzjapcuqlxtd5c2789w4umh"))
+			auth["accounts"] = accounts
+		}
+
+		// Inject into bank balances
+		if bank, ok := appState["bank"].(map[string]interface{}); ok {
+			var balances []interface{}
+			if bals, ok := bank["balances"].([]interface{}); ok {
+				balances = bals
+			}
+			balances = append(balances, createGenesisBalance("cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr"))
+			balances = append(balances, createGenesisBalance("cosmos1dwkz0xnx4akzv8vnzjapcuqlxtd5c2789w4umh"))
+			bank["balances"] = balances
+		}
+	} else if env == "prod" {
+		// Verify no dev-only accounts are present in prod
+		if auth, ok := appState["auth"].(map[string]interface{}); ok {
+			if accs, ok := auth["accounts"].([]interface{}); ok {
+				for _, acc := range accs {
+					if accMap, ok := acc.(map[string]interface{}); ok {
+						addr, _ := accMap["address"].(string)
+						if addr == "cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr" || addr == "cosmos1dwkz0xnx4akzv8vnzjapcuqlxtd5c2789w4umh" {
+							panic("production genesis must not contain dev holder accounts")
+						}
+					}
+				}
+			}
+		}
+	}
 
 	return appState
+}
+
+func createGenesisAccount(address string) map[string]interface{} {
+	return map[string]interface{}{
+		"@type":          "/cosmos.auth.v1beta1.BaseAccount",
+		"address":        address,
+		"pub_key":        nil,
+		"account_number": "0",
+		"sequence":       "0",
+	}
+}
+
+func createGenesisBalance(address string) map[string]interface{} {
+	return map[string]interface{}{
+		"address": address,
+		"coins": []map[string]interface{}{
+			{"denom": "atoken", "amount": "1000000000000000000000000"},
+			{"denom": "usov", "amount": "1000000000000000"},
+			{"denom": "utoken", "amount": "1000000000000000"},
+		},
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -648,15 +706,45 @@ func buildAppState() map[string]interface{} {
 
 func main() {
 	var (
-		verifyOnly bool
-		outPath    string
-		chainID    string
+		verifyOnly     bool
+		outPath        string
+		chainID        string
+		env            string
+		genesisTimeStr string
 	)
 
 	flag.BoolVar(&verifyOnly, "verify", false, "Run invariant checks only, do not write genesis file")
-	flag.StringVar(&outPath, "out", "chain/genesis.json", "Output path for the genesis file")
+	flag.StringVar(&outPath, "out", "", "Output path for the genesis file")
 	flag.StringVar(&chainID, "chain-id", "sovereign-1", "Chain ID to embed in genesis")
+	flag.StringVar(&env, "env", "dev", "Environment: dev or prod")
+	flag.StringVar(&genesisTimeStr, "genesis-time", "", "Genesis time (RFC3339). If empty, defaults to a fixed time (2026-07-09T00:00:00Z) for determinism.")
 	flag.Parse()
+
+	if env != "dev" && env != "prod" {
+		fmt.Fprintf(os.Stderr, "Error: env must be either 'dev' or 'prod'\n")
+		os.Exit(1)
+	}
+
+	var genesisTime time.Time
+	if genesisTimeStr != "" {
+		var err error
+		genesisTime, err = time.Parse(time.RFC3339, genesisTimeStr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing genesis-time %q: %v\n", genesisTimeStr, err)
+			os.Exit(1)
+		}
+	} else {
+		// Use a fixed epoch time for reproducibility
+		genesisTime = time.Date(2026, 7, 9, 0, 0, 0, 0, time.UTC)
+	}
+
+	if outPath == "" {
+		if env == "dev" {
+			outPath = "chain/genesis.dev.json"
+		} else {
+			outPath = "chain/genesis.prod.json"
+		}
+	}
 
 	fmt.Println("=== Sovereign L1 — Phase 1 Genesis Invariant Verification ===")
 	fmt.Println()
@@ -682,7 +770,7 @@ func main() {
 	}
 
 	// Build and write genesis
-	genesis := BuildGenesisDoc(chainID)
+	genesis := BuildGenesisDoc(chainID, env, genesisTime)
 	data, err := json.MarshalIndent(genesis, "", "  ")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to marshal genesis: %v\n", err)
@@ -696,6 +784,8 @@ func main() {
 
 	fmt.Printf("[OK] Genesis written to %s\n", outPath)
 	fmt.Printf("     Chain ID   : %s\n", chainID)
+	fmt.Printf("     Environment: %s\n", env)
+	fmt.Printf("     Genesis Time: %s\n", genesisTime.Format(time.RFC3339))
 	fmt.Printf("     Total Supply: %d utoken (%d TOKEN)\n", TotalSupply, TotalSupply/1_000_000)
 	fmt.Printf("     BSC Escrow  : %d utoken (%d TOKEN)\n", BscEscrowBalance, BscEscrowBalance/1_000_000)
 	fmt.Printf("     EVM Chain ID: %d\n", EVMChainID)

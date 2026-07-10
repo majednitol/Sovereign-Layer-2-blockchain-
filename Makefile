@@ -65,3 +65,15 @@ verify-build:
 
 clean:
 	rm -rf bin
+
+build-cw-assets:
+	mkdir -p artifacts
+	cd contracts && cargo build --target wasm32-unknown-unknown --release --lib --workspace
+	cp contracts/target/wasm32-unknown-unknown/release/cw20_token.wasm artifacts/cw20_token.wasm
+	cp contracts/target/wasm32-unknown-unknown/release/cw721_nft.wasm artifacts/cw721_nft.wasm
+	cp contracts/target/wasm32-unknown-unknown/release/cw1155_multi.wasm artifacts/cw1155_multi.wasm
+	wasm-opt --llvm-memory-copy-fill-lowering artifacts/cw20_token.wasm -o artifacts/cw20_token.wasm
+	wasm-opt --llvm-memory-copy-fill-lowering artifacts/cw721_nft.wasm -o artifacts/cw721_nft.wasm
+	wasm-opt --llvm-memory-copy-fill-lowering artifacts/cw1155_multi.wasm -o artifacts/cw1155_multi.wasm
+	cd artifacts && (sha256sum *.wasm > checksums.txt || shasum -a 256 *.wasm > checksums.txt)
+

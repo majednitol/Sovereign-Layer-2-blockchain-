@@ -7,11 +7,15 @@ WORKDIR /app
 FROM base AS builder
 # Copy package.json, pnpm-workspace.yaml, and lockfile
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY packages/api-spec ./packages/api-spec
-COPY explorer ./explorer
+COPY packages/api-spec/package.json ./packages/api-spec/
+COPY explorer/package.json ./explorer/
 
 # Install dependencies
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
+
+# Copy actual source files
+COPY packages/api-spec ./packages/api-spec
+COPY explorer ./explorer
 
 # Set Build-Time Env Variables
 ARG NEXT_PUBLIC_RPC_URL=http://localhost:26657

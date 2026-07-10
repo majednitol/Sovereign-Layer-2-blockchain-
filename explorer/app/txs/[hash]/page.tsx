@@ -159,6 +159,7 @@ export default function TxDetailPage({ params }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [memo, setMemo] = useState<string>("");
   const [events, setEvents] = useState<{ type: string; attributes: { key: string; value: string }[] }[]>([]);
+  const [transfers, setTransfers] = useState<TokenTransfer[]>([]);
 
   const [retrying, setRetrying] = useState(false);
 
@@ -224,6 +225,19 @@ export default function TxDetailPage({ params }: Props) {
               }));
               setEvents(mappedEvents);
             }
+          }
+
+          // Fetch real transfers for this transaction
+          const transResp = await fetch(`${API_BASE}/api/rest/v1/explorer/txs/${hash}/transfers`);
+          if (transResp.ok) {
+            const transData = await transResp.json();
+            setTransfers(transData.map((t: any) => ({
+              token: t.tokenSymbol,
+              amount: t.amount,
+              sender: t.from,
+              receiver: t.to,
+              type: t.tokenStandard
+            })));
           }
         }
         return true; // success
@@ -312,7 +326,6 @@ export default function TxDetailPage({ params }: Props) {
     );
   }
 
-  const transfers = extractTokenTransfers(events);
   const actionSummary = getActionSummary(tx);
 
   return (

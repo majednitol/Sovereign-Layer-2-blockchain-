@@ -58,71 +58,69 @@ export default function EvmTxDetailPage() {
     if (!hash) return;
     const fetchTx = async () => {
       try {
-        const resp = await fetch(`${API_BASE}/api/rest/v1/explorer/evm/txs/${hash}`);
+        const resp = await fetch(`${API_BASE}/api/rest/v1/explorer/txs/${hash}`);
         if (resp.ok) {
           const data = await resp.json();
+          let decodedObj: any = {};
+          if (data.decoded) {
+            try {
+              decodedObj = JSON.parse(data.decoded);
+            } catch (e) {
+              decodedObj = { raw: data.decoded };
+            }
+          }
+
           setTx({
             hash: data.hash || hash,
             height: Number(data.height || 0),
             time: data.time || new Date().toISOString(),
-            from: data.sender || "0x0000000000000000000000000000000000000000",
-            to: data.to || "0xcontractaddress",
-            value: data.value || "0.00",
-            gasUsed: data.gasUsed || "21,000",
-            gasLimit: data.gasLimit || "100,000",
-            gasPrice: data.gasPrice || "10 Gwei",
+            from: decodedObj.sender || "0x0000000000000000000000000000000000000000",
+            to: decodedObj.receiver || "Contract Creation",
+            value: decodedObj.amount || "0",
+            gasUsed: data.gasUsed ? Number(data.gasUsed).toLocaleString() : "0",
+            gasLimit: decodedObj.gas_limit ? Number(decodedObj.gas_limit).toLocaleString() : "0",
+            gasPrice: decodedObj.gas_price ? decodedObj.gas_price + " wei" : "0 wei",
             status: data.status === 0 ? "success" : "failed",
-            input: data.memo || "0x",
-            revertReason: data.revertReason
+            input: decodedObj.input || "0x",
+            revertReason: decodedObj.revert_reason || data.revertReason
           });
-          if (data.decodedInput) setDecodedInput(data.decodedInput);
-          if (data.traces) setTraces(data.traces);
-          if (data.transfers) setTransfers(data.transfers);
+
+          if (decodedObj.method) {
+            const paramsList = [];
+            if (decodedObj.sender) paramsList.push({ name: "from", type: "address", value: decodedObj.sender });
+            if (decodedObj.receiver) paramsList.push({ name: "to", type: "address", value: decodedObj.receiver });
+            if (decodedObj.amount) paramsList.push({ name: "value", type: "uint256", value: decodedObj.amount });
+
+            setDecodedInput({
+              method: decodedObj.method,
+              params: paramsList
+            });
+          }
+
+          // Fetch real transfers for this transaction
+          const transResp = await fetch(`${API_BASE}/api/rest/v1/explorer/txs/${hash}/transfers`);
+          if (transResp.ok) {
+            const transData = await transResp.json();
+            setTransfers(transData.map((t: any) => ({
+              tokenAddress: t.tokenAddress,
+              tokenSymbol: t.tokenSymbol,
+              from: t.from,
+              to: t.to,
+              amount: t.amount
+            })));
+          }
         } else {
-          throw new Error("Transaction not found");
+          setTx(null);
         }
       } catch (err) {
-        console.warn("Using simulated EVM tx details", err);
-        setTx({
-          hash: hash,
-          height: 120530,
-          time: new Date().toISOString(),
-          from: "0x3f5c9e2b1d7a8d9e8a7b6c5d4e3f281f449219d54e47fd8ad83861b464815d9d",
-          to: "0x25091a8d7a8b6c5d4e3f281f449219d54e47fd8a",
-          value: "1.50",
-          gasUsed: "84,320",
-          gasLimit: "150,000",
-          gasPrice: "18 Gwei",
-          status: hash.endsWith("ff") ? "failed" : "success",
-          input: "0xa9059cbb0000000000000000000000001234567890abcdef1234567890abcdef123456780000000000000000000000000000000000000000000000000de0b6b3a7640000",
-          revertReason: hash.endsWith("ff") ? "ERC20: transfer amount exceeds balance" : undefined
-        });
-
-        // Set simulated decoded inputs
-        setDecodedInput({
-          method: "transfer(address to, uint256 value)",
-          params: [
-            { name: "to", type: "address", value: "0x1234567890abcdef1234567890abcdef12345678" },
-            { name: "value", type: "uint256", value: "1,000,000,000,000,000,000 (1.0 SLT)" }
-          ]
-        });
-
-        // Set simulated traces
-        setTraces([
-          { type: "CALL", from: "0x3f5c9e2b1d7a8d9e8a7b6c5d4e3f281f449219d54e47fd8ad83861b464815d9d", to: "0x25091a8d7a8b6c5d4e3f281f449219d54e47fd8a", value: "1.50 SLT", gas: 84320, depth: 0 },
-          { type: "DELEGATECALL", from: "0x25091a8d7a8b6c5d4e3f281f449219d54e47fd8a", to: "0x892a10be892a10be892a10be892a10be892a10be8", value: "0 SLT", gas: 72150, depth: 1 }
-        ]);
-
-        // Set simulated transfers
-        setTransfers([
-          { tokenAddress: "0x25091a8d7a8b6c5d4e3f281f449219d54e47fd8a", tokenSymbol: "sUSDT", from: "0x3f5c9e2b1d7a8d9e", to: "0x1234567890abcdef", amount: "500.00" }
-        ]);
+        console.error("Failed to load real EVM tx details", err);
+        setTx(null);
       } finally {
         setLoading(false);
       }
     };
     fetchTx();
-  }, [hash]);
+  }, [hash, API_BASE]);
 
   if (loading) {
     return (

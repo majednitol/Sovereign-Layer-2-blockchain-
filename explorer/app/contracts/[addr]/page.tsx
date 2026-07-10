@@ -87,36 +87,67 @@ export default function ContractDetailPage({ params }: Props) {
         const contractData: ContractDetail = {
           address: data.address || addr,
           codeId: Number(data.codeId || 1),
-          label: data.label || "Mock Contract",
-          creator: data.creator || "sovereign1address0",
+          label: data.label || "CosmWasm Contract",
+          creator: data.creator || "sovereign1creator",
           admin: data.admin || "",
           typeBadge: typeBadge,
           executeHistory: data.executeHistory || "[]",
         };
         setContract(contractData);
 
-        // Fetch holders if it is a CW-20 token contract
+        // Fetch holders and info if it is a CW-20 token contract
         if (typeBadge === "CW-20") {
           try {
-            const holdersResp = await fetch(`${API_BASE}/api/rest/v1/explorer/contracts/${addr}/holders`);
-            if (holdersResp.ok) {
-              const holdersData = await holdersResp.json();
-              if (holdersData.holders && holdersData.holders.length > 0) {
-                setHolders(holdersData.holders.map((h: any) => ({
+            const tokenResp = await fetch(`${API_BASE}/api/rest/v1/explorer/tokens/cw20/${addr}`);
+            if (tokenResp.ok) {
+              const tokenData = await tokenResp.json();
+              if (tokenData.holders) {
+                setHolders(tokenData.holders.map((h: any) => ({
                   address: h.address,
-                  balance: `${Number(h.balance).toLocaleString()} ${data.symbol || "tokens"}`,
-                  share: Number(h.share || 0),
+                  balance: `${Number(h.balance).toLocaleString()} ${tokenData.symbol || "tokens"}`,
+                  share: 0,
+                })));
+              }
+              if (tokenData.transfers) {
+                setHistoryList(tokenData.transfers.map((tx: any) => ({
+                  hash: tx.txHash,
+                  height: 0,
+                  time: tx.time,
+                  type: "MsgExecuteContract",
+                  msg: { transfer: { recipient: tx.to, amount: tx.amount } },
+                  sender: tx.from,
+                  status: "Success",
                 })));
               }
             }
           } catch (e) {
-            console.warn("Failed to fetch CW-20 holders", e);
+            console.warn("Failed to fetch CW-20 token info", e);
+          }
+        }
+
+        // Fetch collection list if it is a CW-721 NFT contract
+        if (typeBadge === "CW-721") {
+          try {
+            const collResp = await fetch(`${API_BASE}/api/rest/v1/explorer/tokens/cw721/${addr}`);
+            if (collResp.ok) {
+              const collData = await collResp.json();
+              if (collData.tokens) {
+                setNfts(collData.tokens.map((t: any) => ({
+                  tokenId: t.tokenId,
+                  uri: t.image || "",
+                  owner: t.owner,
+                  trait: "Genesis Badge",
+                })));
+              }
+            }
+          } catch (e) {
+            console.warn("Failed to fetch CW-721 collection info", e);
           }
         }
 
         // Fetch verification state and schemas
         try {
-          const verifyResp = await fetch(`${API_BASE}/api/rest/v1/explorer/cosmwasm/codes/${contractData.codeId}`);
+          const verifyResp = await fetch(`${API_BASE}/api/rest/v1/explorer/codes/${contractData.codeId}`);
           if (verifyResp.ok) {
             const verifyData = await verifyResp.json();
             if (verifyData.verified) {
@@ -158,73 +189,16 @@ export default function ContractDetailPage({ params }: Props) {
           console.warn("Failed to load verified schemas", e);
         }
 
-        // Parse history
-        try {
-          const parsedHistory = JSON.parse(contractData.executeHistory);
-          if (parsedHistory && Array.isArray(parsedHistory)) {
-            const formatted = parsedHistory.map((item: any, idx: number) => ({
-              hash: item.hash || `0xmockhash${idx}_` + Math.random().toString(16).slice(2, 10),
-              height: Number(item.height || 100 - idx),
-              time: item.time || new Date(Date.now() - idx * 3600000).toISOString(),
-              type: "MsgExecuteContract",
-              msg: item.msg || {},
-              sender: item.sender || "sovereign1address0",
-              status: "Success",
-            }));
-            setHistoryList(formatted);
-          }
-        } catch (e) {
-          console.warn("Failed to parse execute history", e);
-        }
       } catch (err: any) {
-        console.warn("Falling back to mock contract details:", err.message);
-        const detectedType = addr.includes("nft") || addr.includes("721") ? "CW-721" : addr.includes("multi") || addr.includes("1155") ? "CW-1155" : "CW-20";
-        const fallbackContract: ContractDetail = {
-          address: addr,
-          codeId: detectedType === "CW-721" ? 2 : detectedType === "CW-1155" ? 3 : 1,
-          label: detectedType === "CW-721" ? "Sovereign L1 Founders Badge" : detectedType === "CW-1155" ? "Sovereign L1 Multitoken Collection" : "Sovereign L1 Governance Token",
-          creator: "sovereign1address0",
-          admin: detectedType === "CW-721" ? "sovereign1address0" : "",
-          typeBadge: detectedType,
-          executeHistory: "[]",
-        };
-        setContract(fallbackContract);
-
-        // Simulated historical events
-        setHistoryList([
-          {
-            hash: "0x3f5b9c2b1d7a8d9e8a7b6c5d4e3f281f449219d54e47fd8ad83861b464815d9d",
-            height: 385,
-            time: new Date(Date.now() - 7200000).toISOString(),
-            type: "MsgExecuteContract",
-            msg: detectedType === "CW-721" 
-              ? { mint: { token_id: "1", owner: "sovereign1address0", token_uri: "ipfs://QmFnd1" } }
-              : detectedType === "CW-1155"
-              ? { mint: { token_id: "gold_badge", recipient: "sovereign1address0", amount: "500" } }
-              : { transfer: { recipient: "sovereign1address1", amount: "5000000" } },
-            sender: "sovereign1address0",
-            status: "Success",
-          },
-          {
-            hash: "0x8d9e8a7b6c5d4e3f281f449219d54e47fd8ad83861b464815d9d3f5b9c2b1d7a",
-            height: 392,
-            time: new Date(Date.now() - 3600000).toISOString(),
-            type: "MsgExecuteContract",
-            msg: detectedType === "CW-721"
-              ? { transfer_nft: { recipient: "sovereign1address1", token_id: "1" } }
-              : detectedType === "CW-1155"
-              ? { send: { recipient: "sovereign1address1", token_id: "gold_badge", amount: "10" } }
-              : { mint: { recipient: "sovereign1address0", amount: "2000000" } },
-            sender: "sovereign1address0",
-            status: "Success",
-          }
-        ]);
+        console.error("Failed to load real contract detail", err);
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
     fetchContractDetail();
+    return;
   }, [addr]);
 
   // Adjust default JSON templates and load standard collections data

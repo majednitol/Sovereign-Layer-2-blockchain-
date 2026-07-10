@@ -361,10 +361,41 @@ export default function AddressPage() {
                       <div key={idx} className="bg-gray-900/40 border border-gray-850 p-4 rounded-xl flex justify-between items-center hover:border-gray-700 transition duration-200">
                         <div className="space-y-1">
                           <div className="font-bold text-white flex items-center gap-2">
-                            {token.name} <span className="text-xs text-gray-400 font-normal">({token.symbol})</span>
+                            {token.standard === "cw20" ? (
+                              <Link href={`/contracts/${token.contract}`} className="text-blue-400 hover:underline">
+                                {token.name}
+                              </Link>
+                            ) : token.standard === "erc20" ? (
+                              <Link href={`/evm/tokens/${token.contract}`} className="text-blue-450 hover:underline">
+                                {token.name}
+                              </Link>
+                            ) : token.standard === "erc4626" ? (
+                              <Link href={`/vaults/${token.contract}`} className="text-indigo-400 hover:underline">
+                                {token.name}
+                              </Link>
+                            ) : (
+                              token.name
+                            )}
+                            <span className="text-xs text-gray-400 font-normal">({token.symbol})</span>
                           </div>
                           <div className="text-xs text-gray-500 font-mono truncate max-w-[200px] sm:max-w-[300px]">
-                            {token.contract === "native" ? "Native Blockchain Asset" : token.contract}
+                            {token.contract === "native" ? "Native Blockchain Asset" : (
+                              token.standard === "cw20" ? (
+                                <Link href={`/contracts/${token.contract}`} className="hover:underline text-gray-400">
+                                  {token.contract}
+                                </Link>
+                              ) : token.standard === "erc20" ? (
+                                <Link href={`/evm/tokens/${token.contract}`} className="hover:underline text-gray-400">
+                                  {token.contract}
+                                </Link>
+                              ) : token.standard === "erc4626" ? (
+                                <Link href={`/vaults/${token.contract}`} className="hover:underline text-gray-400">
+                                  {token.contract}
+                                </Link>
+                              ) : (
+                                token.contract
+                              )
+                            )}
                           </div>
                           <div className="flex gap-2 pt-1">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
@@ -407,19 +438,46 @@ export default function AddressPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
                     {portfolio.nfts.map((nft, idx) => (
                       <div key={idx} className="bg-gray-900 border border-gray-850 rounded-xl overflow-hidden shadow group hover:border-gray-700 transition duration-200">
-                        <div className="h-36 bg-gradient-to-br from-indigo-950 to-purple-950 flex items-center justify-center relative overflow-hidden">
-                          <img 
-                            src={nft.image} 
-                            alt={nft.name} 
-                            className="h-full w-full object-cover group-hover:scale-105 transition duration-300"
-                            onError={(e) => {
-                              (e.target as HTMLElement).style.display = "none";
-                            }}
-                          />
-                        </div>
+                        {nft.standard === "cw721" ? (
+                          <Link href={`/contracts/${nft.contract}/nfts/${nft.tokenId}`}>
+                            <div className="h-36 bg-gradient-to-br from-indigo-950 to-purple-950 flex items-center justify-center relative overflow-hidden cursor-pointer">
+                              <img 
+                                src={nft.image} 
+                                alt={nft.name} 
+                                className="h-full w-full object-cover group-hover:scale-105 transition duration-300"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            </div>
+                          </Link>
+                        ) : (
+                          <Link href={`/evm/nfts/${nft.contract}/${nft.tokenId}`}>
+                            <div className="h-36 bg-gradient-to-br from-indigo-950 to-purple-950 flex items-center justify-center relative overflow-hidden cursor-pointer">
+                              <img 
+                                src={nft.image} 
+                                alt={nft.name} 
+                                className="h-full w-full object-cover group-hover:scale-105 transition duration-300"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            </div>
+                          </Link>
+                        )}
                         <div className="p-3 space-y-2">
                           <div>
-                            <div className="font-bold text-xs text-white truncate">{nft.name}</div>
+                            <div className="font-bold text-xs text-white truncate">
+                              {nft.standard === "cw721" ? (
+                                <Link href={`/contracts/${nft.contract}/nfts/${nft.tokenId}`} className="hover:underline text-white">
+                                  {nft.name}
+                                </Link>
+                              ) : (
+                                <Link href={`/evm/nfts/${nft.contract}/${nft.tokenId}`} className="hover:underline text-white">
+                                  {nft.name}
+                                </Link>
+                              )}
+                            </div>
                             <div className="text-[10px] text-gray-500 font-mono">ID: {nft.tokenId}</div>
                           </div>
                           <div className="flex gap-2">

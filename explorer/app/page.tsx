@@ -48,7 +48,7 @@ export default function HomePage() {
   const txs = txsData?.txs || [];
 
   const tpsHistory = tpsHistoryData?.points?.map(p => ({
-    name: new Date(p.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    name: p.time,
     tps: p.tps
   })) || [];
 

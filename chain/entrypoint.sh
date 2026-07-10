@@ -33,6 +33,16 @@ if [ ! -f "${CHAIN_HOME}/config/config.toml" ]; then
   FAUCET_ADDR=$(chaind keys show faucet -a --keyring-backend test --home "${CHAIN_HOME}")
   echo "Faucet address: ${FAUCET_ADDR}"
 
+  echo "Adding evm-holder credentials to test keyring..."
+  echo "must motion super wedding record raccoon toast public dance dial index embrace" | chaind keys add sovereign1-evm-holder --recover --keyring-backend test --algo eth_secp256k1 --home "${CHAIN_HOME}"
+  EVM_HOLDER_ADDR=$(chaind keys show sovereign1-evm-holder -a --keyring-backend test --home "${CHAIN_HOME}")
+  echo "EVM holder address: ${EVM_HOLDER_ADDR}"
+
+  echo "Adding cosmos-holder credentials to test keyring..."
+  echo "must motion super wedding record raccoon toast public dance dial index embrace" | chaind keys add sovereign1-cosmos-holder --recover --keyring-backend test --algo secp256k1 --home "${CHAIN_HOME}"
+  COSMOS_HOLDER_ADDR=$(chaind keys show sovereign1-cosmos-holder -a --keyring-backend test --home "${CHAIN_HOME}")
+  echo "Cosmos holder address: ${COSMOS_HOLDER_ADDR}"
+
   echo "Funding validator, faucet and relayer accounts in genesis..."
   # Fund validator in genesis (500,000,000 TOKEN = 500,000,000,000,000 utoken, and 1,000,000 atoken for EVM)
   chaind genesis add-genesis-account "${VAL_ADDR}" 500000000000000utoken,1000000000000000000000000atoken --home "${CHAIN_HOME}"

@@ -35,40 +35,35 @@ export default function ContractNftDetailPage() {
   useEffect(() => {
     const fetchNftDetails = async () => {
       try {
-        const resp = await fetch(`${API_BASE}/api/rest/v1/explorer/tokens/cw721/${addr}/nft/${tokenId}`);
+        const resp = await fetch(`${API_BASE}/api/rest/v1/explorer/nfts/cw721/${addr}/${tokenId}`);
         if (resp.ok) {
           const data = await resp.json();
           setNft({
             address: data.address || addr,
             tokenId: data.tokenId || tokenId,
-            owner: data.owner,
-            image: data.image || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400",
-            metadataUri: data.metadataUri || "",
-            metadataJson: data.metadataJson || "{}",
-            transfers: data.transfers || [],
+            owner: data.ownerAddress || "sovereign1creator",
+            image: data.tokenUri || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400",
+            metadataUri: data.tokenUri || "",
+            metadataJson: data.metadata ? JSON.stringify(data.metadata) : "{}",
+            transfers: (data.transferHistory || []).map((t: any) => ({
+              from: t.fromAddress,
+              to: t.toAddress,
+              txHash: t.txHash,
+              time: t.blockTime
+            })),
           });
         } else {
           throw new Error("NFT not found");
         }
       } catch (err) {
-        console.warn("Using simulated NFT details", err);
-        setNft({
-          address: addr,
-          tokenId: tokenId,
-          owner: "sovereign1owneraddress123",
-          image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400",
-          metadataUri: "ipfs://QmYwAPJzv5CZ1QDJUfmM...",
-          metadataJson: JSON.stringify({ name: `Founders Badge #${tokenId}`, description: "Genesis commemorative badge.", attributes: [{ trait_type: "Genesis", value: "True" }] }),
-          transfers: [
-            { from: "sovereign1creator", to: "sovereign1owneraddress123", txHash: "4c8a2b9...", time: new Date().toISOString() },
-          ],
-        });
+        console.error("Failed to load real CW-721 NFT details", err);
+        setNft(null);
       } finally {
         setLoading(false);
       }
     };
     fetchNftDetails();
-  }, [addr, tokenId]);
+  }, [addr, tokenId, API_BASE]);
 
   if (loading) {
     return (

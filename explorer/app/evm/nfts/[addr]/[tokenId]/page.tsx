@@ -36,49 +36,35 @@ export default function EvmNftDetailPage() {
     if (!addr) return;
     const fetchNftDetails = async () => {
       try {
-        const resp = await fetch(`${API_BASE}/api/rest/v1/explorer/tokens/cw721/${addr}/nft/${tokenId}`);
+        const resp = await fetch(`${API_BASE}/api/rest/v1/explorer/nfts/evm/${addr}/${tokenId}`);
         if (resp.ok) {
           const data = await resp.json();
           setNft({
             address: data.address || addr,
             tokenId: data.tokenId || tokenId,
-            owner: data.owner,
-            image: data.image || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400",
-            metadataUri: data.metadataUri || "",
-            metadataJson: data.metadataJson || "{}",
-            transfers: data.transfers || [],
+            owner: data.ownerAddress || "0x0000000000000000000000000000000000000000",
+            image: data.tokenUri || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400",
+            metadataUri: data.tokenUri || "",
+            metadataJson: data.metadata ? JSON.stringify(data.metadata) : "{}",
+            transfers: (data.transferHistory || []).map((t: any) => ({
+              from: t.fromAddress,
+              to: t.toAddress,
+              txHash: t.txHash,
+              time: t.blockTime
+            })),
           });
         } else {
           throw new Error("NFT not found");
         }
       } catch (err) {
-        console.warn("Using simulated NFT details", err);
-        setNft({
-          address: addr,
-          tokenId: tokenId,
-          owner: "0x1234567890abcdef1234567890abcdef12345678",
-          image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400",
-          metadataUri: "ipfs://QmYwAPJzv5CZ1QDJUfmM...",
-          metadataJson: JSON.stringify({
-            name: `Genesis Badge #${tokenId}`,
-            description: "Genesis commemorative badge issued to early validators and operators of Sovereign network.",
-            attributes: [
-              { trait_type: "Background", value: "Purple" },
-              { trait_type: "Rarity", value: "Legendary" },
-              { trait_type: "Level", value: "Tier 5" },
-              { trait_type: "Issuer", value: "Sovereign Labs" }
-            ]
-          }),
-          transfers: [
-            { from: "0x0000000000000000000000000000000000000000", to: "0x1234567890abcdef1234567890abcdef12345678", txHash: "0x3f5c9e2b1d7a8d9e8a7b6c5d4e3f281f449219d54e47fd8ad83861b464815d9d", time: new Date().toISOString() },
-          ],
-        });
+        console.error("Failed to load real EVM NFT details", err);
+        setNft(null);
       } finally {
         setLoading(false);
       }
     };
     fetchNftDetails();
-  }, [addr, tokenId]);
+  }, [addr, tokenId, API_BASE]);
 
   if (loading) {
     return (

@@ -1,10 +1,14 @@
 import { ethers } from "ethers";
 import * as fs from "fs";
 import * as path from "path";
+import { fileURLToPath } from "url";
 
-const RPC_URL = "http://localhost:8545";
-const MNEMONIC = "test test test test test test test test test test test junk";
-const RECIPIENT = "0xe1f1a5093254b350c55514f8b9dbb40b996170c4"; // cosmos1u8c62zfj2je4p324znutnka5pwvkzuxyyk63dz
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const RPC_URL = process.env.EVM_RPC_URL || process.env.RPC_URL || "http://localhost:8545";
+const MNEMONIC = process.env.MNEMONIC || "must motion super wedding record raccoon toast public dance dial index embrace";
+const RECIPIENT = process.env.RECIPIENT || "0xDD6B22a8766A1817D74FDd6Ad78E32Ec181570c2"; // cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr
 
 async function main() {
     console.log("Connecting to EVM RPC:", RPC_URL);
@@ -15,7 +19,7 @@ async function main() {
     const signer = wallet.connect(provider);
     console.log("Faucet EVM Address:", signer.address);
 
-    const buildDir = path.join(process.cwd(), "../evm/build");
+    const buildDir = path.join(__dirname, "../../evm/build");
 
     let nonce = await signer.getNonce();
     console.log("Current nonce:", nonce);
