@@ -15,9 +15,9 @@ interface NFTCollection {
 
 export default function NFTsPage() {
   const [collections] = useState<NFTCollection[]>([
-    { id: "0x1a2b3c4d5e6f7g8h9i0j", name: "Sovereign Punks", symbol: "SPUNK", floorPrice: "1.25 SOV", volume24h: "450.50 SOV", totalMints: 10000 },
-    { id: "0x9a8b7c6d5e4f3g2h1i0j", name: "Cosmic Realms", symbol: "REALM", floorPrice: "0.85 SOV", volume24h: "210.00 SOV", totalMints: 5000 },
-    { id: "0x5f3e2d1c0b9a8a7b6c5d", name: "Wasm Wizards", symbol: "WIZ", floorPrice: "2.40 SOV", volume24h: "185.20 SOV", totalMints: 3333 }
+    { id: "0x1a2b3c4d5e6f7g8h9i0j", name: "Sovereign Punks", symbol: "SPUNK", floorPrice: "1.25 ESOV", volume24h: "450.50 ESOV", totalMints: 10000 },
+    { id: "0x9a8b7c6d5e4f3g2h1i0j", name: "Cosmic Realms", symbol: "REALM", floorPrice: "0.85 ESOV", volume24h: "210.00 ESOV", totalMints: 5000 },
+    { id: "0x5f3e2d1c0b9a8a7b6c5d", name: "Wasm Wizards", symbol: "WIZ", floorPrice: "2.40 ESOV", volume24h: "185.20 ESOV", totalMints: 3333 }
   ]);
 
   return (
@@ -89,9 +89,9 @@ export default function NFTsPage() {
 
           <div className="space-y-4">
             {[
-              { token: "SPUNK #482", price: "1.30 SOV", time: "2 mins ago" },
-              { token: "REALM #1024", price: "0.90 SOV", time: "12 mins ago" },
-              { token: "WIZ #42", price: "2.55 SOV", time: "25 mins ago" }
+              { token: "SPUNK #482", price: "1.30 ESOV", time: "2 mins ago" },
+              { token: "REALM #1024", price: "0.90 ESOV", time: "12 mins ago" },
+              { token: "WIZ #42", price: "2.55 ESOV", time: "25 mins ago" }
             ].map((t, idx) => (
               <div key={idx} className="flex justify-between items-center bg-gray-900/40 p-3 rounded-xl border border-gray-850">
                 <div>

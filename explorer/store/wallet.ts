@@ -8,8 +8,8 @@ const COSMOS_RPC =
   process.env.NEXT_PUBLIC_COSMOS_RPC_URL || "https://rpc.yourchain.io";
 const COSMOS_REST =
   process.env.NEXT_PUBLIC_COSMOS_REST || "https://lcd.yourchain.io:1317";
-const SYMBOL = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || "SLT";
-const MINIMAL_DENOM = "u" + SYMBOL.toLowerCase();
+const SYMBOL = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || "CSOV";
+const MINIMAL_DENOM = "ucsov";
 
 interface WalletState {
   walletType: string | null;
@@ -30,12 +30,12 @@ async function suggestCosmosChain(keplrLike: any): Promise<void> {
     rest: COSMOS_REST,
     bip44: { coinType: 118 },
     bech32Config: {
-      bech32PrefixAccAddr: "sovereign",
-      bech32PrefixAccPub: "sovereignpub",
-      bech32PrefixValAddr: "sovereignvaloper",
-      bech32PrefixValPub: "sovereignvaloperpub",
-      bech32PrefixConsAddr: "sovereignvalcons",
-      bech32PrefixConsPub: "sovereignvalconspub",
+      bech32PrefixAccAddr: "cosmos",
+      bech32PrefixAccPub: "cosmospub",
+      bech32PrefixValAddr: "cosmosvaloper",
+      bech32PrefixValPub: "cosmosvaloperpub",
+      bech32PrefixConsAddr: "cosmosvalcons",
+      bech32PrefixConsPub: "cosmosvalconspub",
     },
     currencies: [
       { coinDenom: SYMBOL, coinMinimalDenom: MINIMAL_DENOM, coinDecimals: 6 },

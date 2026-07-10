@@ -57,7 +57,7 @@ func SimulateMsgBridgeIn(k Keeper) simtypes.Operation {
 		}
 
 		params := k.GetParams(ctx)
-		amount := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(int64(100+r.Intn(1000)))))
+		amount := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(int64(100+r.Intn(1000)))))
 		
 		// Generate standard unique nonce
 		h := sha256.New()
@@ -105,7 +105,7 @@ func SimulateMsgBridgeOut(k Keeper) simtypes.Operation {
 		simAccount := accs[r.Intn(len(accs))]
 		sender := sdk.AccAddress(simAccount.Address)
 
-		amount := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(int64(100+r.Intn(1000)))))
+		amount := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(int64(100+r.Intn(1000)))))
 
 		// Fund the sender so burn succeeds
 		if k.bankKeeper != nil {
@@ -114,7 +114,7 @@ func SimulateMsgBridgeOut(k Keeper) simtypes.Operation {
 			
 			// Update the cosmos_minted state to reflect the minted amount
 			cosmosMinted := k.GetCosmosMinted(ctx)
-			k.SetCosmosMinted(ctx, cosmosMinted+uint64(amount.AmountOf("usov").Int64()))
+			k.SetCosmosMinted(ctx, cosmosMinted+uint64(amount.AmountOf("uwsov").Int64()))
 		}
 
 		msg := MsgBridgeOut{
@@ -163,7 +163,7 @@ func SimulateMsgBridgeInCapBreach(k Keeper) simtypes.Operation {
 		params := k.GetParams(ctx)
 		// Set amount larger than supply cap
 		capBreachingAmt := params.SupplyCap + 1000
-		amount := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(int64(capBreachingAmt))))
+		amount := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(int64(capBreachingAmt))))
 
 		h := sha256.New()
 		h.Write([]byte(receiver.String()))

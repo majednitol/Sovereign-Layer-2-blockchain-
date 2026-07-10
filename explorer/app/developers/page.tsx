@@ -330,7 +330,7 @@ wasmd tx wasm execute <contract_addr> '{"action":{}}' --from mykey \\
               </div>
               <div>
                 <span className="block text-gray-500 uppercase font-bold tracking-wider mb-0.5">Native Token</span>
-                <span className="font-semibold text-white">SOV (uSLT)</span>
+                <span className="font-semibold text-white">CSOV (ucsov)</span>
               </div>
             </div>
 

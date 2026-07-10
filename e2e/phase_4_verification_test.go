@@ -94,7 +94,7 @@ func TestPhase4SupplyCapModelAndInvariants(t *testing.T) {
 	}
 	t.Logf("[PASS] Supply invariant initial check holds: %s", msg)
 
-	// Set custom parameters: SupplyCap = 1000 SOV (1,000,000,000 usov)
+	// Set custom parameters: SupplyCap = 1000 WSOV (1,000,000,000 uwsov)
 	params := k.GetParams(ctx)
 	params.SupplyCap = 1000000000
 	k.SetParams(ctx, params)
@@ -149,11 +149,11 @@ func TestPhase4CosmosBridgeModule(t *testing.T) {
 
 	params := k.GetParams(ctx)
 	params.QuorumThreshold = 2
-	params.SupplyCap = 2000000000 // 2,000,000,000 usov
+	params.SupplyCap = 2000000000 // 2,000,000,000 uwsov
 	k.SetParams(ctx, params)
 
 	receiver := sdk.AccAddress([]byte("receiver_address_p4")).String()
-	amount := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(100000000))) // 100 SOV
+	amount := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(100000000))) // 100 WSOV
 
 	// Create non-sequential nonces
 	nonce1 := []byte("nonce_1_out_of_order_exec")
@@ -192,15 +192,15 @@ func TestPhase4CosmosBridgeModule(t *testing.T) {
 	}
 
 	// Verify minted tokens are present
-	if bank.balances[receiver].AmountOf("usov").Int64() != 100000000 {
-		t.Errorf("Expected balance 100000000, got %d", bank.balances[receiver].AmountOf("usov").Int64())
+	if bank.balances[receiver].AmountOf("uwsov").Int64() != 100000000 {
+		t.Errorf("Expected balance 100000000, got %d", bank.balances[receiver].AmountOf("uwsov").Int64())
 	}
 
 	// Submit MsgBridgeOut (Withdrawal / Burn)
 	msgOut := bridge.MsgBridgeOut{
 		Sender:       receiver,
 		BscRecipient: "0xabcdef1234567890abcdef1234567890abcdef12",
-		Amount:       sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(40000000))),
+		Amount:       sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(40000000))),
 	}
 
 	err = k.ProcessBridgeOut(ctx, msgOut)
@@ -209,8 +209,8 @@ func TestPhase4CosmosBridgeModule(t *testing.T) {
 	}
 
 	// Verify balance decremented
-	if bank.balances[receiver].AmountOf("usov").Int64() != 60000000 {
-		t.Errorf("Expected balance 60000000, got %d", bank.balances[receiver].AmountOf("usov").Int64())
+	if bank.balances[receiver].AmountOf("uwsov").Int64() != 60000000 {
+		t.Errorf("Expected balance 60000000, got %d", bank.balances[receiver].AmountOf("uwsov").Int64())
 	}
 
 	// Verify tracking updated
@@ -469,11 +469,11 @@ func TestPhase4MsgServerRouting(t *testing.T) {
 
 	params := k.GetParams(ctx)
 	params.QuorumThreshold = 2
-	params.SupplyCap = 2000000000 // 2,000,000,000 usov
+	params.SupplyCap = 2000000000 // 2,000,000,000 uwsov
 	k.SetParams(ctx, params)
 
 	receiver := sdk.AccAddress([]byte("receiver_address_p4")).String()
-	amount := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(100000000))) // 100 SOV
+	amount := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(100000000))) // 100 WSOV
 	nonce := []byte("nonce_val_msg_server_123")
 
 	hash := bridge.ComputeBridgeMessageHash(receiver, amount, nonce)
@@ -502,15 +502,15 @@ func TestPhase4MsgServerRouting(t *testing.T) {
 	}
 
 	// Verify minted tokens are present
-	if bank.balances[receiver].AmountOf("usov").Int64() != 100000000 {
-		t.Errorf("Expected balance 100000000, got %d", bank.balances[receiver].AmountOf("usov").Int64())
+	if bank.balances[receiver].AmountOf("uwsov").Int64() != 100000000 {
+		t.Errorf("Expected balance 100000000, got %d", bank.balances[receiver].AmountOf("uwsov").Int64())
 	}
 
 	// Route MsgBridgeOut via MsgServer.BridgeOut
 	msgOut := &bridge.MsgBridgeOut{
 		Sender:       receiver,
 		BscRecipient: "0x1111111111111111111111111111111111111111",
-		Amount:       sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(40000000))),
+		Amount:       sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(40000000))),
 	}
 
 	_, err = msgServer.BridgeOut(goCtx, msgOut)
@@ -519,8 +519,8 @@ func TestPhase4MsgServerRouting(t *testing.T) {
 	}
 
 	// Verify balance decremented
-	if bank.balances[receiver].AmountOf("usov").Int64() != 60000000 {
-		t.Errorf("Expected balance 60000000, got %d", bank.balances[receiver].AmountOf("usov").Int64())
+	if bank.balances[receiver].AmountOf("uwsov").Int64() != 60000000 {
+		t.Errorf("Expected balance 60000000, got %d", bank.balances[receiver].AmountOf("uwsov").Int64())
 	}
 
 	t.Log("[PASS] Checked MsgServer routing and execution for x/bridge successfully.")

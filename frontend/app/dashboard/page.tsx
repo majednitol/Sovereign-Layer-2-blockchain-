@@ -10,7 +10,12 @@ const queryClient = new QueryServiceClient(transport);
 const streamClient = new StreamServiceClient(transport);
 
 // --- Mock Data Generators for Analytics Dashboard ---
-// In production, these would be replaced by gRPC-Web hooks from @workspace/api-spec codegen
+// In production, these would be replaced by gRPC-Web hooks from @workspace/api-spec codegen:
+// - GetTps (reads from tps_1h TimescaleDB continuous aggregate)
+// - GetBlockStats (reads block stats)
+// - StreamChainStats (streams real-time chain stats)
+// - GetBridgeVolume (reads from bridge_volume_1h TimescaleDB continuous aggregate)
+// - GetOraclePrice (reads from oracle_price_1h TimescaleDB continuous aggregate)
 
 interface TpsData {
   tps_avg: number;
@@ -81,7 +86,7 @@ function mockBridgeVolume(): BridgeVolumeData {
 
 function mockOraclePrices(): OraclePriceData[] {
   return [
-    { asset_id: "SOV/USD", open: 1.02, high: 1.08, low: 0.98, close: 1.05, submission_count: 245 },
+    { asset_id: "CSOV/USD", open: 1.02, high: 1.08, low: 0.98, close: 1.05, submission_count: 245 },
     { asset_id: "BNB/USD", open: 620.5, high: 635.2, low: 615.1, close: 628.4, submission_count: 243 },
     { asset_id: "ETH/USD", open: 3850.0, high: 3920.5, low: 3810.2, close: 3895.0, submission_count: 240 },
   ];
@@ -214,7 +219,7 @@ export default function Dashboard() {
   const [blockStats, setBlockStats] = useState<BlockStatsData | null>(null);
   const [bridgeVolume, setBridgeVolume] = useState<BridgeVolumeData | null>(null);
   const [oraclePrices, setOraclePrices] = useState<OraclePriceData[]>([]);
-  const [selectedAsset, setSelectedAsset] = useState<string>("SOV/USD");
+  const [selectedAsset, setSelectedAsset] = useState<string>("CSOV/USD");
   const [validators, setValidators] = useState<ValidatorUptimeData[]>([]);
   const [settlements, setSettlements] = useState<SettlementData[]>([]);
   const [milestones, setMilestones] = useState<MilestoneData[]>([]);
@@ -267,7 +272,7 @@ export default function Dashboard() {
         let bridgeVolumeData: BridgeVolumeData;
         try {
           const bridgeCall = await queryClient.getBridgeVolume({
-            tokenAddress: "usov",
+            tokenAddress: "uwsov",
             chainId: "sovereign-testnet-1",
             timeframe: "daily",
           });
@@ -292,7 +297,7 @@ export default function Dashboard() {
         setBridgeVolume(bridgeVolumeData);
 
         // 4. Fetch Oracle Prices (for selected assets)
-        const assets = ["SOV/USD", "BNB/USD", "ETH/USD"];
+        const assets = ["CSOV/USD", "BNB/USD", "ETH/USD"];
         let prices: OraclePriceData[] = [];
         try {
           prices = await Promise.all(
@@ -524,13 +529,13 @@ export default function Dashboard() {
             <div style={{ background: "rgba(0,0,0,0.15)", padding: "1rem", borderRadius: "10px", border: "1px solid var(--border-color)" }}>
               <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", textTransform: "uppercase" }}>Lock Volume</span>
               <div style={{ fontSize: "1.2rem", fontWeight: 700, marginTop: "0.25rem", color: "var(--accent-primary)" }}>
-                {bridgeVolume?.total_minted ?? "—"} SOV
+                {bridgeVolume?.total_minted ?? "—"} WSOV
               </div>
             </div>
             <div style={{ background: "rgba(0,0,0,0.15)", padding: "1rem", borderRadius: "10px", border: "1px solid var(--border-color)" }}>
               <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", textTransform: "uppercase" }}>Release Volume</span>
               <div style={{ fontSize: "1.2rem", fontWeight: 700, marginTop: "0.25rem", color: "var(--accent-secondary)" }}>
-                {bridgeVolume?.total_burned ?? "—"} SOV
+                {bridgeVolume?.total_burned ?? "—"} WSOV
               </div>
             </div>
           </div>

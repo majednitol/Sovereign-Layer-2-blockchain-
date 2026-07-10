@@ -81,7 +81,7 @@
     "Scope E": {
       "name": "EVM",
       "components": [
-        "x/vm module wiring and genesis params (EVM chain ID, base denom = atoken 18-decimal, AllowUnprotectedTxs = false)",
+        "x/vm module wiring and genesis params (EVM chain ID, base denom = aesov 18-decimal, AllowUnprotectedTxs = false)",
         "x/feemarket EIP-1559 fee accounting",
         "x/erc20 token pair registration",
         "ante handler routing correctness",

@@ -208,14 +208,14 @@ func projectEvent(ctx context.Context, readDB *pgxpool.Pool, ev EventRecord) err
 		// 1. Update bridge_pending
 		_, err := readDB.Exec(ctx,
 			"INSERT INTO bridge_pending (nonce, token_address, amount, recipient, status) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (nonce) DO UPDATE SET status = EXCLUDED.status",
-			nonce, "usov", amount, receiver, "executed",
+			nonce, "uwsov", amount, receiver, "executed",
 		)
 		if err != nil {
 			return fmt.Errorf("failed to update bridge_pending: %w", err)
 		}
 
 		// 2. Update bridge_volume
-		if err := updateBridgeVolume(ctx, readDB, "usov", "sovereign", amount, 0); err != nil {
+		if err := updateBridgeVolume(ctx, readDB, "uwsov", "sovereign", amount, 0); err != nil {
 			return fmt.Errorf("failed to update bridge_volume: %w", err)
 		}
 
@@ -224,7 +224,7 @@ func projectEvent(ctx context.Context, readDB *pgxpool.Pool, ev EventRecord) err
 			`INSERT INTO bridge_events (block_height, event_index, direction, asset, amount)
 			 VALUES ($1, $2, $3, $4, $5)
 			 ON CONFLICT (block_height, event_index) DO NOTHING`,
-			ev.BlockHeight, ev.EventIndex, "lock", "usov", amount,
+			ev.BlockHeight, ev.EventIndex, "lock", "uwsov", amount,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to insert bridge_events: %w", err)
@@ -246,14 +246,14 @@ func projectEvent(ctx context.Context, readDB *pgxpool.Pool, ev EventRecord) err
 		// 1. Update bridge_pending
 		_, err := readDB.Exec(ctx,
 			"INSERT INTO bridge_pending (nonce, token_address, amount, recipient, status) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (nonce) DO UPDATE SET status = EXCLUDED.status",
-			nonce, "usov", amount, bscRecipient, "pending",
+			nonce, "uwsov", amount, bscRecipient, "pending",
 		)
 		if err != nil {
 			return fmt.Errorf("failed to update bridge_pending: %w", err)
 		}
 
 		// 2. Update bridge_volume
-		if err := updateBridgeVolume(ctx, readDB, "usov", "bsc", 0, amount); err != nil {
+		if err := updateBridgeVolume(ctx, readDB, "uwsov", "bsc", 0, amount); err != nil {
 			return fmt.Errorf("failed to update bridge_volume: %w", err)
 		}
 
@@ -262,7 +262,7 @@ func projectEvent(ctx context.Context, readDB *pgxpool.Pool, ev EventRecord) err
 			`INSERT INTO bridge_events (block_height, event_index, direction, asset, amount)
 			 VALUES ($1, $2, $3, $4, $5)
 			 ON CONFLICT (block_height, event_index) DO NOTHING`,
-			ev.BlockHeight, ev.EventIndex, "release", "usov", amount,
+			ev.BlockHeight, ev.EventIndex, "release", "uwsov", amount,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to insert bridge_events: %w", err)

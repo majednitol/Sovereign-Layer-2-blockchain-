@@ -10,12 +10,12 @@ func TestParseAmount(t *testing.T) {
 		input    string
 		expected float64
 	}{
-		{"1000000usov", 1000000},
+		{"1000000uwsov", 1000000},
 		{"500000000", 500000000},
 		{"0", 0},
 		{"abc", 0},
 		{"12.34", 12}, // extracts first digit sequence
-		{"1234usov", 1234},
+		{"1234uwsov", 1234},
 	}
 
 	for _, tc := range tests {
@@ -28,7 +28,7 @@ func TestParseAmount(t *testing.T) {
 
 func TestEventParsingStructures(t *testing.T) {
 	// Test MsgBridgeIn parsing
-	inPayload := []byte(`{"receiver":"sov123","amount":"5000000usov","nonce":"0x1A"}`)
+	inPayload := []byte(`{"receiver":"sov123","amount":"5000000uwsov","nonce":"0x1A"}`)
 	var attrs map[string]string
 	if err := json.Unmarshal(inPayload, &attrs); err != nil {
 		t.Fatalf("failed to parse MsgBridgeIn payload: %v", err)
@@ -37,8 +37,8 @@ func TestEventParsingStructures(t *testing.T) {
 	if attrs["receiver"] != "sov123" {
 		t.Errorf("expected receiver sov123, got %s", attrs["receiver"])
 	}
-	if attrs["amount"] != "5000000usov" {
-		t.Errorf("expected amount 5000000usov, got %s", attrs["amount"])
+	if attrs["amount"] != "5000000uwsov" {
+		t.Errorf("expected amount 5000000uwsov, got %s", attrs["amount"])
 	}
 	if attrs["nonce"] != "0x1A" {
 		t.Errorf("expected nonce 0x1A, got %s", attrs["nonce"])

@@ -6,11 +6,12 @@ This document outlines the formal technical and governance constants established
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| **Total Supply ($S$)** | `1,000,000,000 TOKEN` | Fixed maximum token supply at genesis. |
+| **Total Supply ($S$)** | `1,000,000,000 CSOV` | Fixed maximum token supply at genesis. |
 | **Cosmos Allocation** | `S - C` | Tokens minted directly on the Sovereign L1 Cosmos side. |
 | **Bridge Escrow ($C$)** | Dynamic | Circulating supply of the ERC-20 token on BNB Smart Chain (BSC) locked in the bridge lockbox. |
-| **Base Denomination** | `utoken` | Native Cosmos SDK staking/fee token (6 decimals). |
-| **EVM Denomination** | `atoken` | Gas token for the EVM execution layer (18 decimals). |
+| **Base Denomination** | `ucsov` (CSOV) | Native Cosmos SDK staking/fee token (6 decimals). |
+| **EVM Denomination** | `aesov` (ESOV) | Gas token for the EVM execution layer (18 decimals). |
+| **Bridge Denomination** | `uwsov` (WSOV) | Representation of BSC-escrowed SOV tokens on Cosmos (6 decimals). |
 | **Inflation Rate** | `0%` | Hard-capped fixed supply; zero block inflation. |
 
 ---
@@ -31,10 +32,10 @@ This document outlines the formal technical and governance constants established
 
 | Type | Prefix | Example |
 |------|--------|---------|
-| **Account address** | `sov` | `sov1qy...` |
-| **Account public key** | `sovpub` | `sovpub1qy...` |
-| **Validator operator** | `sovvaloper` | `sovvaloper1qy...` |
-| **Validator consensus** | `sovvalcons` | `sovvalcons1qy...` |
+| **Account address** | `cosmos` | `cosmos1qy...` |
+| **Account public key** | `cosmospub` | `cosmospub1qy...` |
+| **Validator operator** | `cosmosvaloper` | `cosmosvaloper1qy...` |
+| **Validator consensus** | `cosmosvalcons` | `cosmosvalcons1qy...` |
 
 ---
 

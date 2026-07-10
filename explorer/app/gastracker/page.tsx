@@ -91,7 +91,7 @@ export default function GasTrackerPage() {
                 <div className="text-xs text-gray-400 mt-1">~ 6s block inclusion time</div>
               </div>
               <div className="text-[10px] text-gray-500 border-t border-gray-900 pt-2 font-mono">
-                Base Fee: {metrics.standard} SOV
+                Base Fee: {metrics.standard} ESOV
               </div>
             </div>
 
@@ -106,7 +106,7 @@ export default function GasTrackerPage() {
                 <div className="text-xs text-gray-400 mt-1">~ 1 block inclusion guarantee</div>
               </div>
               <div className="text-[10px] text-gray-500 border-t border-gray-900 pt-2 font-mono">
-                Base Fee: {metrics.fast} SOV
+                Base Fee: {metrics.fast} ESOV
               </div>
             </div>
 
@@ -121,7 +121,7 @@ export default function GasTrackerPage() {
                 <div className="text-xs text-gray-400 mt-1">Frontrun / urgent inclusion</div>
               </div>
               <div className="text-[10px] text-gray-500 border-t border-gray-900 pt-2 font-mono">
-                Base Fee: {metrics.instant} SOV
+                Base Fee: {metrics.instant} ESOV
               </div>
             </div>
           </div>

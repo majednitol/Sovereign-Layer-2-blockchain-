@@ -129,13 +129,13 @@ export default function Governance() {
               description: `Gas Limit: ${proposalGas}\nCode: ${proposalCode}`,
             },
           },
-          initialDeposit: [{ denom: "atoken", amount: "10000000" }], // 10 SOV
+          initialDeposit: [{ denom: "ucsov", amount: "10000000" }], // 10 CSOV
           proposer: sender,
         },
       };
 
       const fee = {
-        amount: [{ denom: "atoken", amount: "20000" }],
+        amount: [{ denom: "ucsov", amount: "20000" }],
         gas: "250000",
       };
 

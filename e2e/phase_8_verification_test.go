@@ -107,7 +107,7 @@ type mockDistrKeeperPhase8 struct {
 
 func (m mockDistrKeeperPhase8) GetValidatorOutstandingRewards(ctx context.Context, valAddr sdk.ValAddress) (distrtypes.ValidatorOutstandingRewards, error) {
 	amt := m.rewards[valAddr.String()]
-	decCoin := sdk.NewDecCoin("usov", math.NewInt(amt))
+	decCoin := sdk.NewDecCoin("ucsov", math.NewInt(amt))
 	return distrtypes.ValidatorOutstandingRewards{
 		Rewards: sdk.DecCoins{decCoin},
 	}, nil

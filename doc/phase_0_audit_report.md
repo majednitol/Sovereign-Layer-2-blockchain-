@@ -87,7 +87,7 @@ A comparison of the 29 required architectural design points across the 7 existin
 | 18 | Asynchronous Reentrancy Guard | `adr-006` | **Aligned**. State lock helper block executing nested calls. |
 | 19 | Gas Limit controls & bounds | `adr-006` | **Aligned**. Gas limit Proposals bypass Constitution check. |
 | 20 | Emergency Cold Multi-Sig (5-of-7) | `adr-006` | **Aligned**. Key composition, geographical distribution, rotation. |
-| 21 | Validator rewards bucket details | `adr-007` | **Aligned**. Budget $50,000,000$ SOV, decay rate $10\%$ per year. |
+| 21 | Validator rewards bucket details | `adr-007` | **Aligned**. Budget $50,000,000$ CSOV, decay rate $10\%$ per year. |
 | 22 | Fee market dynamic EIP-1559 fees | `adr-007` | **Aligned**. Initial fee set to $1$ gwei, formula codified. |
 | 23 | `x/params` migration | `adr-007` | **Aligned**. Deprecation specified in favor of `MsgUpdateParams`. |
 | 24 | Witness signature scheme | `adr-007` | **Aligned**. EIP-712 hashing schema and 72-hour grace period. |

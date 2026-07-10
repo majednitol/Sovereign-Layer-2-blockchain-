@@ -106,29 +106,29 @@ echo "CometBFT RPC is ready."
 
 # 1. Verify genesis funding and run fallback check/funding for already-running chains
 echo "Verifying holder balances..."
-COSMOS_BAL=$(curl -s http://localhost:1317/cosmos/bank/v1beta1/balances/$COSMOS_HOLDER | jq -r '.balances[] | select(.denom=="utoken") | .amount' | tr -d '\r\n' || echo "0")
+COSMOS_BAL=$(curl -s http://localhost:1317/cosmos/bank/v1beta1/balances/$COSMOS_HOLDER | jq -r '.balances[] | select(.denom=="ucsov") | .amount' | tr -d '\r\n' || echo "0")
 if [ -z "$COSMOS_BAL" ] || [ "$COSMOS_BAL" = "null" ]; then COSMOS_BAL="0"; fi
 
-EVM_BAL=$(curl -s http://localhost:1317/cosmos/bank/v1beta1/balances/$EVM_HOLDER_COSMOS | jq -r '.balances[] | select(.denom=="atoken") | .amount' | tr -d '\r\n' || echo "0")
+EVM_BAL=$(curl -s http://localhost:1317/cosmos/bank/v1beta1/balances/$EVM_HOLDER_COSMOS | jq -r '.balances[] | select(.denom=="aesov") | .amount' | tr -d '\r\n' || echo "0")
 if [ -z "$EVM_BAL" ] || [ "$EVM_BAL" = "null" ]; then EVM_BAL="0"; fi
 
-# Thresholds: 10^8 utoken (100 TOKEN) and 10^21 atoken (1000 TOKEN)
+# Thresholds: 10^8 ucsov (100 TOKEN) and 10^21 aesov (1000 TOKEN)
 if [ "$COSMOS_BAL" -lt 100000000 ] || [ ${#EVM_BAL} -lt 22 ]; then
   echo "[INFO] Live balances are below thresholds. Executing fallback funding path (chain already running)..."
   
   if [ "$COSMOS_BAL" -lt 100000000 ]; then
     echo "Funding Cosmos holder from Faucet..."
-    run_tx tx bank send faucet "$COSMOS_HOLDER" 10000000000utoken --keyring-backend test --gas auto --gas-adjustment 1.3 --chain-id sovereign-1 -y -b sync --fees 5000000000atoken --home /root/.sovereign
+    run_tx tx bank send faucet "$COSMOS_HOLDER" 10000000000ucsov --keyring-backend test --gas auto --gas-adjustment 1.3 --chain-id sovereign-1 -y -b sync --fees 5000000000aesov --home /root/.sovereign
   fi
 
   if [ ${#EVM_BAL} -lt 22 ]; then
     echo "Funding EVM holder from Faucet..."
-    run_tx tx bank send faucet "$EVM_HOLDER_COSMOS" 10000000000000000000000atoken --keyring-backend test --gas auto --gas-adjustment 1.3 --chain-id sovereign-1 -y -b sync --fees 5000000000atoken --home /root/.sovereign
+    run_tx tx bank send faucet "$EVM_HOLDER_COSMOS" 10000000000000000000000aesov --keyring-backend test --gas auto --gas-adjustment 1.3 --chain-id sovereign-1 -y -b sync --fees 5000000000aesov --home /root/.sovereign
   fi
 else
   echo "Genesis holder balances verified successfully:"
-  echo "  Cosmos Holder: $COSMOS_BAL utoken"
-  echo "  EVM Holder   : $EVM_BAL atoken"
+  echo "  Cosmos Holder: $COSMOS_BAL ucsov"
+  echo "  EVM Holder   : $EVM_BAL aesov"
 fi
 
 # 2. Deploy EVM Solidity Contracts
@@ -180,7 +180,7 @@ store_wasm() {
   echo "Storing $label..." >&2
   
   local out
-  out=$(docker exec -t chain-node chaind tx wasm store "$wasm_path" --from sovereign1-cosmos-holder --keyring-backend test --gas auto --gas-adjustment 1.3 --chain-id sovereign-1 -y -b sync --fees 50000000000atoken --home /root/.sovereign --output json)
+  out=$(docker exec -t chain-node chaind tx wasm store "$wasm_path" --from sovereign1-cosmos-holder --keyring-backend test --gas auto --gas-adjustment 1.3 --chain-id sovereign-1 -y -b sync --fees 50000000000aesov --home /root/.sovereign --output json)
   
   local txhash
   txhash=$(echo "$out" | grep -o '"txhash":"[^"]*"' | cut -d '"' -f 4 || echo "")
@@ -216,7 +216,7 @@ echo "CW-20 Code ID: $CW20_CODE_ID"
 docker exec -i db-read psql -U "$DB_WRITE_USER" -d sovereign_read -c "INSERT INTO explorer.verified_codes (code_id, verified, checksum, instantiate_msg, execute_msg, query_msg) VALUES ($CW20_CODE_ID, true, '$CW20_CHECKSUM', '{}', '{}', '{}') ON CONFLICT (code_id) DO NOTHING;"
 
 CW20_INIT="{\"name\":\"Test CW20\",\"symbol\":\"TCW\",\"decimals\":6,\"initial_balances\":[{\"address\":\"$EVM_HOLDER_COSMOS\",\"amount\":\"1000000000\"},{\"address\":\"$COSMOS_HOLDER\",\"amount\":\"500000000\"}]}"
-run_tx tx wasm instantiate "$CW20_CODE_ID" "$CW20_INIT" --from sovereign1-cosmos-holder --chain-id sovereign-1 --label "Test CW-20" --no-admin --keyring-backend test --gas auto --gas-adjustment 1.3 -y -b sync --fees 5000000000atoken --home /root/.sovereign
+run_tx tx wasm instantiate "$CW20_CODE_ID" "$CW20_INIT" --from sovereign1-cosmos-holder --chain-id sovereign-1 --label "Test CW-20" --no-admin --keyring-backend test --gas auto --gas-adjustment 1.3 -y -b sync --fees 5000000000aesov --home /root/.sovereign
 
 CW20_ADDR=$(docker exec -t chain-node chaind q wasm list-contract-by-code "$CW20_CODE_ID" --output json | jq -r '.contracts[0]' || echo "")
 echo "CW-20 Contract Address: $CW20_ADDR"
@@ -232,7 +232,7 @@ echo "CW-721 Code ID: $CW721_CODE_ID"
 docker exec -i db-read psql -U "$DB_WRITE_USER" -d sovereign_read -c "INSERT INTO explorer.verified_codes (code_id, verified, checksum, instantiate_msg, execute_msg, query_msg) VALUES ($CW721_CODE_ID, true, '$CW721_CHECKSUM', '{}', '{}', '{}') ON CONFLICT (code_id) DO NOTHING;"
 
 CW721_INIT="{\"name\":\"Test CW721\",\"symbol\":\"TCWNFT\",\"minter\":\"$COSMOS_HOLDER\"}"
-run_tx tx wasm instantiate "$CW721_CODE_ID" "$CW721_INIT" --from sovereign1-cosmos-holder --chain-id sovereign-1 --label "Test CW-721" --no-admin --keyring-backend test --gas auto --gas-adjustment 1.3 -y -b sync --fees 5000000000atoken --home /root/.sovereign
+run_tx tx wasm instantiate "$CW721_CODE_ID" "$CW721_INIT" --from sovereign1-cosmos-holder --chain-id sovereign-1 --label "Test CW-721" --no-admin --keyring-backend test --gas auto --gas-adjustment 1.3 -y -b sync --fees 5000000000aesov --home /root/.sovereign
 
 CW721_ADDR=$(docker exec -t chain-node chaind q wasm list-contract-by-code "$CW721_CODE_ID" --output json | jq -r '.contracts[0]' || echo "")
 echo "CW-721 Contract Address: $CW721_ADDR"
@@ -240,7 +240,7 @@ echo "CW-721 Contract Address: $CW721_ADDR"
 if [ -n "$CW721_ADDR" ] && [ "$CW721_ADDR" != "null" ]; then
   docker exec -i db-read psql -U "$DB_WRITE_USER" -d sovereign_read -c "INSERT INTO explorer.contracts (address, code_id, label, creator, type_badge) VALUES ('$CW721_ADDR', $CW721_CODE_ID, 'Test CW-721 NFT', '$COSMOS_HOLDER', 'CW-721') ON CONFLICT (address) DO NOTHING;"
   # Mint NFT to EVM holder's Cosmos address
-  run_tx tx wasm execute "$CW721_ADDR" "{\"mint\":{\"token_id\":\"1\",\"owner\":\"$EVM_HOLDER_COSMOS\",\"token_uri\":\"https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=500\"}}" --from sovereign1-cosmos-holder --keyring-backend test --gas auto --gas-adjustment 1.3 --chain-id sovereign-1 -y -b sync --fees 5000000000atoken --home /root/.sovereign
+  run_tx tx wasm execute "$CW721_ADDR" "{\"mint\":{\"token_id\":\"1\",\"owner\":\"$EVM_HOLDER_COSMOS\",\"token_uri\":\"https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=500\"}}" --from sovereign1-cosmos-holder --keyring-backend test --gas auto --gas-adjustment 1.3 --chain-id sovereign-1 -y -b sync --fees 5000000000aesov --home /root/.sovereign
 fi
 
 # 5. Store and Instantiate CW-1155
@@ -250,7 +250,7 @@ echo "CW-1155 Code ID: $CW1155_CODE_ID"
 docker exec -i db-read psql -U "$DB_WRITE_USER" -d sovereign_read -c "INSERT INTO explorer.verified_codes (code_id, verified, checksum, instantiate_msg, execute_msg, query_msg) VALUES ($CW1155_CODE_ID, true, '$CW1155_CHECKSUM', '{}', '{}', '{}') ON CONFLICT (code_id) DO NOTHING;"
 
 CW1155_INIT='{}'
-run_tx tx wasm instantiate "$CW1155_CODE_ID" "$CW1155_INIT" --from sovereign1-cosmos-holder --chain-id sovereign-1 --label "Test CW-1155" --no-admin --keyring-backend test --gas auto --gas-adjustment 1.3 -y -b sync --fees 5000000000atoken --home /root/.sovereign
+run_tx tx wasm instantiate "$CW1155_CODE_ID" "$CW1155_INIT" --from sovereign1-cosmos-holder --chain-id sovereign-1 --label "Test CW-1155" --no-admin --keyring-backend test --gas auto --gas-adjustment 1.3 -y -b sync --fees 5000000000aesov --home /root/.sovereign
 
 CW1155_ADDR=$(docker exec -t chain-node chaind q wasm list-contract-by-code "$CW1155_CODE_ID" --output json | jq -r '.contracts[0]' || echo "")
 echo "CW-1155 Contract Address: $CW1155_ADDR"
@@ -258,7 +258,7 @@ echo "CW-1155 Contract Address: $CW1155_ADDR"
 if [ -n "$CW1155_ADDR" ] && [ "$CW1155_ADDR" != "null" ]; then
   docker exec -i db-read psql -U "$DB_WRITE_USER" -d sovereign_read -c "INSERT INTO explorer.contracts (address, code_id, label, creator, type_badge) VALUES ('$CW1155_ADDR', $CW1155_CODE_ID, 'Test CW-1155 Multi-Token', '$COSMOS_HOLDER', 'CW-1155') ON CONFLICT (address) DO NOTHING;"
   # Mint multi-token to EVM holder's Cosmos address
-  run_tx tx wasm execute "$CW1155_ADDR" "{\"mint\":{\"to\":\"$EVM_HOLDER_COSMOS\",\"id\":\"99\",\"value\":\"500\"}}" --from sovereign1-cosmos-holder --keyring-backend test --gas auto --gas-adjustment 1.3 --chain-id sovereign-1 -y -b sync --fees 5000000000atoken --home /root/.sovereign
+  run_tx tx wasm execute "$CW1155_ADDR" "{\"mint\":{\"to\":\"$EVM_HOLDER_COSMOS\",\"id\":\"99\",\"value\":\"500\"}}" --from sovereign1-cosmos-holder --keyring-backend test --gas auto --gas-adjustment 1.3 --chain-id sovereign-1 -y -b sync --fees 5000000000aesov --home /root/.sovereign
 fi
 
 echo "=================================================="

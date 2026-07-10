@@ -213,7 +213,7 @@ mod tests {
     fn test_milestone_disbursement_and_minimum_balance() {
         // Contract balance has 100 tokens, min balance threshold is 20 tokens
         let mut deps = mock_dependencies_with_custom_querier(
-            &[Coin { denom: "usov".to_string(), amount: Uint128::new(100) }],
+            &[Coin { denom: "ucsov".to_string(), amount: Uint128::new(100) }],
             true, // Milestone achieved
         );
 
@@ -238,14 +238,14 @@ mod tests {
                 milestone_id: "milestone_a".to_string(),
                 recipient: "recipient_addr".to_string(),
                 amount: Uint128::new(30),
-                denom: "usov".to_string(),
+                denom: "ucsov".to_string(),
             },
         ).unwrap();
         assert_eq!(res.attributes[0].value, "disburse_milestone");
 
         // Now run a second test setup where balance is 70 to test threshold failure
         let mut deps_fail = mock_dependencies_with_custom_querier(
-            &[Coin { denom: "usov".to_string(), amount: Uint128::new(70) }],
+            &[Coin { denom: "ucsov".to_string(), amount: Uint128::new(70) }],
             true,
         );
         let instantiate_msg = InstantiateMsg {
@@ -269,7 +269,7 @@ mod tests {
                 milestone_id: "milestone_b".to_string(),
                 recipient: "recipient_addr".to_string(),
                 amount: Uint128::new(60),
-                denom: "usov".to_string(),
+                denom: "ucsov".to_string(),
             },
         ).unwrap_err();
         assert!(err.to_string().contains("Contract balance falls below minimum threshold"));
@@ -279,7 +279,7 @@ mod tests {
     fn test_milestone_unachieved_disbursement() {
         // Milestone is not achieved (false)
         let mut deps = mock_dependencies_with_custom_querier(
-            &[Coin { denom: "usov".to_string(), amount: Uint128::new(100) }],
+            &[Coin { denom: "ucsov".to_string(), amount: Uint128::new(100) }],
             false,
         );
 
@@ -304,7 +304,7 @@ mod tests {
                 milestone_id: "milestone_c".to_string(),
                 recipient: "recipient_addr".to_string(),
                 amount: Uint128::new(30),
-                denom: "usov".to_string(),
+                denom: "ucsov".to_string(),
             },
         ).unwrap_err();
         assert!(err.to_string().contains("Milestone is not achieved"));

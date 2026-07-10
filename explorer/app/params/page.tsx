@@ -45,13 +45,13 @@ export default function PARAMSPage() {
   const initialBank: ParamItem[] = [
     { name: "Send Enabled", value: "true", type: "Boolean", description: "Global permission enabling bank transfers between accounts." },
     { name: "Default Send Restricted", value: "false", type: "Boolean", description: "If true, transfers require explicit account-level send permissions." },
-    { name: "Total Supply Limit", value: "1,000,000,000 SOV", type: "Coin", description: "Hardcap supply limit for native staking token." },
+    { name: "Total Supply Limit", value: "1,000,000,000 CSOV", type: "Coin", description: "Hardcap supply limit for native staking token." },
   ];
 
   const initialBridge: ParamItem[] = [
     { name: "Bridge Fee", value: "0.05%", type: "Percentage", description: "Standard transfer fee applied to bridging transactions." },
-    { name: "Escrow Wallet Address", value: "sovereign1bridgeescrowaddress", type: "Address", description: "System account where bridged assets are escrowed." },
-    { name: "Daily Limit Cap", value: "10,000,000 SOV", type: "Coin", description: "Maximum value of funds that can be bridged in a single 24-hour cycle." },
+    { name: "Escrow Wallet Address", value: "cosmos1bridgeescrowaddress", type: "Address", description: "System account where bridged assets are escrowed." },
+    { name: "Daily Limit Cap", value: "10,000,000 WSOV", type: "Coin", description: "Maximum value of funds that can be bridged in a single 24-hour cycle." },
   ];
 
   const initialOracle: ParamItem[] = [
@@ -149,7 +149,7 @@ export default function PARAMSPage() {
           setBank([
             { name: "Send Enabled", value: String(p.send_enabled !== false), type: "Boolean", description: "Global permission enabling bank transfers between accounts." },
             { name: "Default Send Restricted", value: p.default_send_enabled === false ? "true" : "false", type: "Boolean", description: "If true, transfers require explicit account-level send permissions." },
-            { name: "Total Supply Limit", value: "1,000,000,000 SOV", type: "Coin", description: "Hardcap supply limit for native staking token." },
+            { name: "Total Supply Limit", value: "1,000,000,000 CSOV", type: "Coin", description: "Hardcap supply limit for native staking token." },
           ]);
         }
       }

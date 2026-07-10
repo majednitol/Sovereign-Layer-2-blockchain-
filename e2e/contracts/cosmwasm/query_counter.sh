@@ -26,7 +26,7 @@ CONTRACT_ADDR="${CONTRACT_ADDR:-cosmos1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljf
 CHAIN_NODE="chain-node"
 CHAIN_ID="sovereign-1"
 KEY_NAME="validator"
-GAS_PRICES="0.025atoken"
+GAS_PRICES="0aesov"
 
 # Colors for output
 GREEN='\033[0;32m'

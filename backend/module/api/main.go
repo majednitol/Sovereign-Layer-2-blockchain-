@@ -405,7 +405,7 @@ func (s *server) StreamBridgeEvents(req *backendv1.StreamBridgeEventsRequest, sr
 
 				token := attrs["receiver"]
 				if token == "" {
-					token = "usov"
+					token = "uwsov"
 				}
 				if req.TokenAddress != "" && req.TokenAddress != token {
 					continue
@@ -948,7 +948,7 @@ func (s *server) GetBridgeTx(ctx context.Context, req *backendv1.GetBridgeTxRequ
 		TxHash:       req.TxHash,
 		Status:       "unknown",
 		BlockHeight:  0,
-		TokenAddress: "usov",
+		TokenAddress: "uwsov",
 		Amount:       "0",
 		Sender:       "unknown",
 		Recipient:    "unknown",

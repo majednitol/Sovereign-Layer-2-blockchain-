@@ -214,7 +214,7 @@ export default function FAUCETPage() {
                 <span>Cooldown: {formatCooldown(cooldownRemaining)}</span>
               ) : (
                 <>
-                  <span>Request 10 SOV</span>
+                  <span>Request 10 CSOV</span>
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -261,7 +261,7 @@ export default function FAUCETPage() {
           <div className="space-y-3">
             <div className="pb-3 border-b border-gray-900">
               <span className="block text-xs uppercase font-bold text-gray-500">Distribution Amount</span>
-              <span className="text-white font-medium">10,000,000 uSLT (10 SOV)</span>
+              <span className="text-white font-medium">10,000,000 ucsov (10 CSOV)</span>
             </div>
 
             <div className="pb-3 border-b border-gray-900">
@@ -272,7 +272,6 @@ export default function FAUCETPage() {
             <div>
               <span className="block text-xs uppercase font-bold text-gray-500">Supported Formats</span>
               <ul className="list-disc pl-4 space-y-1 mt-1 text-xs">
-                <li>Sovereign Addresses (<code className="text-gray-300 font-mono">sov...</code>)</li>
                 <li>Cosmos Addresses (<code className="text-gray-300 font-mono">cosmos...</code>)</li>
               </ul>
             </div>

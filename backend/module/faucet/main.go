@@ -63,7 +63,7 @@ func main() {
 		keyName = "faucet"
 	}
 	if denom == "" {
-		denom = "usov"
+		denom = "ucsov"
 	}
 	if faucetAmount == "" {
 		faucetAmount = "10000000"
@@ -158,7 +158,7 @@ func handleFaucet(w http.ResponseWriter, r *http.Request) {
 		"--broadcast-mode", "sync",
 		"--gas", "auto",
 		"--gas-adjustment", "1.5",
-		"--gas-prices", "1000000000atoken",
+		"--gas-prices", "1000000000aesov",
 		"--output", "json",
 	}
 	if seqErr == nil {

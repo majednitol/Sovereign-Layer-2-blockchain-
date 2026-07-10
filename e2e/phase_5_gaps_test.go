@@ -208,7 +208,7 @@ func TestPhase5GapsGetBridgeTx(t *testing.T) {
 	// Insert pending bridge tx
 	_, err = readDB.Exec(ctx,
 		"INSERT INTO bridge_pending (nonce, token_address, amount, recipient, status) VALUES ($1, $2, $3, $4, $5)",
-		int64(105005), "usov", float64(5000), "recipient_wallet_addr", "pending",
+		int64(105005), "uwsov", float64(5000), "recipient_wallet_addr", "pending",
 	)
 	if err != nil {
 		t.Fatalf("failed to insert pending bridge tx: %v", err)
@@ -217,7 +217,7 @@ func TestPhase5GapsGetBridgeTx(t *testing.T) {
 	// Insert bridge event
 	_, err = readDB.Exec(ctx,
 		"INSERT INTO bridge_events (block_height, event_index, direction, asset, amount) VALUES ($1, $2, $3, $4, $5)",
-		int64(105), int(5), "release", "usov", float64(5000),
+		int64(105), int(5), "release", "uwsov", float64(5000),
 	)
 	if err != nil {
 		t.Fatalf("failed to insert bridge event: %v", err)

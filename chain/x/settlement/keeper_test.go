@@ -103,7 +103,7 @@ func TestWitnessSettlement(t *testing.T) {
 		Timestamp:    1000, // exact block time
 		PayloadHash:  payloadHash,
 		Signature:    signature,
-		TransferAmt:  sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(1000))),
+		TransferAmt:  sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(1000))),
 		TransferDest: dest,
 	}
 

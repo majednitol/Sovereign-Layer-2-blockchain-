@@ -161,7 +161,7 @@ func main() {
 	log.Printf("[Daemon] Signer initialized with address: %s\n", signer.GetAddress())
 
 	// 4. Initialize Watchers & Orchestrators
-	bscWatcher := relayer.NewBSCWatcher(db, bus, 5000000000) // 5000 SOV threshold
+	bscWatcher := relayer.NewBSCWatcher(db, bus, 5000000000) // 5000 WSOV threshold
 	cosmosWatcher := relayer.NewCosmosWatcher(db, bus)
 	
 	// Quorum = 2, Timeout = 5s, MaxRetries = 3
@@ -195,7 +195,7 @@ func main() {
 		
 		// Sign lock hash
 		// Cosmos message hash calculation
-		amountCoins := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(int64(lock.Amount))))
+		amountCoins := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(int64(lock.Amount))))
 		hash := bridge.ComputeBridgeMessageHash(lock.CosmosRecipient, amountCoins, lock.Nonce)
 		sig, err := signer.Sign(hash)
 		if err != nil {
@@ -376,7 +376,7 @@ func broadcastCosmosMsgBridgeIn(ctx context.Context, cfg Config, nonce []byte, s
 	msg := &bridge.MsgBridgeIn{
 		Submitter:  submitter,
 		Receiver:   receiver,
-		Amount:     sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(int64(amountVal)))),
+		Amount:     sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(int64(amountVal)))),
 		Nonce:      nonce,
 		Signatures: sigs,
 	}

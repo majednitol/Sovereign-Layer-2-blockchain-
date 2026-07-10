@@ -1,5 +1,5 @@
 {
-  "genesis_time": "2026-07-09T17:24:23.097807Z",
+  "genesis_time": "2026-07-09T00:00:00Z",
   "chain_id": "sovereign-1",
   "initial_height": "1",
   "consensus_params": {
@@ -61,15 +61,15 @@
           "coins": [
             {
               "amount": "1000000000000000000000000",
-              "denom": "atoken"
+              "denom": "aesov"
             },
             {
               "amount": "1000000000000000",
-              "denom": "usov"
+              "denom": "uwsov"
             },
             {
               "amount": "1000000000000000",
-              "denom": "utoken"
+              "denom": "ucsov"
             }
           ]
         },
@@ -78,78 +78,78 @@
           "coins": [
             {
               "amount": "1000000000000000000000000",
-              "denom": "atoken"
+              "denom": "aesov"
             },
             {
               "amount": "1000000000000000",
-              "denom": "usov"
+              "denom": "uwsov"
             },
             {
               "amount": "1000000000000000",
-              "denom": "utoken"
+              "denom": "ucsov"
             }
           ]
         }
       ],
       "denom_metadata": [
         {
-          "base": "atoken",
+          "base": "aesov",
           "denom_units": [
             {
               "aliases": [
                 "wei"
               ],
-              "denom": "atoken",
+              "denom": "aesov",
               "exponent": 0
             },
             {
               "aliases": [],
-              "denom": "evmtoken",
+              "denom": "esov",
               "exponent": 18
             }
           ],
           "description": "EVM Gas Token",
-          "display": "evmtoken",
+          "display": "esov",
           "name": "EVM Gas Token",
-          "symbol": "TOKEN"
+          "symbol": "ESOV"
         },
         {
-          "base": "utoken",
+          "base": "ucsov",
           "denom_units": [
             {
               "aliases": [],
-              "denom": "utoken",
+              "denom": "ucsov",
               "exponent": 0
             },
             {
               "aliases": [],
-              "denom": "token",
+              "denom": "csov",
               "exponent": 6
             }
           ],
           "description": "Native Cosmos Staking Token",
-          "display": "token",
+          "display": "csov",
           "name": "Cosmos Staking Token",
-          "symbol": "TOKEN"
+          "symbol": "CSOV"
         },
         {
-          "base": "usov",
+          "base": "uwsov",
           "denom_units": [
             {
               "aliases": [],
-              "denom": "usov",
+              "denom": "uwsov",
               "exponent": 0
             },
             {
               "aliases": [],
-              "denom": "sov",
+              "denom": "wsov",
               "exponent": 6
             }
           ],
           "description": "Bridge Minted Token",
-          "display": "sov",
+          "display": "wsov",
           "name": "Bridge Minted Token",
-          "symbol": "SOV"
+          "symbol": "WSOV"
         }
       ],
       "params": {
@@ -157,20 +157,7 @@
         "send_enabled": []
       },
       "send_enabled": [],
-      "supply": [
-        {
-          "denom": "atoken",
-          "amount": "2000000000000000000000000"
-        },
-        {
-          "denom": "usov",
-          "amount": "2000000000000000"
-        },
-        {
-          "denom": "utoken",
-          "amount": "2000000000000000"
-        }
-      ]
+      "supply": []
     },
     "bridge": {
       "cosmos_minted": 0,
@@ -218,7 +205,7 @@
       "token_pairs": [
         {
           "contract_owner": "OWNER_MODULE",
-          "denom": "utoken",
+          "denom": "ucsov",
           "enabled": true,
           "erc20_address": "0x0000000000000000000000000000000000000001"
         }
@@ -242,9 +229,9 @@
           "0x0000000000000000000000000000000000000102"
         ],
         "evm_channels": [],
-        "evm_denom": "atoken",
+        "evm_denom": "aesov",
         "extended_denom_options": {
-          "extended_denom": "atoken"
+          "extended_denom": "aesov"
         },
         "extra_eips": [],
         "history_serve_window": "8192"
@@ -289,7 +276,7 @@
         "min_deposit": [
           {
             "amount": "10000000",
-            "denom": "utoken"
+            "denom": "ucsov"
           }
         ],
         "min_deposit_ratio": "0.010000000000000000",
@@ -370,7 +357,7 @@
       "last_total_power": "30000000",
       "last_validator_powers": [],
       "params": {
-        "bond_denom": "utoken",
+        "bond_denom": "ucsov",
         "historical_entries": 10000,
         "max_entries": 7,
         "max_validators": 30,
@@ -538,9 +525,8 @@
         }
       ],
       "params": {
-
         "code_upload_access": {
-          "permission": "Everybody"
+          "permission": "Nobody"
         },
         "instantiate_default_permission": "Everybody"
       },

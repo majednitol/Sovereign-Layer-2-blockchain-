@@ -295,7 +295,7 @@ func TestPhase1Integration_GenesisScript(t *testing.T) {
 	assertContains(t, content, "VerifyInvariants", "genesis_script: invariant check func")
 	assertContains(t, content, "31_536_000", "genesis_script: 5-year block floor")
 	assertContains(t, content, "EVMChainID", "genesis_script: EVM chain ID")
-	assertContains(t, content, "atoken", "genesis_script: EVM denom atoken")
+	assertContains(t, content, "aesov", "genesis_script: EVM denom aesov")
 
 	// Run the script in --verify mode (pure invariant check, no file write)
 	abs := filepath.Join("..", "scripts", "generate_genesis.go")
@@ -347,7 +347,7 @@ func TestPhase1Integration_SupplyMathInvariants(t *testing.T) {
 		bscEscrow        = int64(300_000_000) * decimals
 		cosmosAllocation = totalSupply - bscEscrow
 		rewardsBucket    = int64(100_000_000) * decimals
-		perBlock         = int64(1_500_000) // 1.5 TOKEN = 1,500,000 utoken
+		perBlock         = int64(1_500_000) // 1.5 CSOV = 1,500,000 ucsov
 	)
 
 	// Invariant 1: Allocation + Escrow = Total Supply
@@ -375,7 +375,7 @@ func TestPhase1Integration_SupplyMathInvariants(t *testing.T) {
 	if perValidatorReward*30 != int64(15_000_000) {
 		t.Fatalf("FAIL INV-4: per-validator reward does not divide evenly: %d * 30 != 15,000,000", perValidatorReward)
 	}
-	t.Logf("[PASS] INV-4: per-validator reward = %d utoken (equal slot distribution)", perValidatorReward)
+	t.Logf("[PASS] INV-4: per-validator reward = %d ucsov (equal slot distribution)", perValidatorReward)
 }
 
 // ---------------------------------------------------------------------------

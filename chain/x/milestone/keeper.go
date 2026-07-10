@@ -277,7 +277,7 @@ func (k Keeper) triggerVestingPayout(ctx sdk.Context, m Milestone) {
 
 	poolAddr, err := sdk.AccAddressFromBech32(m.VestingPoolAddress)
 	if err == nil && k.bankKeeper != nil {
-		amount := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(10000000)))
+		amount := sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(10000000)))
 		_ = k.bankKeeper.SendCoins(ctx, sdk.AccAddress([]byte("milestone_escrow")), poolAddr, amount)
 	}
 }

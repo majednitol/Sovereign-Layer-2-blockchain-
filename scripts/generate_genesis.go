@@ -13,11 +13,11 @@
 //
 //  1. cosmos_minted_via_bridge + bsc_escrow_balance = 1,000,000,000 TOKEN (S)
 //  2. rewards_bucket / block_emission >= 31,536,000 blocks (5-year floor)
-//  3. x/vm genesis params: ChainID, EvmDenom="atoken", EnableCreate=true,
+//  3. x/vm genesis params: ChainID, EvmDenom="aesov", EnableCreate=true,
 //     AllowUnprotectedTxs=false
 //  4. x/feemarket genesis params: NoBaseFee=false, ElasticityMultiplier=2,
 //     EnableHeight=0
-//  5. x/erc20 genesis: native token pair (utoken ↔ ERC-20)
+//  5. x/erc20 genesis: native token pair (ucsov ↔ ERC-20)
 package main
 
 import (
@@ -42,22 +42,22 @@ import (
 
 const (
 	// TokenDenom is the base Cosmos denomination (6 decimal places)
-	TokenDenom = "utoken"
-	// EVMDenom is the EVM denomination (18 decimal places, 1 TOKEN = 1e12 atoken)
-	EVMDenom = "atoken"
+	TokenDenom = "ucsov"
+	// EVMDenom is the EVM denomination (18 decimal places, 1 ESOV = 1e12 aesov)
+	EVMDenom = "aesov"
 	// EVMChainID is the registered EVM chain ID per ADR-009
 	EVMChainID = uint64(7777)
 
-	// TotalSupply is S = 1,000,000,000 TOKEN expressed in utoken (×10^6)
+	// TotalSupply is S = 1,000,000,000 TOKEN expressed in ucsov (×10^6)
 	TotalSupply = int64(1_000_000_000) * int64(1_000_000)
 	// BscEscrowBalance is C = 300,000,000 TOKEN locked in BSC LockBox at genesis
 	BscEscrowBalance = int64(300_000_000) * int64(1_000_000)
 	// CosmosAllocation is S - C tokens allocated on the Cosmos side
 	CosmosAllocation = TotalSupply - BscEscrowBalance
 
-	// RewardsBucket is 100,000,000 TOKEN denominated in utoken
+	// RewardsBucket is 100,000,000 TOKEN denominated in ucsov
 	RewardsBucket = int64(100_000_000) * int64(1_000_000)
-	// PerBlockEmissionUtoken is the per-block emission expressed in utoken (1.5 TOKEN = 1,500,000 utoken)
+	// PerBlockEmissionUtoken is the per-block emission expressed in ucsov (1.5 TOKEN = 1,500,000 ucsov)
 	PerBlockEmissionUtoken = int64(1_500_000)
 	// MinLifetimeBlocks is 5 years at 5s block time
 	MinLifetimeBlocks = int64(31_536_000)
@@ -128,9 +128,9 @@ func VerifyInvariants() []string {
 		fmt.Printf("[PASS] INV-3: EVM ChainID = %d\n", EVMChainID)
 	}
 
-	// Invariant 4: EVM denom must be "atoken" per ADR-011
-	if EVMDenom != "atoken" {
-		failures = append(failures, fmt.Sprintf("FAIL [INV-4]: EVMDenom is %q, expected %q", EVMDenom, "atoken"))
+	// Invariant 4: EVM denom must be "aesov" per ADR-011
+	if EVMDenom != "aesov" {
+		failures = append(failures, fmt.Sprintf("FAIL [INV-4]: EVMDenom is %q, expected %q", EVMDenom, "aesov"))
 	} else {
 		fmt.Printf("[PASS] INV-4: EVMDenom = %q\n", EVMDenom)
 	}
@@ -465,58 +465,58 @@ func buildAppState(env string) map[string]interface{} {
 				"description": "EVM Gas Token",
 				"denom_units": []map[string]interface{}{
 					{
-						"denom":    "atoken",
+						"denom":    "aesov",
 						"exponent": 0,
 						"aliases":  []string{"wei"},
 					},
 					{
-						"denom":    "evmtoken",
+						"denom":    "esov",
 						"exponent": 18,
 						"aliases":  []string{},
 					},
 				},
-				"base":    "atoken",
-				"display": "evmtoken",
+				"base":    "aesov",
+				"display": "esov",
 				"name":    "EVM Gas Token",
-				"symbol":  "TOKEN",
+				"symbol":  "ESOV",
 			},
 			{
 				"description": "Native Cosmos Staking Token",
 				"denom_units": []map[string]interface{}{
 					{
-						"denom":    "utoken",
+						"denom":    "ucsov",
 						"exponent": 0,
 						"aliases":  []string{},
 					},
 					{
-						"denom":    "token",
+						"denom":    "csov",
 						"exponent": 6,
 						"aliases":  []string{},
 					},
 				},
-				"base":    "utoken",
-				"display": "token",
+				"base":    "ucsov",
+				"display": "csov",
 				"name":    "Cosmos Staking Token",
-				"symbol":  "TOKEN",
+				"symbol":  "CSOV",
 			},
 			{
 				"description": "Bridge Minted Token",
 				"denom_units": []map[string]interface{}{
 					{
-						"denom":    "usov",
+						"denom":    "uwsov",
 						"exponent": 0,
 						"aliases":  []string{},
 					},
 					{
-						"denom":    "sov",
+						"denom":    "wsov",
 						"exponent": 6,
 						"aliases":  []string{},
 					},
 				},
-				"base":    "usov",
-				"display": "sov",
+				"base":    "uwsov",
+				"display": "wsov",
 				"name":    "Bridge Minted Token",
-				"symbol":  "SOV",
+				"symbol":  "WSOV",
 			},
 		}
 	}
@@ -693,9 +693,9 @@ func createGenesisBalance(address string) map[string]interface{} {
 	return map[string]interface{}{
 		"address": address,
 		"coins": []map[string]interface{}{
-			{"denom": "atoken", "amount": "1000000000000000000000000"},
-			{"denom": "usov", "amount": "1000000000000000"},
-			{"denom": "utoken", "amount": "1000000000000000"},
+			{"denom": "aesov", "amount": "1000000000000000000000000"},
+			{"denom": "uwsov", "amount": "1000000000000000"},
+			{"denom": "ucsov", "amount": "1000000000000000"},
 		},
 	}
 }
@@ -786,8 +786,8 @@ func main() {
 	fmt.Printf("     Chain ID   : %s\n", chainID)
 	fmt.Printf("     Environment: %s\n", env)
 	fmt.Printf("     Genesis Time: %s\n", genesisTime.Format(time.RFC3339))
-	fmt.Printf("     Total Supply: %d utoken (%d TOKEN)\n", TotalSupply, TotalSupply/1_000_000)
-	fmt.Printf("     BSC Escrow  : %d utoken (%d TOKEN)\n", BscEscrowBalance, BscEscrowBalance/1_000_000)
+	fmt.Printf("     Total Supply: %d ucsov (%d TOKEN)\n", TotalSupply, TotalSupply/1_000_000)
+	fmt.Printf("     BSC Escrow  : %d ucsov (%d TOKEN)\n", BscEscrowBalance, BscEscrowBalance/1_000_000)
 	fmt.Printf("     EVM Chain ID: %d\n", EVMChainID)
 	fmt.Printf("     EVM Denom   : %s\n", EVMDenom)
 }

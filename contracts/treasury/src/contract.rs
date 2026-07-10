@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn test_withdrawals_and_pausing() {
         let mut deps = mock_dependencies_with_balance(&[Coin {
-            denom: "usov".to_string(),
+            denom: "ucsov".to_string(),
             amount: Uint128::new(100000000),
         }]);
 
@@ -213,7 +213,7 @@ mod tests {
             ExecuteMsg::Withdraw {
                 recipient: "recipient_addr".to_string(),
                 amount: Uint128::new(5000000),
-                denom: "usov".to_string(),
+                denom: "ucsov".to_string(),
             },
         ).unwrap_err();
         assert!(withdraw_err.to_string().contains("Unauthorized: Only governance can withdraw"));
@@ -226,7 +226,7 @@ mod tests {
             ExecuteMsg::Withdraw {
                 recipient: "recipient_addr".to_string(),
                 amount: Uint128::new(5000000),
-                denom: "usov".to_string(),
+                denom: "ucsov".to_string(),
             },
         ).unwrap();
         assert_eq!(withdraw_res.attributes[0].value, "withdraw");
@@ -247,7 +247,7 @@ mod tests {
             ExecuteMsg::Withdraw {
                 recipient: "recipient_addr".to_string(),
                 amount: Uint128::new(5000000),
-                denom: "usov".to_string(),
+                denom: "ucsov".to_string(),
             },
         ).unwrap_err();
         assert!(withdraw_err_paused.to_string().contains("Contract is paused"));

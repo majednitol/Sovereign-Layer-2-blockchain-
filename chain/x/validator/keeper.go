@@ -203,7 +203,7 @@ func (k Keeper) RewardsBucketInvariant(ctx sdk.Context) (string, bool) {
 		return "bank or distribution keeper is nil", false
 	}
 	distrAddr := authtypes.NewModuleAddress(distrtypes.ModuleName)
-	distrBalance := k.bankKeeper.GetBalance(ctx, distrAddr, "usov")
+	distrBalance := k.bankKeeper.GetBalance(ctx, distrAddr, "ucsov")
 
 	totalRewards := sdk.NewDecCoins()
 	_ = k.stakingKeeper.IterateLastValidatorPowers(ctx, func(valAddr sdk.ValAddress, power int64) bool {
@@ -215,9 +215,9 @@ func (k Keeper) RewardsBucketInvariant(ctx sdk.Context) (string, bool) {
 	})
 
 	totalRewardsCoins, _ := totalRewards.TruncateDecimal()
-	usovRewards := totalRewardsCoins.AmountOf("usov")
-	if usovRewards.GT(distrBalance.Amount) {
-		return fmt.Sprintf("validator rewards bucket invariant breach: outstanding rewards %s exceed distribution module balance %s", usovRewards, distrBalance.Amount), true
+	ucsovRewards := totalRewardsCoins.AmountOf("ucsov")
+	if ucsovRewards.GT(distrBalance.Amount) {
+		return fmt.Sprintf("validator rewards bucket invariant breach: outstanding rewards %s exceed distribution module balance %s", ucsovRewards, distrBalance.Amount), true
 	}
 	return "validator rewards bucket invariant holds", false
 }

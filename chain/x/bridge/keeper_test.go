@@ -167,7 +167,7 @@ func TestProcessBridgeInAndOut(t *testing.T) {
 	keeper.SetParams(ctx, params)
 
 	receiver := sdk.AccAddress([]byte("receiver_addr")).String()
-	amount := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(50000)))
+	amount := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(50000)))
 	nonce := []byte("unique_nonce_val_1234567890")
 
 	// Pre-sign the payload hash
@@ -196,8 +196,8 @@ func TestProcessBridgeInAndOut(t *testing.T) {
 	}
 
 	// Check balance
-	if bank.balances[receiver].AmountOf("usov").Int64() != 50000 {
-		t.Errorf("Expected balance 50000, got %d", bank.balances[receiver].AmountOf("usov").Int64())
+	if bank.balances[receiver].AmountOf("uwsov").Int64() != 50000 {
+		t.Errorf("Expected balance 50000, got %d", bank.balances[receiver].AmountOf("uwsov").Int64())
 	}
 
 	// Check supply cap invariant updated
@@ -223,7 +223,7 @@ func TestProcessBridgeInAndOut(t *testing.T) {
 	// 4. Supply cap breach case: fails
 	msg3 := msg
 	msg3.Nonce = []byte("different_nonce_2")
-	msg3.Amount = sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(960000))) // 50,000 + 960,000 = 1,010,000 > 1,000,000 cap
+	msg3.Amount = sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(960000))) // 50,000 + 960,000 = 1,010,000 > 1,000,000 cap
 	// Re-sign for different amount
 	hash3 := ComputeBridgeMessageHash(receiver, msg3.Amount, msg3.Nonce)
 	var signatures3 [][]byte
@@ -241,7 +241,7 @@ func TestProcessBridgeInAndOut(t *testing.T) {
 	msgOut := MsgBridgeOut{
 		Sender:       receiver,
 		BscRecipient: "0x1111111111111111111111111111111111111111",
-		Amount:       sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(20000))),
+		Amount:       sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(20000))),
 	}
 
 	err = keeper.ProcessBridgeOut(ctx, msgOut)
@@ -250,8 +250,8 @@ func TestProcessBridgeInAndOut(t *testing.T) {
 	}
 
 	// Balance and supply cap updated
-	if bank.balances[receiver].AmountOf("usov").Int64() != 30000 {
-		t.Errorf("Expected balance 30000 after burn, got %d", bank.balances[receiver].AmountOf("usov").Int64())
+	if bank.balances[receiver].AmountOf("uwsov").Int64() != 30000 {
+		t.Errorf("Expected balance 30000 after burn, got %d", bank.balances[receiver].AmountOf("uwsov").Int64())
 	}
 	if keeper.GetCosmosMinted(ctx) != 30000 {
 		t.Errorf("Expected cosmos minted 30000 after burn, got %d", keeper.GetCosmosMinted(ctx))

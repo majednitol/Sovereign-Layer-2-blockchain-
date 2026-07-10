@@ -5,7 +5,7 @@
 
 # Default node home used by the chain daemon.
 # Override with --home flag or HOME env variable.
-minimum-gas-prices = "0atoken"
+minimum-gas-prices = "0aesov"
 
 # If true, the node will start halted and wait for manual intervention before
 # accepting any blocks or transactions.

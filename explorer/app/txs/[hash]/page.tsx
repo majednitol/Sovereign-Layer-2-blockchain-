@@ -37,7 +37,7 @@ function extractTokenTransfers(events: any[]): TokenTransfer[] {
       }
       if (sender && receiver && amount) {
         transfers.push({
-          token: "SOV",
+          token: "CSOV",
           amount,
           sender,
           receiver,

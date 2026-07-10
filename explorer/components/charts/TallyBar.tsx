@@ -29,25 +29,25 @@ export default function TallyBar({ yes, no, abstain, veto }: TallyBarProps) {
         <div className="border border-gray-900 bg-gray-950/40 rounded-lg p-3">
           <div className="text-gray-500 uppercase text-[10px] font-bold">Yes</div>
           <div className="text-sm font-bold text-green-400 mt-1">{yesPct.toFixed(2)}%</div>
-          <div className="text-[10px] text-gray-600 mt-0.5">{yes.toLocaleString()} SOV</div>
+          <div className="text-[10px] text-gray-600 mt-0.5">{yes.toLocaleString()} CSOV</div>
         </div>
 
         <div className="border border-gray-900 bg-gray-950/40 rounded-lg p-3">
           <div className="text-gray-500 uppercase text-[10px] font-bold">No</div>
           <div className="text-sm font-bold text-red-400 mt-1">{noPct.toFixed(2)}%</div>
-          <div className="text-[10px] text-gray-600 mt-0.5">{no.toLocaleString()} SOV</div>
+          <div className="text-[10px] text-gray-600 mt-0.5">{no.toLocaleString()} CSOV</div>
         </div>
 
         <div className="border border-gray-900 bg-gray-950/40 rounded-lg p-3">
           <div className="text-gray-500 uppercase text-[10px] font-bold">Abstain</div>
           <div className="text-sm font-bold text-gray-400 mt-1">{abstainPct.toFixed(2)}%</div>
-          <div className="text-[10px] text-gray-600 mt-0.5">{abstain.toLocaleString()} SOV</div>
+          <div className="text-[10px] text-gray-600 mt-0.5">{abstain.toLocaleString()} CSOV</div>
         </div>
 
         <div className="border border-gray-900 bg-gray-950/40 rounded-lg p-3">
           <div className="text-gray-500 uppercase text-[10px] font-bold">No with Veto</div>
           <div className="text-sm font-bold text-amber-500 mt-1">{vetoPct.toFixed(2)}%</div>
-          <div className="text-[10px] text-gray-600 mt-0.5">{veto.toLocaleString()} SOV</div>
+          <div className="text-[10px] text-gray-600 mt-0.5">{veto.toLocaleString()} CSOV</div>
         </div>
       </div>
     </div>

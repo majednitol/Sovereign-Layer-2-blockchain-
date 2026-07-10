@@ -124,7 +124,7 @@ func main() {
 }
 
 func setupSDKConfig() {
-	// Enforce default power reduction of 10^6 since staking operates in utoken (6 decimals)
+	// Enforce default power reduction of 10^6 since staking operates in ucsov (6 decimals)
 	sdk.DefaultPowerReduction = math.NewInt(1_000_000)
 
 	cfg := sdk.GetConfig()

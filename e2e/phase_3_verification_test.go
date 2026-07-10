@@ -135,7 +135,7 @@ func TestPhase3TreasuryLogic(t *testing.T) {
 		governanceAddress:   "cosmos1gov...",
 		coldMultisigAddress: "cosmos1cold...",
 		isPaused:            false,
-		balance:             sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(1000000))),
+		balance:             sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(1000000))),
 	}
 
 	withdrawFunds := func(sender string, amt sdk.Coins) error {
@@ -180,7 +180,7 @@ func TestPhase3TreasuryLogic(t *testing.T) {
 	}
 
 	// Verify withdrawal is blocked
-	err = withdrawFunds("cosmos1gov...", sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(10000))))
+	err = withdrawFunds("cosmos1gov...", sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(10000))))
 	if err == nil {
 		t.Fatal("Expected withdrawal to fail while paused")
 	}
@@ -198,7 +198,7 @@ func TestPhase3TreasuryLogic(t *testing.T) {
 	}
 
 	// Verify withdrawal succeeds after unpausing
-	err = withdrawFunds("cosmos1gov...", sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(10000))))
+	err = withdrawFunds("cosmos1gov...", sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(10000))))
 	if err != nil {
 		t.Fatalf("Expected withdrawal to succeed after unpausing, got: %v", err)
 	}
@@ -211,9 +211,9 @@ func TestPhase3ReserveFundLogic(t *testing.T) {
 	state := phase3ReserveFundState{
 		governanceAddress:   "cosmos1gov...",
 		coldMultisigAddress: "cosmos1cold...",
-		minBalanceThreshold: math.NewInt(100000), // 100,000 usov minimum
+		minBalanceThreshold: math.NewInt(100000), // 100,000 ucsov minimum
 		isPaused:            false,
-		balance:             sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(500000))),
+		balance:             sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(500000))),
 	}
 
 	disburseMilestone := func(sender string, milestoneAchieved bool, amt sdk.Coins) error {
@@ -230,7 +230,7 @@ func TestPhase3ReserveFundLogic(t *testing.T) {
 		state.reentrancyLock = true
 
 		// Minimum balance check (circuit-breaker)
-		remaining := state.balance.AmountOf("usov").Sub(amt.AmountOf("usov"))
+		remaining := state.balance.AmountOf("ucsov").Sub(amt.AmountOf("ucsov"))
 		if remaining.LT(state.minBalanceThreshold) {
 			state.reentrancyLock = false
 			return errors.New("Disbursement rejected: Contract balance falls below minimum threshold")
@@ -248,22 +248,22 @@ func TestPhase3ReserveFundLogic(t *testing.T) {
 	}
 
 	// Case 1: Unachieved milestone disbursement fails
-	err := disburseMilestone("cosmos1gov...", false, sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(50000))))
+	err := disburseMilestone("cosmos1gov...", false, sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(50000))))
 	if err == nil {
 		t.Fatal("Expected disbursement to be rejected for unachieved milestone")
 	}
 
 	// Case 2: Achieved milestone disbursement succeeds
-	err = disburseMilestone("cosmos1gov...", true, sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(50000))))
+	err = disburseMilestone("cosmos1gov...", true, sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(50000))))
 	if err != nil {
 		t.Fatalf("Expected disbursement to succeed, got: %v", err)
 	}
-	if state.balance.AmountOf("usov").Int64() != 450000 {
-		t.Errorf("Expected balance to be 450000, got %s", state.balance.AmountOf("usov"))
+	if state.balance.AmountOf("ucsov").Int64() != 450000 {
+		t.Errorf("Expected balance to be 450000, got %s", state.balance.AmountOf("ucsov"))
 	}
 
 	// Case 3: Disbursement pushing balance below minimum threshold fails
-	err = disburseMilestone("cosmos1gov...", true, sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(400000)))) // 450k - 400k = 50k < 100k
+	err = disburseMilestone("cosmos1gov...", true, sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(400000)))) // 450k - 400k = 50k < 100k
 	if err == nil {
 		t.Fatal("Expected disbursement to trigger minimum balance circuit-breaker")
 	}
@@ -291,7 +291,7 @@ func TestPhase3GovernanceAndReplacementProcedure(t *testing.T) {
 		governanceAddress:   "cosmos1governance...",
 		coldMultisigAddress: "cosmos1cold...",
 		isPaused:            false,
-		balance:             sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(1000000))),
+		balance:             sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(1000000))),
 	}
 
 	reserve := phase3ReserveFundState{
@@ -299,7 +299,7 @@ func TestPhase3GovernanceAndReplacementProcedure(t *testing.T) {
 		coldMultisigAddress: "cosmos1cold...",
 		minBalanceThreshold: math.NewInt(100000),
 		isPaused:            false,
-		balance:             sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(500000))),
+		balance:             sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(500000))),
 	}
 
 	submitProposal := func(title, description string, violates bool) error {

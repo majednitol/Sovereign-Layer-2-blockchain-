@@ -56,7 +56,7 @@ func TestStreamBridgeEvents(t *testing.T) {
 	defer cancel()
 
 	stream, err := client.StreamBridgeEvents(ctx, &backendv1.StreamBridgeEventsRequest{
-		TokenAddress: "usov",
+		TokenAddress: "uwsov",
 	})
 	if err != nil {
 		t.Fatalf("failed to subscribe: %v", err)
@@ -69,7 +69,7 @@ func TestStreamBridgeEvents(t *testing.T) {
 			BlockHeight: 123,
 			EventIndex:  1,
 			EventType:   "MsgBridgeIn",
-			Payload:     json.RawMessage(`{"receiver":"usov","amount":"5000000","sender":"bsc_sender"}`),
+			Payload:     json.RawMessage(`{"receiver":"uwsov","amount":"5000000","sender":"bsc_sender"}`),
 		}
 		data, _ := json.Marshal(ev)
 		_ = nc.Publish(NatsStreamSubject, data)
@@ -87,7 +87,7 @@ func TestStreamBridgeEvents(t *testing.T) {
 	if resp.Amount != "5000000" {
 		t.Errorf("expected amount 5000000, got %s", resp.Amount)
 	}
-	if resp.TokenAddress != "usov" {
-		t.Errorf("expected token address usov, got %s", resp.TokenAddress)
+	if resp.TokenAddress != "uwsov" {
+		t.Errorf("expected token address uwsov, got %s", resp.TokenAddress)
 	}
 }

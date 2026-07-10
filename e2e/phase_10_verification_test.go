@@ -88,8 +88,8 @@ func TestPhase10_1_GenesisInvariants(t *testing.T) {
 		t.Errorf("FAIL: Expected max_validators 30, got %d", genesis.AppState.Staking.Params.MaxValidators)
 	}
 
-	if genesis.AppState.Staking.Params.BondDenom != "utoken" {
-		t.Errorf("FAIL: Expected bond_denom 'utoken', got '%s'", genesis.AppState.Staking.Params.BondDenom)
+	if genesis.AppState.Staking.Params.BondDenom != "ucsov" {
+		t.Errorf("FAIL: Expected bond_denom 'ucsov', got '%s'", genesis.AppState.Staking.Params.BondDenom)
 	}
 
 	if genesis.AppState.Staking.LastTotalPower != "30000000" {
@@ -112,12 +112,12 @@ func TestPhase10_2_EVMGenesisParams(t *testing.T) {
 	}
 
 	evmState := genesis.AppState.EVM
-	if evmState.Params.EvmDenom != "atoken" {
-		t.Errorf("FAIL: Expected evm_denom 'atoken', got '%s'", evmState.Params.EvmDenom)
+	if evmState.Params.EvmDenom != "aesov" {
+		t.Errorf("FAIL: Expected evm_denom 'aesov', got '%s'", evmState.Params.EvmDenom)
 	}
 
-	if evmState.Params.ExtendedDenomOptions == nil || evmState.Params.ExtendedDenomOptions.ExtendedDenom != "atoken" {
-		t.Errorf("FAIL: ExtendedDenomOptions.ExtendedDenom is not set to 'atoken'")
+	if evmState.Params.ExtendedDenomOptions == nil || evmState.Params.ExtendedDenomOptions.ExtendedDenom != "aesov" {
+		t.Errorf("FAIL: ExtendedDenomOptions.ExtendedDenom is not set to 'aesov'")
 	}
 
 	// Verify AllowUnprotectedTxs = false in app.toml
@@ -132,7 +132,7 @@ func TestPhase10_2_EVMGenesisParams(t *testing.T) {
 		t.Error("FAIL: EIP-155 replay protection is not configured to false in app.toml")
 	}
 
-	t.Log("[PASS] 10.2: EVM genesis parameters (x/vm module, atoken denom, replay protection allow-unprotected-txs = false) are verified.")
+	t.Log("[PASS] 10.2: EVM genesis parameters (x/vm module, aesov denom, replay protection allow-unprotected-txs = false) are verified.")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

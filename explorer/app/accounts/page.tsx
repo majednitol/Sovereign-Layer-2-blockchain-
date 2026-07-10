@@ -30,9 +30,9 @@ export default function AccountsPage() {
       } catch (err) {
         console.warn("Failed to fetch top accounts, using fallback mock.", err);
         setAccounts([
-          { addressBech32: "sov13f5c9e2b1d7a8d9e8a7b6c5d4e3f281f449219d5", addressHex: "0x3f5c9e2b1d7a8d9e8a7b6c5d4e3f281f449219d5", balance: "1,200,450.00 SOV", txCount: 154 },
-          { addressBech32: "sov18a7b6c5d4e3f281f449219d54e47fd8ad83861b", addressHex: "0x8a7b6c5d4e3f281f449219d54e47fd8ad83861b46", balance: "945,100.22 SOV", txCount: 89 },
-          { addressBech32: "sov10bech32addressmock1234567890abcdefghijk", addressHex: "0x0bech32addressmock1234567890abcdefghijk", balance: "420,000.00 SOV", txCount: 42 }
+          { addressBech32: "cosmos13f5c9e2b1d7a8d9e8a7b6c5d4e3f281f449219d5", addressHex: "0x3f5c9e2b1d7a8d9e8a7b6c5d4e3f281f449219d5", balance: "1,200,450.00 CSOV", txCount: 154 },
+          { addressBech32: "cosmos18a7b6c5d4e3f281f449219d54e47fd8ad83861b", addressHex: "0x8a7b6c5d4e3f281f449219d54e47fd8ad83861b46", balance: "945,100.22 CSOV", txCount: 89 },
+          { addressBech32: "cosmos10bech32addressmock1234567890abcdefghijk", addressHex: "0x0bech32addressmock1234567890abcdefghijk", balance: "420,000.00 CSOV", txCount: 42 }
         ]);
       } finally {
         setLoading(false);

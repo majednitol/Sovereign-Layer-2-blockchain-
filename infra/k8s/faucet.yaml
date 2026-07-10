@@ -27,7 +27,7 @@ spec:
             - name: FAUCET_KEY
               value: "faucet"
             - name: DENOM
-              value: "usov"
+              value: "ucsov"
             - name: FAUCET_AMOUNT
               value: "10000000"
 ---

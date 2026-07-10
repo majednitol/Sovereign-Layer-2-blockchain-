@@ -47,7 +47,7 @@ export default function GlobalHeader() {
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-1 sm:space-y-0">
         <div className="flex items-center space-x-6">
           <div className="flex items-center space-x-1.5">
-            <span className="text-gray-600 uppercase">SOV/USD:</span>
+            <span className="text-gray-600 uppercase">CSOV/USD:</span>
             <span className="text-white font-semibold">
               {price ? `$${price.toFixed(2)}` : "$1.25"}
             </span>

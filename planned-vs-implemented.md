@@ -43,7 +43,7 @@
 | 0.14 | ADR: cosmos/evm version pinning; dependency floor confirmed before Phase 1 | ✅ | Documented in `doc/adr/adr-008-version-pinning.md` |
 | 0.15 | ADR: EVM chain ID registered on chainlist.org | ✅ | Documented in `doc/adr/adr-009-evm-chain-id.md` |
 | 0.16 | ADR: fee market consolidation — cosmos/evm x/feemarket only, no skip-mev | ✅ | Documented in `doc/adr/adr-010-fee-market-consolidation.md` |
-| 0.17 | ADR: EVM denomination atoken (18 decimal) vs utoken (6 decimal) | ✅ | Documented in `doc/adr/adr-011-evm-denomination.md` |
+| 0.17 | ADR: EVM denomination aesov (18 decimal) vs ucsov (6 decimal) | ✅ | Documented in `doc/adr/adr-011-evm-denomination.md` |
 | 0.18 | ADR: x/authz blocked message types (6 types listed) | ✅ | All 6 types registered in `setupAuthzBlockedMessages` in app.go |
 | 0.19 | ADR: cursor-based pagination strategy for all list RPCs | ✅ | Documented in `doc/adr/adr-012-pagination-strategy.md` |
 | 0.20 | ADR: grpc-gateway as separate Kubernetes Deployment | ✅ | Documented in `doc/adr/adr-013-grpc-gateway-deployment.md` |
@@ -64,9 +64,9 @@
 | 1.8 | Wire IBC modules (`ibcKeeper`, `ibcTransferKeeper`, `ibcFeeKeeper`) in app.go | ✅ | Fully wired and initialized |
 | 1.9 | Replace ante handler with `cosmos/evm/ante.NewAnteHandler` | ✅ | Configured and wired in app.go |
 | 1.10 | `MsgEthereumTx` authz block registration (`/cosmos.evm.vm.v1.MsgEthereumTx`) | ✅ | Correctly registered in `setupAuthzBlockedMessages` |
-| 1.11 | x/vm genesis params: ChainID, EvmDenom="atoken", EnableCreate, AllowUnprotectedTxs=false | ✅ | Configured in generate_genesis.go |
-| 1.12 | x/feemarket genesis params: NoBaseFee=false, ElasticityMultiplier=2, EnableHeight=0 | ✅ | Configured in generate_genesis.go |
-| 1.13 | x/erc20 genesis: native token pair (utoken ↔ ERC-20) | ✅ | Configured in generate_genesis.go |
+| 1.11 | x/vm genesis params: ChainID, EvmDenom="aesov", EnableCreate, AllowUnprotectedTxs=false | ✅ | Configured in generate_genesis.go |
+| 1.12 | x/feemarket genesis params | ✅ | Configured in generate_genesis.go |
+| 1.13 | x/erc20 genesis: native token pair (ucsov ↔ ERC-20) | ✅ | Configured in generate_genesis.go |
 | 1.14 | `app.toml` JSON-RPC section (port 8545, 8546, namespaces, gas-cap) | ✅ | Configured in chain/config/app.toml |
 | 1.15 | StakingCompatibilityKeeper: GetEqualizedValidatorPower (1,000,000 for active) | ✅ | Implemented in `staking_compatibility.go` |
 | 1.16 | StakingCompatibilityKeeper: AllocateTokens hook (equal-slot reward split) | ✅ | Implemented in `staking_compatibility.go` |
@@ -208,7 +208,7 @@
 | 2.9.5 | Step 5: JSON-RPC server in app.toml (port 8545, 8546) | ✅ | Configured in chain/config/app.toml |
 | 2.9.6 | Step 6: `TestCosmWasmEVMCoexistence` — 5 scenarios pass | ✅ | Implemented and passing in `e2e/evm_cosmwasm_test.go` |
 | 2.9.7 | Step 7: Blockscout deployed, indexes EVM txs, Solidity contract visible | ✅ | Blockscout in docker-compose.yml; chaind runner supports JSON-RPC |
-| 2.9.8 | Step 8: x/erc20 native token registration (utoken → ERC-20) | ✅ | Configured in generate_genesis.go |
+| 2.9.8 | Step 8: x/erc20 native token registration (ucsov → ERC-20) | ✅ | Configured in generate_genesis.go |
 | 2.9.9 | Step 9: EVM simulation WeightedOperations (SimMsgEthSimpleTransfer etc.) | ✅ | Implemented in `chain/app/simulation_test.go` and verified passing |
 | 2.9.10 | Step 10: `TestAuthzEVMBlock` — MsgEthereumTx authz grant rejected | ✅ | Implemented and passing in `e2e/evm_cosmwasm_test.go` |
 | 2.9.11 | Step 11: cosmos/evm pre-v1 changelog tracking (weekly) | ✅ | Tracked via `doc/evm/changelog_tracking.md` |
@@ -453,7 +453,7 @@
 | 7.2.2 | MetaMask EVM chain config JSON (chainId hex, rpcUrls, nativeCurrency 18-decimal) | ✅ | `frontend/config/wallets.json` |
 | 7.2.3 | **MetaMask "Add Sovereign EVM Network" button** (`wallet_addEthereumChain`) | ✅ | MetaMask "Add Sovereign EVM Network" integrated via wallet_addEthereumChain |
 | 7.2.4 | `useWatchBlockNumber` (WebSocket `/evm-ws`) for live EVM block display | ✅ | Implemented useWatchBlockNumber block list tracking from client |
-| 7.2.5 | EVM account page: ETH balance in atoken, hex address, Blockscout link | ✅ | Implemented account detail dashboard with Blockscout URL integration |
+| 7.2.5 | EVM account page: ETH balance in aesov, hex address, Blockscout link | ✅ | Implemented account detail dashboard with Blockscout URL integration |
 | 7.2.6 | ERC-20 token page: native token balance, conversion | ✅ | Implemented ERC-20 token dashboard conversion displaying native tokens |
 | 7.2.7 | CosmJS + wagmi coexistence (both wallet types simultaneously) | ✅ | Handled concurrent CosmJS + wagmi wallet activation and status indicators |
 
@@ -476,7 +476,7 @@
 | 7.4.3 | **Real data from GetTps RPC → tps_1h** | ✅ | Implemented dynamic unary query to `queryClient.getTps` |
 | 7.4.4 | **Real data from GetBlockStats RPC → block_time_1h** | ✅ | Implemented dynamic unary query to `queryClient.getBlockStats` |
 | 7.4.5 | **Real data from GetBridgeVolume RPC → bridge_volume_1h** | ✅ | Implemented dynamic unary query to `queryClient.getBridgeVolume` |
-| 7.4.6 | **Real data from GetOraclePrice RPC → oracle_price_1h** | ✅ | Implemented parallel unary queries to `queryClient.getOraclePrice` for SOV, BNB, and ETH |
+| 7.4.6 | **Real data from GetOraclePrice RPC → oracle_price_1h** | ✅ | Implemented parallel unary queries to `queryClient.getOraclePrice` for CSOV, BNB, and ETH |
 | 7.4.7 | **Real data from GetValidatorUptime RPC → validator_uptime_1d** | ✅ | Implemented parallel unary queries to `queryClient.getValidatorUptime` |
 | 7.4.8 | **Real data from ListSettlements RPC → settlement_by_id** | ✅ | Implemented cursor-based pagination query to `queryClient.listSettlements` |
 | 7.4.9 | **Real data from ListMilestones RPC → milestone_status** | ✅ | Implemented cursor-based pagination query to `queryClient.listMilestones` |
@@ -550,10 +550,10 @@
 | # | Planned Task | Status | Evidence / Notes |
 |---|-------------|--------|-----------------|
 | 10.1 | Genesis file generated with final params, supply invariant verified | ✅ | Hardcoded supply allocations (700M Cosmos / 300M BSC) and parameters configured in `chain/genesis.json` and verified in E2E tests |
-| 10.2 | EVM genesis params verified (x/vm module name, atoken denom, chain_id) | ✅ | EVM registered under `evm` module name with denom `atoken` and `allow-unprotected-txs = false` in `chain/config/app.toml` |
+| 10.2 | EVM genesis params verified (x/vm module name, aesov denom, chain_id) | ✅ | EVM registered under `evm` module name with denom `aesov` and `allow-unprotected-txs = false` in `chain/config/app.toml` |
 | 10.3 | Horcrux ceremony complete for all validators | ✅ | 2-of-3 threshold double-signing configurations verified via `scripts/horcrux_ceremony_check.sh` and E2E tests |
 | 10.4 | Chain registry PR (cosmos/chain-registry) for mainnet | ✅ | Schema-compliant registry profile created in `doc/mainnet/chain-registry.json` |
-| 10.5 | Bridge active from day 1; rate limit live; circuit-breaker tested | ✅ | Rate limit (`max_unlock_per_block` = 100k SOV) and circuit-breaker roles active in genesis parameters and verified under simulation |
+| 10.5 | Bridge active from day 1; rate limit live; circuit-breaker tested | ✅ | Rate limit (`max_unlock_per_block` = 100k WSOV) and circuit-breaker roles active in genesis parameters and verified under simulation |
 | 10.6 | Monitoring alerts live and tested (Prometheus + Grafana + PagerDuty) | ✅ | Grafana dashboard JSON added to `infra/monitoring/dashboards/` and alerts routing verified in `infra/monitoring/alerts.rules.yml` |
 | 10.7 | Multi-region K8s (≥2 regions), WireGuard VPN, synchronous PostgreSQL replication | ✅ | Manifests created in `infra/k8s/multi-region-database.yaml` and `infra/k8s/multi-region-network.yaml` |
 

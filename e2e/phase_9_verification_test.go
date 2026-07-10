@@ -457,8 +457,8 @@ func TestPhase9_ScopeE_EVMIntegrationWiringAndParams(t *testing.T) {
 	}
 	appTomlContent := string(appTomlData)
 
-	if !strings.Contains(appTomlContent, "atoken") {
-		t.Error("FAIL: app.toml missing standard EVM gas denom 'atoken'")
+	if !strings.Contains(appTomlContent, "aesov") {
+		t.Error("FAIL: app.toml missing standard EVM gas denom 'aesov'")
 	}
 	if !strings.Contains(appTomlContent, "allow-unprotected-txs = false") {
 		t.Error("FAIL: EIP-155 replay protection is not set to false in app.toml")
@@ -471,11 +471,11 @@ func TestPhase9_ScopeE_EVMIntegrationWiringAndParams(t *testing.T) {
 		t.Fatalf("FAIL: Could not read genesis.json: %v", err)
 	}
 	genesisContent := string(genesisData)
-	if !strings.Contains(genesisContent, "\"evm_denom\": \"atoken\"") {
-		t.Error("FAIL: genesis.json does not configure evm_denom to 'atoken'")
+	if !strings.Contains(genesisContent, "\"evm_denom\": \"aesov\"") {
+		t.Error("FAIL: genesis.json does not configure evm_denom to 'aesov'")
 	}
 
-	t.Log("[PASS] Scope E: EVM integration wiring parameters (x/vm module name, atoken denom, AllowUnprotectedTxs=false) are verified.")
+	t.Log("[PASS] Scope E: EVM integration wiring parameters (x/vm module name, aesov denom, AllowUnprotectedTxs=false) are verified.")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -27,7 +27,7 @@ API_BASE="${API_BASE:-http://localhost:8082}"
 CHAIN_NODE="${CHAIN_NODE:-chain-node}"
 CHAIN_ID="${CHAIN_ID:-sovereign-1}"
 KEY_NAME="${KEY_NAME:-validator}"
-GAS_PRICES="${GAS_PRICES:-0.025atoken}"
+GAS_PRICES="${GAS_PRICES:-0aesov}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCHEMA_DIR="${SCRIPT_DIR}/schema"
 

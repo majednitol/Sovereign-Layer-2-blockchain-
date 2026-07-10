@@ -201,8 +201,8 @@ impl Module for CustomSovereignModule {
 #[test]
 fn test_multi_contract_flow() {
     let cold_multisig = Addr::unchecked("cold_multisig_addr");
-    let initial_treasury_balance = vec![Coin::new(1_000_000, "usov")];
-    let initial_reserve_balance = vec![Coin::new(500_000, "usov")];
+    let initial_treasury_balance = vec![Coin::new(1_000_000, "ucsov")];
+    let initial_reserve_balance = vec![Coin::new(500_000, "ucsov")];
 
     let mut app = AppBuilder::new_custom()
         .with_custom(CustomSovereignModule)
@@ -213,7 +213,7 @@ fn test_multi_contract_flow() {
                 .init_balance(
                     storage,
                     &Addr::unchecked("creator"),
-                    vec![Coin::new(10_000_000, "usov")],
+                    vec![Coin::new(10_000_000, "ucsov")],
                 )
                 .unwrap();
         });
@@ -408,7 +408,7 @@ fn test_multi_contract_flow() {
             &TreasuryExecuteMsg::Withdraw {
                 recipient: "hacker".to_string(),
                 amount: Uint128::new(100),
-                denom: "usov".to_string(),
+                denom: "ucsov".to_string(),
             },
             &[],
         )
@@ -432,7 +432,7 @@ fn test_multi_contract_flow() {
             &TreasuryExecuteMsg::Withdraw {
                 recipient: "recipient".to_string(),
                 amount: Uint128::new(100),
-                denom: "usov".to_string(),
+                denom: "ucsov".to_string(),
             },
             &[],
         )
@@ -458,7 +458,7 @@ fn test_multi_contract_flow() {
                 milestone_id: "unachieved_milestone".to_string(),
                 recipient: "recipient".to_string(),
                 amount: Uint128::new(50_000),
-                denom: "usov".to_string(),
+                denom: "ucsov".to_string(),
             },
             &[],
         )
@@ -475,7 +475,7 @@ fn test_multi_contract_flow() {
                 milestone_id: "achieved_milestone".to_string(),
                 recipient: "recipient".to_string(),
                 amount: Uint128::new(450_000),
-                denom: "usov".to_string(),
+                denom: "ucsov".to_string(),
             },
             &[],
         )

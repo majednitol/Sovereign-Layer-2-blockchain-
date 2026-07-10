@@ -110,7 +110,7 @@ export default function BlocksPage() {
       header: "Base Fee",
       cell: () => (
         <span className="text-gray-400 font-mono text-xs">
-          0.025 usov
+          0.025 ucsov
         </span>
       ),
     },
@@ -120,7 +120,7 @@ export default function BlocksPage() {
         const burnt = (row.original.gasUsed || 0) * 0.025;
         return (
           <span className="text-orange-400 font-mono text-xs font-semibold">
-            {burnt > 0 ? `${burnt.toFixed(3)} usov` : "0 usov"}
+            {burnt > 0 ? `${burnt.toFixed(3)} ucsov` : "0 ucsov"}
           </span>
         );
       },

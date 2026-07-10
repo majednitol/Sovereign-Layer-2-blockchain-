@@ -263,7 +263,7 @@ export default function DevToolsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 font-bold uppercase mb-1">SOV / Ether (1)</label>
+                  <label className="block text-xs text-gray-400 font-bold uppercase mb-1">ESOV / Ether (1)</label>
                   <input 
                     type="text" 
                     value={ether}

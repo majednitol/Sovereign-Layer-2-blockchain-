@@ -305,8 +305,8 @@ func TestRealTestnetIntegration(t *testing.T) {
 	// 6. Sign and broadcast MsgBridgeIn to Cosmos
 	t.Log("Step 5: Signing and broadcasting MsgBridgeIn payload to local Cosmos node...")
 	
-	// Convert 1e18 atoken to 1e6 usov (6 decimals on Cosmos)
-	mintAmount := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(1000000))) // 1 SOV
+	// Convert 1e18 aesov to 1e6 uwsov (6 decimals on Cosmos)
+	mintAmount := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(1000000))) // 1 WSOV
 	
 	// Compute bridge message hash
 	msgHash := bridge.ComputeBridgeMessageHash(cosmosRecipient, mintAmount, nonceBytes)
@@ -411,7 +411,7 @@ func TestRealTestnetIntegration(t *testing.T) {
 	// Query bridge aggregate table
 	var vol float64
 	_ = readDB.QueryRow(context.Background(), "SELECT COALESCE(sum(amount), 0) FROM bridge_events").Scan(&vol)
-	t.Logf("Projected bridge volume in Read DB: %f SOV", vol)
+	t.Logf("Projected bridge volume in Read DB: %f WSOV", vol)
 
 	// 8. Dynamic teardown
 	t.Log("Integration test verification completed successfully! Tearing down stack...")

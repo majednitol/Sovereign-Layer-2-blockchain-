@@ -327,7 +327,7 @@ func TestAppSimulation(t *testing.T) {
 	fmt.Printf("[PASS] Simulated %d blocks successfully without panics.\n", blocks)
 }
 
-// SimulateMsgEthSimpleTransfer simulates a simple EVM ether/atoken transfer transaction.
+// SimulateMsgEthSimpleTransfer simulates a simple EVM ether/aesov transfer transaction.
 func SimulateMsgEthSimpleTransfer() simtypes.Operation {
 	return func(
 		r *rand.Rand, app *baseapp.BaseApp, ctx sdk.Context,

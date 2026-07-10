@@ -168,7 +168,7 @@ func TestCommandArgsContainBroadcastMode(t *testing.T) {
 	// would produce the expected command-line.
 	nodeURL = "http://localhost:26657"
 	keyName = "faucet"
-	denom = "usov"
+	denom = "ucsov"
 	faucetAmount = "10000000"
 	chainID = "sovereign-1"
 
@@ -182,7 +182,7 @@ func TestCommandArgsContainBroadcastMode(t *testing.T) {
 	chainHome := os.Getenv("CHAIN_HOME")
 	expectedArgs := []string{
 		"tx", "bank", "send",
-		"faucet", "cosmos1testaddr", "10000000usov",
+		"faucet", "cosmos1testaddr", "10000000ucsov",
 		"--node", "http://localhost:26657",
 		"--keyring-backend", "test",
 		"--chain-id", "sovereign-1",
@@ -191,7 +191,7 @@ func TestCommandArgsContainBroadcastMode(t *testing.T) {
 		"--broadcast-mode", "sync",
 		"--gas", "auto",
 		"--gas-adjustment", "1.5",
-		"--gas-prices", "0atoken",
+		"--gas-prices", "0aesov",
 		"--output", "json",
 	}
 
@@ -222,8 +222,8 @@ func TestCommandArgsContainBroadcastMode(t *testing.T) {
 	for i, arg := range expectedArgs {
 		if arg == "--gas-prices" {
 			foundGas = true
-			if i+1 >= len(expectedArgs) || expectedArgs[i+1] != "0atoken" {
-				t.Error("--gas-prices must be followed by '0atoken'")
+			if i+1 >= len(expectedArgs) || expectedArgs[i+1] != "0aesov" {
+				t.Error("--gas-prices must be followed by '0aesov'")
 			}
 			break
 		}

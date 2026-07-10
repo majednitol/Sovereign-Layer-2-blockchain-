@@ -17,7 +17,7 @@ Oracle operators commit and reveal price feed reports. If an operator key is com
 2. **Submit Replacement Proposal**:
    Submit a governance proposal (`MsgUpdateOracleOperator`) to update the registered validator operator mapping to the new address.
    ```bash
-   chaind tx gov submit-proposal update-oracle-operator <operator-address> <new-oracle-address> --from <proposer> --fees 2000usov
+   chaind tx gov submit-proposal update-oracle-operator <operator-address> <new-oracle-address> --from <proposer> --fees 2000ucsov
    ```
 3. **Transition Operator Infrastructure**:
    Configure the price feed watcher daemon to sign commitments using the new key once the governance proposal passes.
@@ -29,7 +29,7 @@ Witnesses verify and sign settlement payloads. If a witness key is compromised:
 2. **Register New Witness PubKey**:
    Submit a governance transaction (`MsgUpdateWitnessRegistry`) to replace the active public key of the witness ID in `x/settlement`.
    ```bash
-   chaind tx gov submit-proposal update-witness-registry <witness-id> <new-public-key-hex> --from <proposer> --fees 2000usov
+   chaind tx gov submit-proposal update-witness-registry <witness-id> <new-public-key-hex> --from <proposer> --fees 2000ucsov
    ```
 3. **Deploy New Private Key**:
    Update the witness daemon configuration with the new private key and restart the service.
@@ -41,7 +41,7 @@ Bridge relayers submit cross-chain transfers to the bridge module. To rotate rel
 2. **Propose Relayer Set Update**:
    Submit a governance proposal (`MsgUpdateBridgeRelayerSet`) to register the new relayer address and remove the old one.
    ```bash
-   chaind tx gov submit-proposal update-bridge-relayer-set <new-relayer-address> <old-relayer-address> --from <proposer> --fees 2000usov
+   chaind tx gov submit-proposal update-bridge-relayer-set <new-relayer-address> <old-relayer-address> --from <proposer> --fees 2000ucsov
    ```
 3. **Activate New Relayer**:
    Restart the relayer daemon with the new key once the proposal is executed on-chain.

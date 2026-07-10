@@ -20,8 +20,8 @@ export default function AdvancedFilterPage() {
     setTimeout(() => {
       // Mock results matching query criteria
       setResults([
-        { hash: "0x8d92a10be43210be892a10be892a10be892a10be892a10be892a10be", height: 120530, type: "EVM", fee: "0.0025 SOV", status: "success", time: new Date().toLocaleTimeString() },
-        { hash: "0x5f3a09e0129bcfe170298a09ee09ea090a908a908d098e09fcd09090", height: 120525, type: "CosmWasm", fee: "0.0031 SOV", status: "success", time: new Date(Date.now() - 60000).toLocaleTimeString() }
+        { hash: "0x8d92a10be43210be892a10be892a10be892a10be892a10be892a10be", height: 120530, type: "EVM", fee: "0.0025 CSOV", status: "success", time: new Date().toLocaleTimeString() },
+        { hash: "0x5f3a09e0129bcfe170298a09ee09ea090a908a908d098e09fcd09090", height: 120525, type: "CosmWasm", fee: "0.0031 CSOV", status: "success", time: new Date(Date.now() - 60000).toLocaleTimeString() }
       ]);
       setSearching(false);
     }, 1000);

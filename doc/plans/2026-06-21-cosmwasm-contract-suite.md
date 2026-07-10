@@ -120,7 +120,7 @@ fn test_full_cosmwasm_suite() {
                 .init_balance(
                     storage,
                     &Addr::unchecked("treasury_addr"),
-                    vec![Coin::new(1_000_000, "usov")],
+                    vec![Coin::new(1_000_000, "ucsov")],
                 )
                 .unwrap();
             router
@@ -128,7 +128,7 @@ fn test_full_cosmwasm_suite() {
                 .init_balance(
                     storage,
                     &Addr::unchecked("reserve_addr"),
-                    vec![Coin::new(500_000, "usov")],
+                    vec![Coin::new(500_000, "ucsov")],
                 )
                 .unwrap();
         });

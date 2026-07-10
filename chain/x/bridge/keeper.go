@@ -40,7 +40,7 @@ func (k Keeper) GetParams(ctx sdk.Context) Params {
 		return Params{
 			StandardFinalityDepth: 15,
 			LargeFinalityDepth:    50,
-			LargeTransferThreshold: 5000000000, // 5000 SOV/usov threshold
+			LargeTransferThreshold: 5000000000, // 5000 WSOV/uwsov threshold
 			QuorumThreshold:       3,
 			MaxUnlockPerBlock:     100000000000,
 			CircuitBreakerAddress: "cosmos1cb_addr",
@@ -200,7 +200,7 @@ func (k Keeper) ProcessBridgeIn(ctx sdk.Context, msg MsgBridgeIn) error {
 	}
 
 	// 3. Verify supply cap atomic invariant
-	sovCoins := msg.Amount.AmountOf("usov")
+	sovCoins := msg.Amount.AmountOf("uwsov")
 	cosmosMinted := k.GetCosmosMinted(ctx)
 	newMinted := cosmosMinted + uint64(sovCoins.Int64())
 
@@ -245,7 +245,7 @@ func (k Keeper) ProcessBridgeOut(ctx sdk.Context, msg MsgBridgeOut) error {
 		return fmt.Errorf("invalid sender address: %w", err)
 	}
 
-	sovCoins := msg.Amount.AmountOf("usov")
+	sovCoins := msg.Amount.AmountOf("uwsov")
 	cosmosMinted := k.GetCosmosMinted(ctx)
 	if cosmosMinted < uint64(sovCoins.Int64()) {
 		return fmt.Errorf("insufficient bridge circulation: current %d, burning %d", cosmosMinted, sovCoins.Int64())

@@ -57,7 +57,7 @@ func SimulateMsgSettlement(k Keeper) simtypes.Operation {
 			Timestamp:    ctx.BlockTime().Unix(),
 			PayloadHash:  payloadHash,
 			Signature:    signature,
-			TransferAmt:  sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(5000))),
+			TransferAmt:  sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(5000))),
 			TransferDest: submitter.String(),
 		}
 
@@ -97,7 +97,7 @@ func SimulateMsgInvalidWitnessSettlement(k Keeper) simtypes.Operation {
 			Timestamp:    ctx.BlockTime().Unix(),
 			PayloadHash:  payloadHash,
 			Signature:    signature,
-			TransferAmt:  sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(5000))),
+			TransferAmt:  sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(5000))),
 			TransferDest: submitter.String(),
 		}
 
@@ -140,7 +140,7 @@ func SimulateMsgExpiredTimestampSettlement(k Keeper) simtypes.Operation {
 			Timestamp:    expiredTimestamp,
 			PayloadHash:  payloadHash,
 			Signature:    signature,
-			TransferAmt:  sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(5000))),
+			TransferAmt:  sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(5000))),
 			TransferDest: submitter.String(),
 		}
 

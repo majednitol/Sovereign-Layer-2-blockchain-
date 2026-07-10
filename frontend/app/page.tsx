@@ -22,9 +22,9 @@ interface BridgeTx {
 }
 
 // Encode LockBox.lock(uint256, string) manually to avoid dependencies
-function encodeLockData(amountSOV: number, recipient: string): string {
+function encodeLockData(amountWSOV: number, recipient: string): string {
   const selector = "f643509c"; // selector for lock(uint256,string)
-  const amountBig = BigInt(Math.floor(amountSOV)) * BigInt(10 ** 18);
+  const amountBig = BigInt(Math.floor(amountWSOV)) * BigInt(10 ** 18);
   const amountHex = amountBig.toString(16).padStart(64, "0");
   const offsetHex = "0000000000000000000000000000000000000000000000000000000000000040";
   const utf8 = new TextEncoder().encode(recipient);
@@ -47,7 +47,7 @@ export default function Home() {
   const [activeTxs, setActiveTxs] = useState<BridgeTx[]>([]);
 
   const [metrics, setMetrics] = useState({
-    totalVolume: "0 SOV",
+    totalVolume: "0 WSOV",
     uptime: "0.00%",
     validatorCount: "0 / 0",
     rewardsRunway: "—",
@@ -64,7 +64,7 @@ export default function Home() {
       // 1. Get total volume from bridge volume API
       try {
         const bridgeCall = await queryClient.getBridgeVolume({
-          tokenAddress: "usov",
+          tokenAddress: "uwsov",
           chainId: "sovereign-testnet-1",
           timeframe: "all",
         });
@@ -102,7 +102,7 @@ export default function Home() {
       }
 
       setMetrics({
-        totalVolume: `${volumeNum.toLocaleString()} SOV`,
+        totalVolume: `${volumeNum.toLocaleString()} WSOV`,
         uptime: avgUptime,
         validatorCount: `${activeValidators} / ${totalValidators}`,
         rewardsRunway: "—",
@@ -203,7 +203,7 @@ export default function Home() {
         txHash,
         sender: from,
         recipient: l1Address,
-        amount: `${value.toLocaleString()} SOV`,
+        amount: `${value.toLocaleString()} WSOV`,
         timestamp: new Date().toLocaleTimeString(),
         status: "pending",
         blocksTotal: blocks,
@@ -216,7 +216,7 @@ export default function Home() {
 
       // Update total volume metric
       const currentVol = parseFloat(metrics.totalVolume.replace(/,/g, ""));
-      const updatedVol = (currentVol + value).toLocaleString() + " SOV";
+      const updatedVol = (currentVol + value).toLocaleString() + " WSOV";
       setMetrics(prev => ({ ...prev, totalVolume: updatedVol }));
     } catch (err: any) {
       console.error("MetaMask lock transaction error:", err);
@@ -271,7 +271,7 @@ export default function Home() {
             </div>
             
             <div className="form-group">
-              <label>Amount to Bridge (SOV)</label>
+              <label>Amount to Bridge (WSOV)</label>
               <input 
                 type="number" 
                 className="form-control" 

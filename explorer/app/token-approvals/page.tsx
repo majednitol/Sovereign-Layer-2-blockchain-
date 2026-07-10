@@ -17,8 +17,8 @@ interface Allowance {
 export default function TokenApprovalsPage() {
   const { connected, address, walletType, connectWallet } = useWalletStore();
   const [allowances, setAllowances] = useState<Allowance[]>([
-    { id: "1", tokenName: "Sovereign L1 Token", tokenSymbol: "SOV", spenderAddress: "0x5a109a25b2a0c7cfd21c0e3a6c57f722971239aa", spenderName: "Uniswap Router Proxy", allowanceAmount: "Unlimited" },
-    { id: "2", tokenName: "Wrapped Bitcoin", tokenSymbol: "WBTC", spenderAddress: "0x1234567890123456789012345678901234567890", spenderName: "BSC LockBox Bridge", allowanceAmount: "50,000 uSLT" },
+    { id: "1", tokenName: "Sovereign L1 Token", tokenSymbol: "CSOV", spenderAddress: "0x5a109a25b2a0c7cfd21c0e3a6c57f722971239aa", spenderName: "Uniswap Router Proxy", allowanceAmount: "Unlimited" },
+    { id: "2", tokenName: "Wrapped Bitcoin", tokenSymbol: "WBTC", spenderAddress: "0x1234567890123456789012345678901234567890", spenderName: "BSC LockBox Bridge", allowanceAmount: "50,000 ucsov" },
     { id: "3", tokenName: "Sovereign Stable USD", tokenSymbol: "sUSD", spenderAddress: "0x7890123456789012345678901234567890123456", spenderName: "Milestone Incentive Vault", allowanceAmount: "1,000,000 sUSD" }
   ]);
 

@@ -239,7 +239,7 @@ export default function BridgeTxDetailPage() {
             <div>
               <div className="text-gray-500 text-xs uppercase font-bold">Transfer Amount</div>
               <div className="text-lg font-bold text-white mt-1">
-                {(Number(tx.amount) / 1e6).toLocaleString()} SOV
+                {(Number(tx.amount) / 1e6).toLocaleString()} WSOV
               </div>
             </div>
 

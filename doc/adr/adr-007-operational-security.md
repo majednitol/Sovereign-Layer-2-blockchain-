@@ -23,9 +23,9 @@ To reward the validator set and ensure long-term network security, the network a
 
 ### 2. EIP-1559 Dynamic Fee Market Parameters
 To stabilize gas prices and handle congestion, the network implements a dynamic EIP-1559 fee market.
-* **Base Denomination**: `usov` ($1\text{ SOV} = 1,000,000\text{ usov}$).
+* **Base Denomination**: `ucsov` ($1\text{ CSOV} = 1,000,000\text{ ucsov}$).
 * **Initial Parameter Configuration**:
-  - `min_base_fee`: $1,000,000,000$ wei ($1$ gwei EVM equivalent / $100$ `usov` per unit gas).
+  - `min_base_fee`: $1,000,000,000$ wei ($1$ gwei EVM equivalent / $100$ `aesov` per unit gas).
   - `elasticity_multiplier`: $2$ (max block gas is double the target gas).
   - `target_gas`: $50\%$ of maximum block gas limit.
 * **Recalculation Formula**:

@@ -3202,7 +3202,7 @@ func handleFaucet(w http.ResponseWriter, r *http.Request, s *server) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":         true,
 		"address":         req.Address,
-		"amount":          "10000000usov",
+		"amount":          "10000000ucsov",
 		"cooldownSeconds": 86400,
 		"tx_hash":         faucetResp.TxHash,
 		"message":         "Tokens sent successfully. Tx Hash: " + faucetResp.TxHash,
@@ -3351,7 +3351,7 @@ func handleGasPrice(w http.ResponseWriter, r *http.Request, s *server) {
 		"standard": fmt.Sprintf("%.6f", baseFee),
 		"fast":     fmt.Sprintf("%.6f", baseFee*1.5),
 		"rapid":    fmt.Sprintf("%.6f", baseFee*2.0),
-		"unit":     "usov",
+		"unit":     "ucsov",
 	})
 }
 
@@ -3931,7 +3931,7 @@ func handleTopAccounts(w http.ResponseWriter, r *http.Request, s *server) {
 		var a AccountItem
 		var bal float64
 		if err := rows.Scan(&a.AddressBech32, &a.AddressHex, &bal, &a.TxCount); err == nil {
-			a.Balance = fmt.Sprintf("%.2f SOV", bal/1000000.0)
+			a.Balance = fmt.Sprintf("%.2f CSOV", bal/1000000.0)
 			accounts = append(accounts, a)
 		}
 	}
@@ -3948,11 +3948,11 @@ func handleTopAccounts(w http.ResponseWriter, r *http.Request, s *server) {
 func handleSupplyDistribution(w http.ResponseWriter, r *http.Request, s *server) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"totalSupply":       "1,000,000,000 SOV",
-		"circulatingSupply": "420,500,000 SOV",
-		"stakingBonded":     "250,000,000 SOV",
+		"totalSupply":       "1,000,000,000 CSOV",
+		"circulatingSupply": "420,500,000 CSOV",
+		"stakingBonded":     "250,000,000 CSOV",
 		"stakingRatio":      "59.45%",
-		"communityPool":     "85,000,000 SOV",
+		"communityPool":     "85,000,000 CSOV",
 	})
 }
 

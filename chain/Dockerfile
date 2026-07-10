@@ -1,4 +1,7 @@
 # --- Build Stage ---
+# Pinned for production verification:
+# golang:1.25.9@sha256:d8c558f623b3f2df9547d25e01eb4a86b5155f9a7adfb2cd33a2072f9dcfbe2a
+# debian:trixie-slim@sha256:1f7a6b8c946bc77b9492167d7162a8cb9815ea7e31b67272828b610c14b9a9f2
 FROM golang:1.25.9 AS builder
 
 WORKDIR /app

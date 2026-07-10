@@ -141,13 +141,13 @@ func TestCosmWasmEVMCoexistence(t *testing.T) {
 	// Scenario 3: Native token in EVM via x/erc20
 	// We check registration and conversion (18/6 decimal formatting) rules.
 	t.Run("Scenario 3: x/erc20 Native Token Wrapper", func(t *testing.T) {
-		nativeDenom := "utoken"
-		erc20Symbol := "TOKEN"
+		nativeDenom := "ucsov"
+		erc20Symbol := "CSOV"
 		
-		// 1 TOKEN = 1,000,000 utoken (6 decimals) = 1,000,000,000,000,000,000 atoken (18 decimals)
+		// 1 CSOV = 1,000,000 ucsov (6 decimals) = 1,000,000,000,000,000,000 aesov (18 decimals)
 		powerReduction := big.NewInt(1000000) // 10^6
 		
-		if nativeDenom != "utoken" || erc20Symbol != "TOKEN" || powerReduction.Int64() != 1000000 {
+		if nativeDenom != "ucsov" || erc20Symbol != "CSOV" || powerReduction.Int64() != 1000000 {
 			t.Fatalf("Invalid x/erc20 native token wrapping parameters")
 		}
 		t.Log("[PASS] Verified token wrapping decimal rules (6 decimals native vs 18 decimals EVM).")

@@ -230,10 +230,10 @@ chmod +x store_and_verify.sh
 docker cp cw_counter.wasm chain-node:/tmp/
 
 # Store on-chain
-docker exec chain-node sovereignd tx wasm store /tmp/cw_counter.wasm \
+docker exec chain-node chaind tx wasm store /tmp/cw_counter.wasm \
   --from validator \
   --chain-id sovereign-1 \
-  --gas-prices 0.025usovereign \
+  --gas-prices 0aesov \
   --gas auto \
   --gas-adjustment 1.3 \
   -y --output json
@@ -242,7 +242,7 @@ docker exec chain-node sovereignd tx wasm store /tmp/cw_counter.wasm \
 sleep 6
 
 # Get the code ID
-docker exec chain-node sovereignd q wasm list-code --output json | jq '.code_infos[-1]'
+docker exec chain-node chaind q wasm list-code --output json | jq '.code_infos[-1]'
 ```
 
 **Option C: Manual verification without wasm binary**

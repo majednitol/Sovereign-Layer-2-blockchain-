@@ -17,15 +17,15 @@
     },
     "currencies": [
       {
-        "coinDenom": "SOV",
-        "coinMinimalDenom": "usov",
+        "coinDenom": "CSOV",
+        "coinMinimalDenom": "ucsov",
         "coinDecimals": 6
       }
     ],
     "feeCurrencies": [
       {
-        "coinDenom": "SOV",
-        "coinMinimalDenom": "usov",
+        "coinDenom": "CSOV",
+        "coinMinimalDenom": "ucsov",
         "coinDecimals": 6,
         "gasPriceStep": {
           "low": 0.01,
@@ -35,8 +35,8 @@
       }
     ],
     "stakeCurrency": {
-      "coinDenom": "SOV",
-      "coinMinimalDenom": "usov",
+      "coinDenom": "CSOV",
+      "coinMinimalDenom": "ucsov",
       "coinDecimals": 6
     }
   },
@@ -44,8 +44,8 @@
     "chainId": "0x2329",
     "chainName": "Sovereign EVM",
     "nativeCurrency": {
-      "name": "TOKEN",
-      "symbol": "TOKEN",
+      "name": "ESOV",
+      "symbol": "ESOV",
       "decimals": 18
     },
     "rpcUrls": ["https://testnet.sovereign.example/evm-rpc"],

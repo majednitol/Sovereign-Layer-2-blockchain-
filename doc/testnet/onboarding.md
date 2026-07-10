@@ -17,7 +17,7 @@ chaind init <moniker> --chain-id sovereign-testnet-1
 ## 3. Generate Genesis Transaction (Gentx)
 Create the validator genesis transaction:
 ```bash
-chaind gentx <operator-key-name> 100000000000usov \
+chaind gentx <operator-key-name> 100000000000ucsov \
   --pubkey $(chaind tendermint show-validator) \
   --chain-id sovereign-testnet-1 \
   --moniker "<moniker>"

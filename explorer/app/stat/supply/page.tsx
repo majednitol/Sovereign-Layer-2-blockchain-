@@ -29,11 +29,11 @@ export default function SupplyPage() {
       } catch (err) {
         console.warn("Failed to fetch supply metrics. Using fallback mocks.", err);
         setStats({
-          totalSupply: "1,000,000,000 SOV",
-          circulatingSupply: "420,500,000 SOV",
-          stakingBonded: "250,000,000 SOV",
+          totalSupply: "1,000,000,000 CSOV",
+          circulatingSupply: "420,500,000 CSOV",
+          stakingBonded: "250,000,000 CSOV",
           stakingRatio: "59.45%",
-          communityPool: "85,000,000 SOV"
+          communityPool: "85,000,000 CSOV"
         });
       } finally {
         setLoading(false);

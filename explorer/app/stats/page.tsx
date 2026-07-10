@@ -13,7 +13,7 @@ interface StatItem {
 export default function StatsPage() {
   const [stats, setStats] = useState<StatItem[]>([
     { name: "Total Transactions Indexed", value: "24,582,100", description: "Aggregate sum of EVM and Cosmos SDK transactions." },
-    { name: "Average Gas Price", value: "0.002500 SOV", description: "Average transaction gas price base fee." },
+    { name: "Average Gas Price", value: "0.002500 CSOV", description: "Average transaction gas price base fee." },
     { name: "Total Verified Contracts", value: "154", description: "Count of verified Solidity and CosmWasm contract nodes." },
     { name: "Active Validator Set", value: "20 Nodes", description: "Active block producers signing slot sequences." },
     { name: "Total Staking Ratio", value: "59.45% Bonded", description: "Percentage of total supply bonded in staking consensus." }

@@ -26,7 +26,7 @@ func TestBSCWatcherTieredConfirmations(t *testing.T) {
 
 	watcher := NewBSCWatcher(db, bus, largeThreshold)
 
-	// Ingest standard locked event (100 usov) at block 10
+	// Ingest standard locked event (100 uwsov) at block 10
 	nonce1 := []byte("nonce1_standard_locked_event")
 	watcher.IngestLockEvent(LockEvent{
 		User:            "0xuser1",
@@ -36,7 +36,7 @@ func TestBSCWatcherTieredConfirmations(t *testing.T) {
 		BlockNumber:     10,
 	})
 
-	// Ingest large locked event (60000 usov) at block 12
+	// Ingest large locked event (60000 uwsov) at block 12
 	nonce2 := []byte("nonce2_large_locked_event___")
 	watcher.IngestLockEvent(LockEvent{
 		User:            "0xuser2",

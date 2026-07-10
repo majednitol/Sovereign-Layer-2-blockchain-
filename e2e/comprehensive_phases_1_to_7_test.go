@@ -570,8 +570,8 @@ func SetupP123Context(t *testing.T) *P123Context {
 	wasm := NewMockWasmKeeperP3()
 	bank := &mockBankKeeperP2{
 		balances: map[string]sdk.Coins{
-			sdk.AccAddress([]byte("milestone_escrow")).String():  sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(100000000))),
-			sdk.AccAddress([]byte("settlement_escrow")).String(): sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(100000000))),
+			sdk.AccAddress([]byte("milestone_escrow")).String():  sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(100000000))),
+			sdk.AccAddress([]byte("settlement_escrow")).String(): sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(100000000))),
 		},
 	}
 
@@ -780,7 +780,7 @@ func TestComprehensivePhase2WitnessSettlementSignatureAndTime(t *testing.T) {
 	sig := ed25519.Sign(witnessPriv, domainSep)
 
 	destPayout := sdk.AccAddress([]byte("payout_dest________")).String()
-	payoutAmt := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(5000000)))
+	payoutAmt := sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(5000000)))
 
 	msg := settlement.MsgSettlement{
 		Submitter:    sdk.AccAddress([]byte("submitter___________")).String(),
@@ -901,7 +901,7 @@ func TestComprehensivePhase3ReentrancyAndCallerValidation(t *testing.T) {
 	_, _ = s.Wasm.Execute(s.Ctx, sdk.AccAddress([]byte("reserve_fund_addr")), sdk.AccAddress([]byte("deployer")), setupMsg, nil)
 
 	// 1. Withdraw caller validation: caller is not governance -> fails
-	withdrawMsg := []byte(`{"withdraw":{"recipient":"recipient_addr","amount":500000,"denom":"usov"}}`)
+	withdrawMsg := []byte(`{"withdraw":{"recipient":"recipient_addr","amount":500000,"denom":"ucsov"}}`)
 	_, err := s.Wasm.Execute(s.Ctx, sdk.AccAddress([]byte("treasury_addr")), sdk.AccAddress([]byte("hacker")), withdrawMsg, nil)
 	if err == nil {
 		t.Fatal("Expected Treasury caller validation failure (hacker)")
@@ -917,7 +917,7 @@ func TestComprehensivePhase3ReentrancyAndCallerValidation(t *testing.T) {
 	}
 
 	// 3. Disburse from reserve fund fails if balance falls below threshold
-	disburseMsg := []byte(`{"disburse_milestone":{"milestone_id":"m1","recipient":"recipient_addr","amount":90000000,"denom":"usov"}}`) // 100M - 90M = 10M < 20M threshold
+	disburseMsg := []byte(`{"disburse_milestone":{"milestone_id":"m1","recipient":"recipient_addr","amount":90000000,"denom":"ucsov"}}`) // 100M - 90M = 10M < 20M threshold
 	_, err = s.Wasm.Execute(s.Ctx, sdk.AccAddress([]byte("reserve_fund_addr")), sdk.AccAddress([]byte("governance_addr")), disburseMsg, nil)
 	if err == nil {
 		t.Fatal("Expected Reserve Fund minimum balance circuit breaker to fail transaction")
@@ -925,7 +925,7 @@ func TestComprehensivePhase3ReentrancyAndCallerValidation(t *testing.T) {
 
 	// 4. Disburse fails if milestone not achieved
 	s.Wasm.milestoneAchieved = false
-	validDisburseMsg := []byte(`{"disburse_milestone":{"milestone_id":"m1","recipient":"recipient_addr","amount":30000000,"denom":"usov"}}`) // 100M - 30M = 70M > 20M
+	validDisburseMsg := []byte(`{"disburse_milestone":{"milestone_id":"m1","recipient":"recipient_addr","amount":30000000,"denom":"ucsov"}}`) // 100M - 30M = 70M > 20M
 	_, err = s.Wasm.Execute(s.Ctx, sdk.AccAddress([]byte("reserve_fund_addr")), sdk.AccAddress([]byte("governance_addr")), validDisburseMsg, nil)
 	if err == nil {
 		t.Fatal("Expected Reserve Fund milestone gating check to fail transaction")
@@ -958,7 +958,7 @@ func TestComprehensivePhase3EmergencyPauseAndOverrides(t *testing.T) {
 	}
 
 	// 2. Withdraw fails when paused
-	withdrawMsg := []byte(`{"withdraw":{"recipient":"recipient_addr","amount":500000,"denom":"usov"}}`)
+	withdrawMsg := []byte(`{"withdraw":{"recipient":"recipient_addr","amount":500000,"denom":"ucsov"}}`)
 	_, err = s.Wasm.Execute(s.Ctx, sdk.AccAddress([]byte("treasury_addr")), sdk.AccAddress([]byte("governance_addr")), withdrawMsg, nil)
 	if err == nil {
 		t.Fatal("Withdraw must fail when contract is paused")
@@ -1119,7 +1119,7 @@ func TestComprehensivePhase4OutOfOrderDeposits(t *testing.T) {
 	s.BridgeKeeper.SetParams(s.Ctx, params)
 
 	receiver := sdk.AccAddress([]byte("receiver_addr")).String()
-	amount := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(1000)))
+	amount := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(1000)))
 
 	// Execute 10 concurrent deposits out-of-order
 	nonces := make([][]byte, 10)
@@ -1158,8 +1158,8 @@ func TestComprehensivePhase4OutOfOrderDeposits(t *testing.T) {
 		}
 	}
 
-	// Verify all balance is minted (10 * 1000 = 10000 usov)
-	bal := s.Bank.balances[receiver].AmountOf("usov").Int64()
+	// Verify all balance is minted (10 * 1000 = 10000 uwsov)
+	bal := s.Bank.balances[receiver].AmountOf("uwsov").Int64()
 	if bal != 10000 {
 		t.Fatalf("Expected final balance 10000, got %d", bal)
 	}
@@ -1211,7 +1211,7 @@ func TestComprehensivePhase4SupplyCapBreach(t *testing.T) {
 	s.BridgeKeeper.SetParams(s.Ctx, params)
 
 	receiver := sdk.AccAddress([]byte("receiver_addr")).String()
-	amount := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(6000))) // Amount exceeds cap
+	amount := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(6000))) // Amount exceeds cap
 	nonce := []byte("nonce_cap_breach_test")
 
 	hash := bridge.ComputeBridgeMessageHash(receiver, amount, nonce)
@@ -1320,8 +1320,8 @@ func TestComprehensivePhase5ProjectionAggregateCalc(t *testing.T) {
 		input    string
 		expected float64
 	}{
-		{"1000000usov", 1000000},
-		{"99usov", 99},
+		{"1000000uwsov", 1000000},
+		{"99uwsov", 99},
 		{"0", 0},
 	}
 
@@ -1377,7 +1377,7 @@ func TestComprehensivePhase5RealTimeStreamingIntegration(t *testing.T) {
 	defer cancel()
 
 	stream, err := client.StreamBridgeEvents(ctx, &backendv1.StreamBridgeEventsRequest{
-		TokenAddress: "usov",
+		TokenAddress: "uwsov",
 	})
 	if err != nil {
 		t.Fatalf("failed to subscribe: %v", err)
@@ -1385,7 +1385,7 @@ func TestComprehensivePhase5RealTimeStreamingIntegration(t *testing.T) {
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
-		payload := []byte(`{"block_height":500,"event_index":1,"event_type":"MsgBridgeIn","payload":{"receiver":"usov","amount":"1000usov","sender":"bsc_sender"}}`)
+		payload := []byte(`{"block_height":500,"event_index":1,"event_type":"MsgBridgeIn","payload":{"receiver":"uwsov","amount":"1000uwsov","sender":"bsc_sender"}}`)
 		_ = nc.Publish("account:stream", payload)
 	}()
 
@@ -1394,7 +1394,7 @@ func TestComprehensivePhase5RealTimeStreamingIntegration(t *testing.T) {
 		t.Fatalf("failed to receive event: %v", err)
 	}
 
-	if resp.BlockHeight != 500 || resp.Amount != "1000usov" {
+	if resp.BlockHeight != 500 || resp.Amount != "1000uwsov" {
 		t.Errorf("received event mismatch: block=%d, amount=%s", resp.BlockHeight, resp.Amount)
 	}
 

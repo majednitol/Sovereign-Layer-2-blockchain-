@@ -13,5 +13,5 @@ Sovereign L1 runs a standard EVM execution layer side-by-side with Cosmos. The E
 ## Metadata Reference
 - **Chain ID**: `9001`
 - **Network Name**: `Sovereign L1`
-- **Currency Symbol**: `atoken`
+- **Currency Symbol**: `ESOV`
 - **Decimals**: `18`

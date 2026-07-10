@@ -202,7 +202,7 @@ export default function BridgePage() {
           <Activity className="h-8 w-8 text-blue-500" />
           <div>
             <div className="text-xs text-gray-500 uppercase font-bold">Total Bridge Volume (24h)</div>
-            <div className="text-xl font-bold text-white">410,000 SOV</div>
+            <div className="text-xl font-bold text-white">410,000 WSOV</div>
           </div>
         </div>
 
@@ -279,7 +279,7 @@ export default function BridgePage() {
                     <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#22c55e" strokeWidth="10" strokeLinecap="round" strokeDasharray="125" strokeDashoffset="0" />
                   </svg>
                   <div className="text-2xl font-extrabold text-white tracking-tight -mt-4">
-                    {metrics ? Number(metrics.cosmosMinted).toLocaleString() : "0"} SOV
+                    {metrics ? Number(metrics.cosmosMinted).toLocaleString() : "0"} WSOV
                   </div>
                   <div className="text-[10px] text-green-400 font-bold flex items-center gap-0.5 mt-1">
                     <CheckCircle2 className="h-3.5 w-3.5" /> balanced & verified
@@ -374,7 +374,7 @@ export default function BridgePage() {
                           </span>
                         </td>
                         <td className="py-4 font-mono font-semibold text-white">
-                          {(Number(tx.amount) / 1e6).toLocaleString()} SOV
+                          {(Number(tx.amount) / 1e6).toLocaleString()} WSOV
                         </td>
                         <td className="py-4">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium uppercase ${

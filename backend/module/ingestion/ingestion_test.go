@@ -30,7 +30,7 @@ func TestEventPayloadThreshold(t *testing.T) {
 		BlockHeight: 10,
 		EventIndex:  1,
 		EventType:   "MsgBridgeIn",
-		Payload:     json.RawMessage(`{"receiver":"sov123","amount":"500usov"}`),
+		Payload:     json.RawMessage(`{"receiver":"sov123","amount":"500uwsov"}`),
 	}
 
 	smallPayload, err := json.Marshal(smallEvent)

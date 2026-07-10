@@ -142,7 +142,7 @@ func TestPhase7_1_KeplrConfigRequiredFields(t *testing.T) {
 		}
 	}
 
-	// Verify utoken denomination pattern
+	// Verify ucsov denomination pattern
 	if wallets.Keplr.Currencies[0].CoinMinimalDenom == "" {
 		t.Error("FAIL: Keplr currencies[0].coinMinimalDenom is empty")
 	}
@@ -162,7 +162,7 @@ func TestPhase7_1_MetaMaskSovereignEvmConfig(t *testing.T) {
 
 	// Plan: nativeCurrency: TOKEN with decimals: 18
 	if evm.NativeCurrency.Decimals != 18 {
-		t.Errorf("FAIL: MetaMask sovereign EVM decimals is %d, expected 18 (matches cosmos/evm x/vm EVM denom 'atoken')",
+		t.Errorf("FAIL: MetaMask sovereign EVM decimals is %d, expected 18 (matches cosmos/evm x/vm EVM denom 'aesov')",
 			evm.NativeCurrency.Decimals)
 	}
 

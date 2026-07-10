@@ -16,7 +16,7 @@
   "fees": {
     "fee_tokens": [
       {
-        "denom": "atoken",
+        "denom": "aesov",
         "fixed_min_gas_price": 0.5,
         "low_gas_price": 0.5,
         "average_gas_price": 0.75,
@@ -27,7 +27,7 @@
   "staking": {
     "staking_tokens": [
       {
-        "denom": "utoken"
+        "denom": "ucsov"
       }
     ]
   },

@@ -486,7 +486,7 @@ func TestPhase2SettlementWitnessSignature(t *testing.T) {
 		Timestamp:    ctx.BlockTime().Unix(),
 		PayloadHash:  payloadHash,
 		Signature:    signature,
-		TransferAmt:  sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(100000))),
+		TransferAmt:  sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(100000))),
 		TransferDest: destAddr,
 	}
 
@@ -667,7 +667,7 @@ func TestPhase2BridgeSignatureAndSupplyCap(t *testing.T) {
 	k.SetParams(ctx, params)
 
 	receiver := sdk.AccAddress([]byte("receiver_addr_______")).String()
-	amount := sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(50000)))
+	amount := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(50000)))
 	nonce := []byte("unique_nonce_val_1234567890")
 
 	// Pre-sign the payload hash
@@ -723,7 +723,7 @@ func TestPhase2BridgeSignatureAndSupplyCap(t *testing.T) {
 	// 4. Supply cap breach case: fails when deposit amount causes minted supply to exceed supply cap
 	msg3 := msg
 	msg3.Nonce = []byte("different_nonce_2")
-	msg3.Amount = sdk.NewCoins(sdk.NewCoin("usov", math.NewInt(960000))) // 50,000 + 960,000 = 1,010,000 > 1,000,000 cap
+	msg3.Amount = sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(960000))) // 50,000 + 960,000 = 1,010,000 > 1,000,000 cap
 	hash3 := bridge.ComputeBridgeMessageHash(receiver, msg3.Amount, msg3.Nonce)
 	var signatures3 [][]byte
 	for _, priv := range privs {

@@ -14,7 +14,7 @@ echo "[1/4] Generating initial validator accounts..."
 for i in {1..5}; do
   echo "Generating validator-$i credentials..."
   # sovereignd keys add validator-$i --keyring-backend test
-  # sovereignd add-genesis-account validator-$i 1000000000000usov --keyring-backend test
+  # sovereignd add-genesis-account validator-$i 1000000000000ucsov --keyring-backend test
 done
 
 echo "[2/4] Assembling GenTxs into genesis.json..."
@@ -24,12 +24,12 @@ echo "[3/4] Validating supply invariants in genesis..."
 # Run custom validation logic (simulated)
 # sovereignd validate-genesis
 
-TOTAL_SUPPLY=1000000000000000 # 1,000,000,000 SOV
+TOTAL_SUPPLY=1000000000000000 # 1,000,000,000 CSOV
 DECIMALS=1000000
 EXPECTED_SUPPLY_CAP=$((1000000000 * DECIMALS))
 
 if [ "$TOTAL_SUPPLY" -ne "$EXPECTED_SUPPLY_CAP" ]; then
-  echo "Genesis supply cap validation passed: $TOTAL_SUPPLY usov matches expected $EXPECTED_SUPPLY_CAP usov"
+  echo "Genesis supply cap validation passed: $TOTAL_SUPPLY ucsov matches expected $EXPECTED_SUPPLY_CAP ucsov"
 else
   echo "Error: Genesis supply cap mismatch!"
   exit 1
