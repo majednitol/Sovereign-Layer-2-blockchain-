@@ -113,11 +113,11 @@
           "amount": "2000000000000000000000000"
         },
         {
-          "denom": "uwsov",
+          "denom": "ucsov",
           "amount": "2000000000000000"
         },
         {
-          "denom": "ucsov",
+          "denom": "uwsov",
           "amount": "2000000000000000"
         }
       ]

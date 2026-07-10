@@ -65,11 +65,11 @@
             },
             {
               "amount": "1000000000000000",
-              "denom": "uwsov"
+              "denom": "ucsov"
             },
             {
               "amount": "1000000000000000",
-              "denom": "ucsov"
+              "denom": "uwsov"
             }
           ]
         },
@@ -82,11 +82,11 @@
             },
             {
               "amount": "1000000000000000",
-              "denom": "uwsov"
+              "denom": "ucsov"
             },
             {
               "amount": "1000000000000000",
-              "denom": "ucsov"
+              "denom": "uwsov"
             }
           ]
         }
@@ -157,7 +157,20 @@
         "send_enabled": []
       },
       "send_enabled": [],
-      "supply": []
+      "supply": [
+        {
+          "denom": "aesov",
+          "amount": "2000000000000000000000000"
+        },
+        {
+          "denom": "ucsov",
+          "amount": "2000000000000000"
+        },
+        {
+          "denom": "uwsov",
+          "amount": "2000000000000000"
+        }
+      ]
     },
     "bridge": {
       "cosmos_minted": 0,
