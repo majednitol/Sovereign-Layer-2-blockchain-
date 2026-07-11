@@ -54,17 +54,31 @@ export default function AnalyticsPage() {
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8082";
 
   const fetchAnalyticsData = async () => {
+    const formatTime = (timeStr: string) => {
+      try {
+        const date = new Date(timeStr);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+        }
+      } catch (_) {}
+      return timeStr;
+    };
+
     try {
       const tpsResp = await fetch(`${API_BASE}/api/rest/v1/explorer/analytics/tps`);
       if (tpsResp.ok) {
         const data = await tpsResp.json();
-        if (data.points) setTpsHistory(data.points);
+        if (data.points) {
+          setTpsHistory(data.points.map((p: any) => ({ ...p, time: formatTime(p.time) })));
+        }
       }
 
       const btResp = await fetch(`${API_BASE}/api/rest/v1/explorer/analytics/block-time`);
       if (btResp.ok) {
         const data = await btResp.json();
-        if (data.points) setBlockTimeHistory(data.points);
+        if (data.points) {
+          setBlockTimeHistory(data.points.map((p: any) => ({ ...p, time: formatTime(p.time) })));
+        }
       }
 
       const uptimeResp = await fetch(`${API_BASE}/api/rest/v1/explorer/analytics/validator-uptime`);

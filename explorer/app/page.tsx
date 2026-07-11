@@ -47,8 +47,18 @@ export default function HomePage() {
   const blocks = blocksData?.blocks || [];
   const txs = txsData?.txs || [];
 
+  const formatTime = (timeStr: string) => {
+    try {
+      const date = new Date(timeStr);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+      }
+    } catch (_) {}
+    return timeStr;
+  };
+
   const tpsHistory = tpsHistoryData?.points?.map(p => ({
-    name: p.time,
+    name: formatTime(p.time),
     tps: p.tps
   })) || [];
 

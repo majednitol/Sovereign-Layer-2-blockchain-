@@ -47,17 +47,61 @@ export default function ConsensusPage() {
   const handleConsensusStateData = (data: any) => {
     const roundState = data.result?.round_state;
     if (roundState) {
-      const height = Number(roundState.height || 0);
-      const round = Number(roundState.round || 0);
-      const step = roundState.step || "RoundStepNewHeight";
+      // In dump_consensus_state, height is a string, and step is a number.
+      // In consensus_state, height is in "height/round/step": "height/round/step" summary string.
+      // Let's support both.
+      let height = 0;
+      let round = 0;
+      let stepStr = "NewHeight";
+      
+      if (roundState.height !== undefined) {
+        height = Number(roundState.height);
+        round = Number(roundState.round || 0);
+        
+        const stepMap: Record<number | string, string> = {
+          0: "NewHeight",
+          1: "NewRound",
+          2: "Propose",
+          3: "Prevote",
+          4: "PrevoteWait",
+          5: "Precommit",
+          6: "PrecommitWait",
+          7: "Commit",
+        };
+        if (typeof roundState.step === "number") {
+          stepStr = stepMap[roundState.step] || `Step ${roundState.step}`;
+        } else if (typeof roundState.step === "string") {
+          stepStr = roundState.step.replace("RoundStep", "");
+        }
+      } else if (roundState["height/round/step"] !== undefined) {
+        const parts = roundState["height/round/step"].split("/");
+        if (parts.length >= 3) {
+          height = Number(parts[0]);
+          round = Number(parts[1]);
+          const stepCode = Number(parts[2]);
+          const stepMap: Record<number, string> = {
+            0: "NewHeight",
+            1: "NewRound",
+            2: "Propose",
+            3: "Prevote",
+            4: "PrevoteWait",
+            5: "Precommit",
+            6: "PrecommitWait",
+            7: "Commit",
+          };
+          stepStr = stepMap[stepCode] || `Step ${stepCode}`;
+        }
+      }
+
       const proposer = roundState.validators?.proposer?.address || "N/A";
+      
       const validators = (roundState.validators?.validators || []).map((v: any) => ({
         address: v.address,
-        votingPower: Number(v.voting_power || 0),
-        accum: Number(v.accum || 0),
+        votingPower: Number(v.voting_power || v.votingPower || 0),
+        accum: Number(v.proposer_priority || v.accum || 0),
       }));
 
-      setConsensus({ height, round, step, proposer, validators });
+      setConsensus({ height, round, step: stepStr, proposer, validators });
       setLoading(false);
       setError(null);
       return true;
@@ -87,7 +131,7 @@ export default function ConsensusPage() {
           // Fetch initial state
           ws?.send(JSON.stringify({
             jsonrpc: "2.0",
-            method: "consensus_state",
+            method: "dump_consensus_state",
             id: 2
           }));
         };
@@ -101,7 +145,7 @@ export default function ConsensusPage() {
               if (data.result?.query === "tm.event='NewBlockHeader'") {
                 ws?.send(JSON.stringify({
                   jsonrpc: "2.0",
-                  method: "consensus_state",
+                  method: "dump_consensus_state",
                   id: 2
                 }));
               } else {
@@ -137,7 +181,7 @@ export default function ConsensusPage() {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
           jsonrpc: "2.0",
-          method: "consensus_state",
+          method: "dump_consensus_state",
           id: 2
         }));
       }
