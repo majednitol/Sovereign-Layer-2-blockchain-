@@ -1,8 +1,0 @@
-{
-  "pages": {},
-  "app": {
-    "[project]/explorer/app/txs/[hash]/page": []
-  },
-  "appUsingSizeAdjust": false,
-  "pagesUsingSizeAdjust": false
-}

@@ -1,8 +1,0 @@
-{
-  "pages": {},
-  "app": {
-    "[project]/explorer/app/evm/tokens/[addr]/multi/page": []
-  },
-  "appUsingSizeAdjust": false,
-  "pagesUsingSizeAdjust": false
-}

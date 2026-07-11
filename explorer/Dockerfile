@@ -7,14 +7,12 @@ WORKDIR /app
 FROM base AS builder
 # Copy package.json, pnpm-workspace.yaml, and lockfile
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY packages/api-spec/package.json ./packages/api-spec/
 COPY explorer/package.json ./explorer/
 
 # Install dependencies
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
 
 # Copy actual source files
-COPY packages/api-spec ./packages/api-spec
 COPY explorer ./explorer
 
 # Set Build-Time Env Variables
@@ -51,7 +49,6 @@ RUN pnpm --filter explorer build
 FROM base AS runner
 WORKDIR /app
 COPY --from=builder /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.yaml ./
-COPY --from=builder /app/packages/api-spec ./packages/api-spec
 COPY --from=builder /app/explorer ./explorer
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prod --ignore-scripts
 

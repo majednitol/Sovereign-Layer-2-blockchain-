@@ -1,6 +1,0 @@
-apiVersion: v2
-name: sovereign-chain
-description: A Helm chart for deploying the Sovereign L1 Blockchain network and off-chain CQRS backend.
-type: application
-version: 1.0.0
-appVersion: "1.0.0"

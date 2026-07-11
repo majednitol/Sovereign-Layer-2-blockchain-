@@ -1,8 +1,0 @@
-{
-  "pages": {},
-  "app": {
-    "[project]/explorer/app/oracle/[feedId]/page": []
-  },
-  "appUsingSizeAdjust": false,
-  "pagesUsingSizeAdjust": false
-}

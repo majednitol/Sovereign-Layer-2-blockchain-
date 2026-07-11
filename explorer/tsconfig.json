@@ -25,9 +25,6 @@
     "paths": {
       "@/*": [
         "./*"
-      ],
-      "@workspace/api-spec": [
-        "../packages/api-spec/src"
       ]
     }
   },

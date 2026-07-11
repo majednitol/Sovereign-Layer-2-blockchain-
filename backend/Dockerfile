@@ -19,9 +19,6 @@ COPY chain ./chain
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     cd backend && \
-    go build -o /app/bin/ingestion ./module/ingestion && \
-    go build -o /app/bin/projection ./module/projection && \
-    go build -o /app/bin/api ./module/api && \
     go build -o /app/bin/faucet ./module/faucet
 
 FROM debian:trixie-slim
@@ -35,12 +32,7 @@ COPY --from=sovereign-chain-node:latest /usr/local/bin/chaind /usr/local/bin/cha
 COPY --from=sovereign-chain-node:latest /usr/lib/libwasmvm.* /usr/lib/
 RUN ldconfig
 
-# Copy compiled binaries and entrypoint script
-COPY --from=builder /app/bin/ingestion /app/ingestion
-COPY --from=builder /app/bin/projection /app/projection
-COPY --from=builder /app/bin/api /app/api
+# Copy compiled faucet binary
 COPY --from=builder /app/bin/faucet /app/faucet
-COPY backend/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/faucet"]

@@ -1,8 +1,0 @@
-{
-  "pages": {},
-  "app": {
-    "[project]/explorer/app/evm/nfts/[addr]/[tokenId]/page": []
-  },
-  "appUsingSizeAdjust": false,
-  "pagesUsingSizeAdjust": false
-}

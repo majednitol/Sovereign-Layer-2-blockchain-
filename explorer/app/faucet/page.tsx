@@ -74,7 +74,7 @@ export default function FAUCETPage() {
     setTxHash("");
 
     try {
-      const resp = await fetch(`${API_BASE}/api/rest/v1/explorer/faucet`, {
+      const resp = await fetch(`${API_BASE}/faucet`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

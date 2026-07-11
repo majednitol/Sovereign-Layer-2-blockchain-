@@ -1,8 +1,0 @@
-{
-  "pages": {},
-  "app": {
-    "[project]/explorer/app/evm/blocks/[height]/page": []
-  },
-  "appUsingSizeAdjust": false,
-  "pagesUsingSizeAdjust": false
-}

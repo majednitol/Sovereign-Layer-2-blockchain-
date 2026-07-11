@@ -38,24 +38,9 @@ export default function RootLayout({
                   </span>
                 </Link>
 
-                <div className="hidden lg:flex flex-grow justify-center max-w-md">
-                  <SearchBar />
-                </div>
-
-
                 <nav className="hidden md:flex space-x-6 text-sm font-medium text-gray-400">
                   <Link href="/" className="hover:text-white transition">Dashboard</Link>
-                  <Link href="/blocks" className="hover:text-white transition">Blocks</Link>
-                  <Link href="/txs" className="hover:text-white transition">Transactions</Link>
-                  <Link href="/consensus" className="hover:text-white transition">Consensus</Link>
-                  <Link href="/validators" className="hover:text-white transition">Validators</Link>
-                  <Link href="/staking" className="hover:text-white transition">Staking</Link>
-                  <Link href="/governance" className="hover:text-white transition">Governance</Link>
                   <Link href="/faucet" className="hover:text-white transition">Faucet</Link>
-                  <Link href="/bridge" className="hover:text-white transition">Bridge</Link>
-                  <Link href="/tools" className="hover:text-white transition">Tools</Link>
-                  <Link href="/verify" className="hover:text-white transition">Verify</Link>
-                  <Link href="/network" className="hover:text-white transition text-indigo-400 font-semibold">Network Config</Link>
                 </nav>
 
                 <div className="flex items-center space-x-3">
@@ -78,11 +63,8 @@ export default function RootLayout({
                   &copy; {new Date().getFullYear()} Sovereign L1 Blockchain. All rights reserved.
                 </div>
                 <div className="flex space-x-6">
-                  <Link href="/developers" className="hover:text-gray-300">Developers</Link>
-                  <Link href="/docs" className="hover:text-gray-300">API Docs</Link>
-                  <Link href="/status" className="hover:text-gray-300">System Status</Link>
-                  <Link href="/params" className="hover:text-gray-300">Parameters</Link>
-                  <Link href="/analytics" className="hover:text-gray-300">Analytics</Link>
+                  <Link href="/" className="hover:text-gray-300">Home</Link>
+                  <Link href="/faucet" className="hover:text-gray-300">Faucet</Link>
                 </div>
               </div>
             </footer>

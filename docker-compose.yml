@@ -168,48 +168,27 @@ services:
       - sovereign-net
     depends_on:
       - nats-0
-      - backend-api
       - chain-node
 
-  # --- Off-chain Backend Service ---
-  backend-api:
-    image: sovereign-backend:latest
+  faucet-service:
     build:
       context: .
       dockerfile: ./backend/Dockerfile
-    container_name: backend-api
-    environment:
-      - WRITE_DB_URL=postgres://ingestion_writer:sovereign_write_pwd@db-write:5432/sovereign_write
-      - READ_DB_URL=postgres://api_reader:sovereign_read_pwd@pgbouncer-read:6432/sovereign_read
-      - NATS_URL=nats://nats-cluster:4222
-      - COMETBFT_RPC_URL=http://chain-node:26657
-    ports:
-      - "9091:9090"
-      - "8081:8081"
-    depends_on:
-      - db-write
-      - db-read
-      - pgbouncer-read
-      - nats-0
-      - chain-node
-    networks:
-      - sovereign-net
-
-  faucet-service:
-    image: sovereign-backend:latest
     container_name: faucet-service
-    command: ["faucet"]
     environment:
       - NODE_URL=http://chain-node:26657
       - FAUCET_KEY=faucet
       - DENOM=ucsov
       - FAUCET_AMOUNT=10000000
       - CHAIN_ID=sovereign-1
+      - PORT=8000
+      - CHAIN_HOME=/root/.sovereign
+    volumes:
+      - chain-home-data:/root/.sovereign
     ports:
       - "8000:8000"
     depends_on:
       - chain-node
-      - backend-api
     networks:
       - sovereign-net
 
@@ -227,77 +206,20 @@ services:
       - "8546:8546"
     volumes:
       - ./chain/genesis.dev.json:/root/genesis.json:ro
+      - chain-home-data:/root/.sovereign
     networks:
       - sovereign-net
 
-  # --- Unified Custom Explorer: Redis Cache ---
-  explorer-redis:
-    image: redis:7-alpine
-    container_name: explorer-redis
-    ports:
-      - "6379:6379"
-    networks:
-      - sovereign-net
-    restart: unless-stopped
 
-  # --- Unified Custom Explorer: Indexer ---
-  explorer-indexer:
-    build:
-      context: .
-      dockerfile: ./explorer-indexer/Dockerfile
-    container_name: explorer-indexer
-    depends_on:
-      - db-read
-      - nats-0
-      - chain-node
-    environment:
-      DATABASE_URL: "postgres://api_reader:sovereign_read_pwd@db-read:5432/sovereign_read"
-      NATS_URL: "nats://nats-0:4222"
-      NATS_USER: "explorer"
-      NATS_PASSWORD: "explorer_pass"
-      COMET_RPC: "http://chain-node:26657"
-      EVM_RPC: "http://chain-node:8545"
-      BSC_RPC: "https://bsc-dataseed.binance.org"
-      FEE_COLLECTOR_COSMOS_ADDRESS: "cosmos17xpfvakm2amg962yls6f84z3kell8c5lserqta"
-      FEE_COLLECTOR_EVM_ADDRESS: "0xf1829676db577682e944fc3493d451b67ff3e29f"
-    networks:
-      - sovereign-net
-    restart: unless-stopped
 
-  # --- Unified Custom Explorer: API Server ---
-  explorer-api:
-    build:
-      context: .
-      dockerfile: ./explorer-api/Dockerfile
-    container_name: explorer-api
-    depends_on:
-      - db-read
-      - explorer-redis
-      - nats-0
-    ports:
-      - "9092:9091"
-      - "8082:8081"
-    environment:
-      DATABASE_URL: "postgres://api_reader:sovereign_read_pwd@db-read:5432/sovereign_read"
-      REDIS_URL: "redis://explorer-redis:6379"
-      NATS_URL: "nats://nats-0:4222"
-      NATS_USER: "explorer"
-      NATS_PASSWORD: "explorer_pass"
-      GRPC_PORT: "9091"
-      REST_PORT: "8081"
-    networks:
-      - sovereign-net
-    restart: unless-stopped
-
-  # --- Unified Custom Explorer: Frontend ---
+  # --- Next.js Faucet / Devnet Explorer UI ---
   explorer-frontend:
     build:
       context: .
       dockerfile: ./explorer/Dockerfile
       args:
         NEXT_PUBLIC_RPC_URL: "http://localhost:26657"
-        NEXT_PUBLIC_API_URL: "http://localhost:8082"
-        NEXT_PUBLIC_FAUCET_URL: "http://localhost:8000"
+        NEXT_PUBLIC_API_URL: "http://localhost:8000"
         NEXT_PUBLIC_COSMOS_RPC_URL: "http://localhost:26657"
         NEXT_PUBLIC_COSMOS_RPC_WS: "ws://localhost:26657/websocket"
         NEXT_PUBLIC_EVM_RPC_URL: "http://localhost:8545"
@@ -306,53 +228,17 @@ services:
         NEXT_PUBLIC_COSMOS_REST: "http://localhost:1317"
         NEXT_PUBLIC_COSMOS_CHAIN_ID: "sovereign-1"
         NEXT_PUBLIC_EVM_CHAIN_ID: "7777"
-        NEXT_PUBLIC_CURRENCY_SYMBOL: "SLT"
+        NEXT_PUBLIC_CURRENCY_SYMBOL: "SOV"
     container_name: explorer-frontend
     depends_on:
       - chain-node
-      - explorer-api
     ports:
       - "3001:3001"
     networks:
       - sovereign-net
     restart: unless-stopped
 
-  # --- User DApp Frontend ---
-  frontend:
-    build:
-      context: .
-      dockerfile: ./frontend/Dockerfile
-    container_name: frontend
-    depends_on:
-      - chain-node
-      - backend-api
-    ports:
-      - "3000:3000"
-    networks:
-      - sovereign-net
-    restart: unless-stopped
 
-  # --- HashiCorp Vault (Secret Management) ---
-  vault:
-    image: hashicorp/vault:1.15
-    container_name: vault
-    ports:
-      - "8200:8200"
-    environment:
-      VAULT_DEV_ROOT_TOKEN_ID: "root"
-      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
-    cap_add:
-      - IPC_LOCK
-    networks:
-      - sovereign-net
-    restart: unless-stopped
-
-  # --- CosmWasm Contract Optimizer ---
-  contract-optimizer:
-    image: cosmwasm/optimizer:0.17.0
-    container_name: contract-optimizer
-    volumes:
-      - ./contracts:/code
 
 networks:
   sovereign-net:
@@ -368,3 +254,4 @@ volumes:
   db-read-standby-data:
   pg-read-archive:
   pg-write-archive:
+  chain-home-data:

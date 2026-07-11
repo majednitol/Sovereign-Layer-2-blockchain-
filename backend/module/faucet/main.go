@@ -129,6 +129,10 @@ func handleFaucet(w http.ResponseWriter, r *http.Request) {
 	addressCooldownsMu.Unlock()
 
 	amountStr := faucetAmount + denom
+	if denom == "ucsov" {
+		// Send 10 CSOV (Cosmos) and 10 ESOV (EVM native)
+		amountStr += ",10000000000000000000aesov"
+	}
 	log.Printf("Executing faucet transfer of %s to %s", amountStr, address)
 
 	// Resolve chain home directory for keyring access
