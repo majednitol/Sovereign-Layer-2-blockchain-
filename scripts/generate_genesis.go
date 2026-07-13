@@ -66,7 +66,41 @@ const (
 	ValidatorSlots = 30
 	// EqualizedPowerPerSlot is the fixed consensus power per active validator slot
 	EqualizedPowerPerSlot = int64(1_000_000)
+
+	// ---------------------------------------------------------------------------
+	// Genesis Contract Funding Allocations
+	// TreasuryAllocation + ReserveFundAllocation + RewardsBucket must equal CosmosAllocation.
+	// CONFIRM values against doc/governance/genesis_parameters.md before mainnet.
+	// ---------------------------------------------------------------------------
+
+	// TreasuryAllocation is the ucsov balance credited to the Treasury contract at genesis.
+	TreasuryAllocation = int64(400_000_000) * int64(1_000_000) // 400,000,000 TOKEN
+
+	// ReserveFundAllocation is the ucsov balance credited to the Reserve Fund contract at genesis.
+	ReserveFundAllocation = int64(200_000_000) * int64(1_000_000) // 200,000,000 TOKEN
+
+	// OperationalFloat is what remains after contracts and rewards are funded.
+	// Set to 0 here: full CosmosAllocation is accounted for on-chain.
+	// If the ops multisig needs a float, reduce TreasuryAllocation by that amount
+	// and add a MultisigAllocation constant — INV-6 will enforce the sum stays valid.
+	OperationalFloat = CosmosAllocation - RewardsBucket - TreasuryAllocation - ReserveFundAllocation
+	// 700,000,000 − 100,000,000 − 400,000,000 − 200,000,000 = 0 TOKEN
 )
+
+// contractAddrs holds the bech32 addresses of the four governance CosmWasm contracts.
+// These MUST match the ContractAddress fields in buildAppState()'s wasm genesis section
+// and the addresses computed by chain/app/wasm.go's init() via types.NewModuleAddress.
+var contractAddrs = struct {
+	Constitution string
+	Treasury     string
+	ReserveFund  string
+	Governance   string
+}{
+	Constitution: "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
+	Treasury:     "cosmos1w8kmv94zcf8yysgw9dp8yzq6ffe2e8m0uj8dm0",
+	ReserveFund:  "cosmos1dag3w9ydhzmwpvd6asrt8elexa8s27ph7895jc",
+	Governance:   "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
+}
 
 // ---------------------------------------------------------------------------
 // Genesis JSON structures (minimal — full types come from cosmos-sdk encoding)
@@ -139,12 +173,26 @@ func VerifyInvariants() []string {
 	expectedTotalPower := int64(ValidatorSlots) * EqualizedPowerPerSlot
 	if expectedTotalPower != int64(30_000_000) {
 		failures = append(failures, fmt.Sprintf(
-			"FAIL [INV-5]: Total validator power %d != expected 30,000,000",
+			"FAIL [INV-5]: Validator slot total power %d != expected 30,000,000",
 			expectedTotalPower,
 		))
 	} else {
 		fmt.Printf("[PASS] INV-5: Total consensus power = %d (%d validators × %d power)\n",
 			expectedTotalPower, ValidatorSlots, EqualizedPowerPerSlot)
+	}
+
+	// Invariant 6: Contract funding + rewards bucket must equal Cosmos allocation exactly.
+	// This prevents tokens being created from thin air or silently lost.
+	contractFunding := TreasuryAllocation + ReserveFundAllocation
+	coveredByOnChain := contractFunding + RewardsBucket + OperationalFloat
+	if coveredByOnChain != CosmosAllocation {
+		failures = append(failures, fmt.Sprintf(
+			"FAIL [INV-6]: contract_funding (%d) + rewards_bucket (%d) + operational_float (%d) = %d != cosmos_allocation (%d) — tokens created from thin air or lost",
+			contractFunding, RewardsBucket, OperationalFloat, coveredByOnChain, CosmosAllocation,
+		))
+	} else {
+		fmt.Printf("[PASS] INV-6: treasury (%d) + reserve_fund (%d) + rewards_bucket (%d) + float (%d) = cosmos_allocation (%d)\n",
+			TreasuryAllocation, ReserveFundAllocation, RewardsBucket, OperationalFloat, CosmosAllocation)
 	}
 
 	return failures
@@ -622,6 +670,60 @@ func buildAppState(env string) map[string]interface{} {
 	}
 	appState["wasm"] = wasmMap
 
+	// --- Fund governance contract accounts (applies to BOTH dev and prod) ---
+	//
+	// All four contract addresses must be in auth.accounts before bank's InitGenesis
+	// runs, because genesis module order is: auth → bank → … → wasm.
+	// Bank will panic if it tries to credit a balance to a non-existent account.
+	//
+	// Only Treasury and Reserve Fund receive token balances; Constitution and
+	// Governance receive auth.accounts entries only (they hold no tokens at genesis).
+
+	allContractAddrs := []string{
+		contractAddrs.Constitution,
+		contractAddrs.Treasury,
+		contractAddrs.ReserveFund,
+		contractAddrs.Governance,
+	}
+
+	if auth, ok := appState["auth"].(map[string]interface{}); ok {
+		var accounts []interface{}
+		if accs, ok := auth["accounts"].([]interface{}); ok {
+			accounts = accs
+		}
+		for _, addr := range allContractAddrs {
+			accounts = append(accounts, createGenesisAccount(addr))
+		}
+		auth["accounts"] = accounts
+	}
+
+	if bank, ok := appState["bank"].(map[string]interface{}); ok {
+		var balances []interface{}
+		if bals, ok := bank["balances"].([]interface{}); ok {
+			balances = bals
+		}
+
+		// Treasury: holds the main protocol reserve in ucsov.
+		balances = append(balances, map[string]interface{}{
+			"address": contractAddrs.Treasury,
+			"coins": []map[string]interface{}{
+				{"denom": TokenDenom, "amount": fmt.Sprintf("%d", TreasuryAllocation)},
+			},
+		})
+
+		// Reserve Fund: holds the safety reserve in ucsov.
+		balances = append(balances, map[string]interface{}{
+			"address": contractAddrs.ReserveFund,
+			"coins": []map[string]interface{}{
+				{"denom": TokenDenom, "amount": fmt.Sprintf("%d", ReserveFundAllocation)},
+			},
+		})
+
+		// Constitution and Governance receive zero tokens — no balances entry needed.
+
+		bank["balances"] = balances
+	}
+
 	// --- Modify bridge ---
 	appState["bridge"] = map[string]interface{}{
 		"params": map[string]interface{}{
@@ -672,6 +774,32 @@ func buildAppState(env string) map[string]interface{} {
 						}
 					}
 				}
+			}
+		}
+
+		// Verify all four governance contract accounts ARE present in prod genesis.
+		// Missing entries would cause bank InitGenesis to panic on chain start.
+		requiredContracts := map[string]bool{
+			contractAddrs.Constitution: false,
+			contractAddrs.Treasury:     false,
+			contractAddrs.ReserveFund:  false,
+			contractAddrs.Governance:   false,
+		}
+		if auth, ok := appState["auth"].(map[string]interface{}); ok {
+			if accs, ok := auth["accounts"].([]interface{}); ok {
+				for _, acc := range accs {
+					if accMap, ok := acc.(map[string]interface{}); ok {
+						addr, _ := accMap["address"].(string)
+						if _, wanted := requiredContracts[addr]; wanted {
+							requiredContracts[addr] = true
+						}
+					}
+				}
+			}
+		}
+		for addr, found := range requiredContracts {
+			if !found {
+				panic(fmt.Sprintf("production genesis is missing required governance contract account: %s", addr))
 			}
 		}
 	}

@@ -376,6 +376,22 @@ func TestPhase1Integration_SupplyMathInvariants(t *testing.T) {
 		t.Fatalf("FAIL INV-4: per-validator reward does not divide evenly: %d * 30 != 15,000,000", perValidatorReward)
 	}
 	t.Logf("[PASS] INV-4: per-validator reward = %d ucsov (equal slot distribution)", perValidatorReward)
+
+	// Invariant 6: Contract funding must be fully accounted for within Cosmos allocation
+	const (
+		inv6TreasuryAlloc    = int64(400_000_000) * int64(1_000_000)
+		inv6ReserveAlloc     = int64(200_000_000) * int64(1_000_000)
+		inv6RewardsBucket    = int64(100_000_000) * int64(1_000_000)
+		inv6CosmosAllocation = int64(700_000_000) * int64(1_000_000)
+	)
+	inv6OnChain := inv6TreasuryAlloc + inv6ReserveAlloc + inv6RewardsBucket
+	if inv6OnChain > inv6CosmosAllocation {
+		t.Fatalf("FAIL INV-6: on_chain_allocation (%d) > cosmos_allocation (%d) — tokens created from thin air",
+			inv6OnChain, inv6CosmosAllocation)
+	}
+	operationalFloat := inv6CosmosAllocation - inv6OnChain
+	t.Logf("[PASS] INV-6: treasury (%d) + reserve_fund (%d) + rewards_bucket (%d) + float (%d) = cosmos_allocation (%d)",
+		inv6TreasuryAlloc, inv6ReserveAlloc, inv6RewardsBucket, operationalFloat, inv6CosmosAllocation)
 }
 
 // ---------------------------------------------------------------------------

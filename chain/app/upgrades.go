@@ -21,7 +21,7 @@ func (app *App) RegisterUpgradeHandlers() {
 
 			// Standard SDK v50 upgraded migrations can be executed here.
 			// This represents a no-op scaffold so the chain doesn't crash at the upgrade height boundary.
-			return app.mm.RunMigrations(sdkCtx, app.configurator(), fromVM)
+			return app.mm.RunMigrations(sdkCtx, app.Configurator, fromVM)
 		},
 	)
 
@@ -39,17 +39,4 @@ func (app *App) RegisterUpgradeHandlers() {
 		// Configure store loader to execute state migrations safely
 		app.SetStoreLoader(upgradetypes.UpgradeStoreLoader(upgradeInfo.Height, &storeUpgrades))
 	}
-}
-
-// configurator stub representation for App compilation compatibility
-type configurator struct{}
-var _ configurator = configurator{}
-
-func (c configurator) RunMigrations(ctx sdk.Context, fromVM module.VersionMap) (module.VersionMap, error) {
-	return fromVM, nil
-}
-
-func (app *App) configurator() module.Configurator {
-	// Stub return Configurator
-	return nil
 }

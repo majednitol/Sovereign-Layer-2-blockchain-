@@ -31,6 +31,34 @@
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "account_number": "0",
+          "address": "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
+          "pub_key": null,
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "account_number": "0",
+          "address": "cosmos1w8kmv94zcf8yysgw9dp8yzq6ffe2e8m0uj8dm0",
+          "pub_key": null,
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "account_number": "0",
+          "address": "cosmos1dag3w9ydhzmwpvd6asrt8elexa8s27ph7895jc",
+          "pub_key": null,
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "account_number": "0",
+          "address": "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
+          "pub_key": null,
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "account_number": "0",
           "address": "cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr",
           "pub_key": null,
           "sequence": "0"
@@ -57,6 +85,24 @@
     "bank": {
       "balances": [
         {
+          "address": "cosmos1w8kmv94zcf8yysgw9dp8yzq6ffe2e8m0uj8dm0",
+          "coins": [
+            {
+              "amount": "400000000000000",
+              "denom": "ucsov"
+            }
+          ]
+        },
+        {
+          "address": "cosmos1dag3w9ydhzmwpvd6asrt8elexa8s27ph7895jc",
+          "coins": [
+            {
+              "amount": "200000000000000",
+              "denom": "ucsov"
+            }
+          ]
+        },
+        {
           "address": "cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr",
           "coins": [
             {
@@ -65,11 +111,11 @@
             },
             {
               "amount": "1000000000000000",
-              "denom": "ucsov"
+              "denom": "uwsov"
             },
             {
               "amount": "1000000000000000",
-              "denom": "uwsov"
+              "denom": "ucsov"
             }
           ]
         },
@@ -82,11 +128,11 @@
             },
             {
               "amount": "1000000000000000",
-              "denom": "ucsov"
+              "denom": "uwsov"
             },
             {
               "amount": "1000000000000000",
-              "denom": "uwsov"
+              "denom": "ucsov"
             }
           ]
         }
@@ -157,20 +203,7 @@
         "send_enabled": []
       },
       "send_enabled": [],
-      "supply": [
-        {
-          "denom": "aesov",
-          "amount": "2000000000000000000000000"
-        },
-        {
-          "denom": "ucsov",
-          "amount": "2000000000000000"
-        },
-        {
-          "denom": "uwsov",
-          "amount": "2000000000000000"
-        }
-      ]
+      "supply": []
     },
     "bridge": {
       "cosmos_minted": 0,
