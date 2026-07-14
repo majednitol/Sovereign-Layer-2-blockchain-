@@ -15,6 +15,7 @@ var (
 	ParamsKey                   = []byte{0x02}
 	ActiveFeedsKeyPrefix         = []byte{0x03}
 	FeedMilestoneIndexKeyPrefix  = []byte{0x04}
+	FeedStaleBlockedKeyPrefix    = []byte{0x05}
 )
 
 type Params struct {
@@ -28,6 +29,7 @@ type Milestone struct {
 	RemainingBlocks    int64  `json:"remaining_blocks"`
 	State              string `json:"state"` // "pending", "stale-blocked", "achieved", "expired"
 	VestingPoolAddress string `json:"vesting_pool_address"`
+	PayoutAmount       uint64 `json:"payout_amount"`
 }
 
 const (
@@ -44,6 +46,7 @@ type MsgCreateMilestone struct {
 	TargetPrice        uint64 `json:"target_price"`
 	DurationBlocks     int64  `json:"duration_blocks"`
 	VestingPoolAddress string `json:"vesting_pool_address"`
+	PayoutAmount       uint64 `json:"payout_amount"`
 }
 
 func (msg *MsgCreateMilestone) Reset()         { *msg = MsgCreateMilestone{} }

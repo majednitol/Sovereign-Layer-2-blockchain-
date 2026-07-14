@@ -14,6 +14,7 @@ var (
 	SlotKeyPrefix           = []byte{0x01}
 	QueuedEjectionKeyPrefix = []byte{0x02}
 	MaxValidatorsKeyPrefix  = []byte{0x03}
+	PartitionSchemeKeyPrefix = []byte{0x04}
 )
 
 // MsgFillValidatorSlot represents a message to occupy an active validator slot.

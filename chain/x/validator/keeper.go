@@ -90,6 +90,22 @@ func (k Keeper) SetMaxValidators(ctx sdk.Context, max uint32) {
 	store.Set(MaxValidatorsKeyPrefix, bz)
 }
 
+// GetPartitionScheme gets the partition scheme from store.
+func (k Keeper) GetPartitionScheme(ctx sdk.Context) string {
+	store := ctx.KVStore(k.storeKey)
+	bz := store.Get(PartitionSchemeKeyPrefix)
+	if bz == nil {
+		return "equal-slots-30" // default fallback
+	}
+	return string(bz)
+}
+
+// SetPartitionScheme sets the partition scheme in store.
+func (k Keeper) SetPartitionScheme(ctx sdk.Context, scheme string) {
+	store := ctx.KVStore(k.storeKey)
+	store.Set(PartitionSchemeKeyPrefix, []byte(scheme))
+}
+
 // IsValidatorActive checks if a validator is in the active top MaxValidators slots.
 func (k Keeper) IsValidatorActive(ctx sdk.Context, valAddr sdk.ValAddress) bool {
 	store := ctx.KVStore(k.storeKey)

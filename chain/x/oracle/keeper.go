@@ -173,17 +173,19 @@ func (k Keeper) GetRevealedValues(ctx sdk.Context, feedID string, roundID uint64
 	store := ctx.KVStore(k.storeKey)
 	var values []uint64
 
-	// Since we are running in unit tests or light simulation, we iterate over the prefix
 	iterator := storetypes.KVStorePrefixIterator(store, RevealKeyPrefix)
 	defer iterator.Close()
 
 	for ; iterator.Valid(); iterator.Next() {
 		// Key format: Prefix + operator + ":" + feedID + ":" + roundID
-		// For simplicity in testing, match the suffix of key containing "feedID:roundID"
-		suffix := []byte(fmt.Sprintf("%s:%d", feedID, roundID))
-		if bytes.HasSuffix(iterator.Key(), suffix) {
-			val := binary.BigEndian.Uint64(iterator.Value())
-			values = append(values, val)
+		keyStr := string(iterator.Key()[len(RevealKeyPrefix):])
+		parts := strings.Split(keyStr, ":")
+		if len(parts) == 3 {
+			rID, err := strconv.ParseUint(parts[2], 10, 64)
+			if err == nil && parts[1] == feedID && rID == roundID {
+				val := binary.BigEndian.Uint64(iterator.Value())
+				values = append(values, val)
+			}
 		}
 	}
 

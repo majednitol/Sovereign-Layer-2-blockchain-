@@ -216,6 +216,10 @@ func (k Keeper) EndBlocker(ctx sdk.Context, lastProposalRejected bool) {
 	} else {
 		// Reset rejections on success block commit
 		k.SetConsecutiveRejectionCount(ctx, 0)
+		if k.IsDegradedMode(ctx) {
+			k.SetDegradedMode(ctx, false)
+			ctx.EventManager().EmitEvent(sdk.NewEvent("degraded_mode_deactivated"))
+		}
 	}
 
 	// 2. Track rolling liveness window and bootstrapping

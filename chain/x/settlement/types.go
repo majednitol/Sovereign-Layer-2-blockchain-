@@ -13,8 +13,9 @@ const (
 )
 
 var (
-	WitnessKeyPrefix = []byte{0x01}
-	ParamsKey        = []byte{0x02}
+	WitnessKeyPrefix        = []byte{0x01}
+	ParamsKey               = []byte{0x02}
+	SettlementNonceKeyPrefix = []byte{0x03}
 )
 
 type Params struct {

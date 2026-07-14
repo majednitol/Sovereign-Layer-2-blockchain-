@@ -10,12 +10,15 @@ import (
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
+	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
+	cosmossim "github.com/cosmos/cosmos-sdk/x/simulation"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
 
 var (
-	_ module.AppModule      = AppModule{}
-	_ module.AppModuleBasic = AppModuleBasic{}
+	_ module.AppModule           = AppModule{}
+	_ module.AppModuleBasic      = AppModuleBasic{}
+	_ module.AppModuleSimulation = AppModule{}
 )
 
 type AppModuleBasic struct{}
@@ -58,3 +61,20 @@ func (am AppModule) EndBlock(ctx context.Context) ([]abci.ValidatorUpdate, error
 	am.keeper.EndBlocker(sdkCtx)
 	return nil, nil
 }
+
+// GenerateGenesisState creates a randomized GenState of the module.
+func (AppModule) GenerateGenesisState(simState *module.SimulationState) {}
+
+// RegisterStoreDecoder registers a decoder for module's types
+func (AppModule) RegisterStoreDecoder(sdr simtypes.StoreDecoderRegistry) {}
+
+// WeightedOperations returns the all the module's simulation operations with their respective weight.
+func (am AppModule) WeightedOperations(simState module.SimulationState) []simtypes.WeightedOperation {
+	return []simtypes.WeightedOperation{
+		cosmossim.NewWeightedOperation(20, SimulateMsgCommitOracleHash(am.keeper)),
+		cosmossim.NewWeightedOperation(20, SimulateMsgRevealOracleReport(am.keeper)),
+		cosmossim.NewWeightedOperation(5, SimulateDropOracleReveal(am.keeper)),
+		cosmossim.NewWeightedOperation(3, SimulateOracleRoundInsufficient(am.keeper)),
+	}
+}
+

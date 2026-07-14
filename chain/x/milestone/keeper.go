@@ -8,6 +8,7 @@ import (
 	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 )
 
 type OracleKeeper interface {
@@ -159,13 +160,13 @@ func (k Keeper) IterateMilestones(ctx sdk.Context, handler func(m Milestone) boo
 // IsFeedStaleBlocked checks if a feed is currently marked as stale blocked in the milestone module.
 func (k Keeper) IsFeedStaleBlocked(ctx sdk.Context, feedID string) bool {
 	store := ctx.KVStore(k.storeKey)
-	return store.Has(append([]byte("feed_stale_blocked:"), []byte(feedID)...))
+	return store.Has(append(FeedStaleBlockedKeyPrefix, []byte(feedID)...))
 }
 
 // SetFeedStaleBlocked sets the stale blocked status of a feed.
 func (k Keeper) SetFeedStaleBlocked(ctx sdk.Context, feedID string, blocked bool) {
 	store := ctx.KVStore(k.storeKey)
-	key := append([]byte("feed_stale_blocked:"), []byte(feedID)...)
+	key := append(FeedStaleBlockedKeyPrefix, []byte(feedID)...)
 	if blocked {
 		store.Set(key, []byte{0x01})
 	} else {
@@ -277,7 +278,12 @@ func (k Keeper) triggerVestingPayout(ctx sdk.Context, m Milestone) {
 
 	poolAddr, err := sdk.AccAddressFromBech32(m.VestingPoolAddress)
 	if err == nil && k.bankKeeper != nil {
-		amount := sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(10000000)))
-		_ = k.bankKeeper.SendCoins(ctx, sdk.AccAddress([]byte("milestone_escrow")), poolAddr, amount)
+		payoutAmt := m.PayoutAmount
+		if payoutAmt == 0 {
+			payoutAmt = 10000000 // Fallback to 10M if uninitialized
+		}
+		amount := sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(int64(payoutAmt))))
+		escrowAddr := authtypes.NewModuleAddress(ModuleName)
+		_ = k.bankKeeper.SendCoins(ctx, escrowAddr, poolAddr, amount)
 	}
 }

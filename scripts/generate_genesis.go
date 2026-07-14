@@ -611,8 +611,8 @@ func buildAppState(env string) map[string]interface{} {
 		if params, ok := evm["params"].(map[string]interface{}); ok {
 			params["evm_denom"] = EVMDenom
 			params["active_static_precompiles"] = []string{
-				"0x0000000000000000000000000000000000000101",
-				"0x0000000000000000000000000000000000000102",
+				"0x0000000000000000000000000000000000000801",
+				"0x0000000000000000000000000000000000000802",
 			}
 			params["access_control"] = map[string]interface{}{
 				"create": map[string]interface{}{

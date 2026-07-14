@@ -1,8 +1,10 @@
 package app
 
 import (
+	"bytes"
 	"context"
 
+	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	abci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
@@ -31,18 +33,71 @@ func (app *App) ExtendVote(ctx context.Context, req *abci.RequestExtendVote) (*a
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 	sdkCtx.Logger().Info("ABCI++ ExtendVote Hook Invoked", "height", sdkCtx.BlockHeight())
 
-	// Generate vote extensions containing the validator's signature of the certification state.
-	// Empty/Missing signatures will be tracked for jailing.
+	proposerCons := sdkCtx.BlockHeader().ProposerAddress
+	var proposerValAddr sdk.ValAddress
+	_ = app.StakingKeeper.IterateLastValidatorPowers(sdkCtx, func(valAddr sdk.ValAddress, power int64) bool {
+		val, err := app.StakingKeeper.GetValidator(sdkCtx, valAddr)
+		if err == nil {
+			consAddr, err := val.GetConsAddr()
+			if err == nil && bytes.Equal(consAddr, proposerCons) {
+				proposerValAddr = valAddr
+				return true
+			}
+		}
+		return false
+	})
+
+	attested := true
+	if proposerValAddr != nil {
+		attested = app.CertificationKeeper.IsValidatorAttested(sdkCtx, proposerValAddr)
+	}
+
+	if attested {
+		return &abci.ResponseExtendVote{
+			VoteExtension: []byte("sovereign_extension_signature_stub"),
+		}, nil
+	}
+
 	return &abci.ResponseExtendVote{
-		VoteExtension: []byte("sovereign_extension_signature_stub"),
+		VoteExtension: []byte{},
 	}, nil
 }
 
 // VerifyVoteExtension verifies the vote extension signatures attached by other validators.
 func (app *App) VerifyVoteExtension(req *abci.RequestVerifyVoteExtension) (*abci.ResponseVerifyVoteExtension, error) {
 	app.Logger().Info("ABCI++ VerifyVoteExtension Hook Invoked")
+	sdkCtx := app.NewUncachedContext(false, cmtproto.Header{Height: req.Height})
 
-	// Ensure the validator's vote extension contains the valid signature of certification state.
+	var valAddr sdk.ValAddress
+	_ = app.StakingKeeper.IterateLastValidatorPowers(sdkCtx, func(vAddr sdk.ValAddress, power int64) bool {
+		val, err := app.StakingKeeper.GetValidator(sdkCtx, vAddr)
+		if err == nil {
+			consAddr, err := val.GetConsAddr()
+			if err == nil && bytes.Equal(consAddr, req.ValidatorAddress) {
+				valAddr = vAddr
+				return true
+			}
+		}
+		return false
+	})
+
+	if valAddr != nil {
+		attested := app.CertificationKeeper.IsValidatorAttested(sdkCtx, valAddr)
+		if attested {
+			if !bytes.Equal(req.VoteExtension, []byte("sovereign_extension_signature_stub")) {
+				return &abci.ResponseVerifyVoteExtension{
+					Status: abci.ResponseVerifyVoteExtension_REJECT,
+				}, nil
+			}
+		} else {
+			if len(req.VoteExtension) > 0 {
+				return &abci.ResponseVerifyVoteExtension{
+					Status: abci.ResponseVerifyVoteExtension_REJECT,
+				}, nil
+			}
+		}
+	}
+
 	return &abci.ResponseVerifyVoteExtension{
 		Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 	}, nil

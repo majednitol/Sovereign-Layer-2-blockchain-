@@ -34,6 +34,7 @@ func SimulateMsgCreateMilestone(k Keeper) simtypes.Operation {
 			RemainingBlocks:    duration,
 			State:              StatePending,
 			VestingPoolAddress: vestingAddr,
+			PayoutAmount:       10000000,
 		}
 		k.SetMilestone(ctx, m)
 
@@ -44,6 +45,7 @@ func SimulateMsgCreateMilestone(k Keeper) simtypes.Operation {
 			TargetPrice:        targetPrice,
 			DurationBlocks:     duration,
 			VestingPoolAddress: vestingAddr,
+			PayoutAmount:       10000000,
 		}, true, ""), nil, nil
 	}
 }

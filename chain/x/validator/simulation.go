@@ -54,6 +54,8 @@ func SimulateMsgUpdatePartitionScheme(k Keeper) simtypes.Operation {
 		simAccount := accs[r.Intn(len(accs))]
 		authority := sdk.AccAddress(simAccount.Address)
 
+		k.SetPartitionScheme(ctx, "equal-slots-30")
+
 		return simtypes.NewOperationMsg(&MsgUpdatePartitionScheme{
 			Authority: authority.String(),
 			NewScheme: "equal-slots-30",

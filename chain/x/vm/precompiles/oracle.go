@@ -1,3 +1,4 @@
+// TODO: post-launch — custom precompiles should not ship in mainnet v1.0 binary
 package precompiles
 
 import (
@@ -60,7 +61,7 @@ const OraclePrecompileABIString = `[
 
 var (
 	OraclePrecompileABI     abi.ABI
-	OraclePrecompileAddress = common.HexToAddress("0x0000000000000000000000000000000000000101")
+	OraclePrecompileAddress = common.HexToAddress("0x0000000000000000000000000000000000000801")
 )
 
 type OraclePrecompile struct {

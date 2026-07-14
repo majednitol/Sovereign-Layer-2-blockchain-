@@ -1,3 +1,4 @@
+// TODO: post-launch — custom precompiles should not ship in mainnet v1.0 binary
 package precompiles
 
 import (
@@ -61,7 +62,7 @@ const MilestonePrecompileABIString = `[
 
 var (
 	MilestonePrecompileABI     abi.ABI
-	MilestonePrecompileAddress = common.HexToAddress("0x0000000000000000000000000000000000000102")
+	MilestonePrecompileAddress = common.HexToAddress("0x0000000000000000000000000000000000000802")
 )
 
 type MilestonePrecompile struct {

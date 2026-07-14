@@ -10,12 +10,15 @@ import (
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
+	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
+	cosmossim "github.com/cosmos/cosmos-sdk/x/simulation"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
 
 var (
-	_ module.AppModule      = AppModule{}
-	_ module.AppModuleBasic = AppModuleBasic{}
+	_ module.AppModule           = AppModule{}
+	_ module.AppModuleBasic      = AppModuleBasic{}
+	_ module.AppModuleSimulation = AppModule{}
 )
 
 type AppModuleBasic struct{}
@@ -58,3 +61,19 @@ func (am AppModule) EndBlock(ctx context.Context) ([]abci.ValidatorUpdate, error
 	updates := am.keeper.EndBlocker(sdkCtx)
 	return updates, nil
 }
+
+// GenerateGenesisState creates a randomized GenState of the module.
+func (AppModule) GenerateGenesisState(simState *module.SimulationState) {}
+
+// RegisterStoreDecoder registers a decoder for module's types
+func (AppModule) RegisterStoreDecoder(sdr simtypes.StoreDecoderRegistry) {}
+
+// WeightedOperations returns the all the module's simulation operations with their respective weight.
+func (am AppModule) WeightedOperations(simState module.SimulationState) []simtypes.WeightedOperation {
+	return []simtypes.WeightedOperation{
+		cosmossim.NewWeightedOperation(20, SimulateMsgFillValidatorSlot(am.keeper)),
+		cosmossim.NewWeightedOperation(10, SimulateMsgEjectValidator(am.keeper)),
+		cosmossim.NewWeightedOperation(5, SimulateMsgUpdatePartitionScheme(am.keeper)),
+	}
+}
+

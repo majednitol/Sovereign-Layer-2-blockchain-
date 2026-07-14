@@ -9,6 +9,7 @@ import (
 	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 )
 
 type BankKeeper interface {
@@ -67,7 +68,22 @@ func (k Keeper) GetWitnessPubKey(ctx sdk.Context, witnessID string) ([]byte, boo
 	return bz, true
 }
 
+func (k Keeper) HasSettlementBeenProcessed(ctx sdk.Context, payloadHash []byte) bool {
+	store := ctx.KVStore(k.storeKey)
+	return store.Has(append(SettlementNonceKeyPrefix, payloadHash...))
+}
+
+func (k Keeper) MarkSettlementProcessed(ctx sdk.Context, payloadHash []byte) {
+	store := ctx.KVStore(k.storeKey)
+	store.Set(append(SettlementNonceKeyPrefix, payloadHash...), []byte{0x01})
+}
+
 func (k Keeper) ProcessSettlement(ctx sdk.Context, msg MsgSettlement) error {
+	// 0. Prevent replay attacks
+	if k.HasSettlementBeenProcessed(ctx, msg.PayloadHash) {
+		return fmt.Errorf("settlement payload has already been processed")
+	}
+
 	// 1. Retrieve witness public key
 	pubKey, ok := k.GetWitnessPubKey(ctx, msg.WitnessID)
 	if !ok {
@@ -99,12 +115,15 @@ func (k Keeper) ProcessSettlement(ctx sdk.Context, msg MsgSettlement) error {
 	}
 
 	if k.bankKeeper != nil {
-		escrowAddr := sdk.AccAddress([]byte("settlement_escrow"))
+		escrowAddr := authtypes.NewModuleAddress(ModuleName)
 		err = k.bankKeeper.SendCoins(ctx, escrowAddr, destAddr, msg.TransferAmt)
 		if err != nil {
 			return fmt.Errorf("failed to transfer settlement payout: %w", err)
 		}
 	}
+
+	// 4.5. Mark payload as processed
+	k.MarkSettlementProcessed(ctx, msg.PayloadHash)
 
 	// 5. Emit event
 	ctx.EventManager().EmitEvent(sdk.NewEvent(

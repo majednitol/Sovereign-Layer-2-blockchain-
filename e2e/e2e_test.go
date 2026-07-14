@@ -28,6 +28,7 @@ import (
 	"github.com/sovereign-l1/chain/x/oracle"
 	"github.com/sovereign-l1/chain/x/settlement"
 	"github.com/sovereign-l1/chain/x/validator"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 )
 
 // --- Mocks and Simulation Structures ---
@@ -306,8 +307,8 @@ func SetupTestSuite(t *testing.T) *TestSuite {
 	rdb := &ReadDB{activities: make(map[string]BridgeEventRow)}
 	bank := &mockBankKeeper{
 		balances: map[string]sdk.Coins{
-			sdk.AccAddress([]byte("milestone_escrow")).String():  sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(100000000))),
-			sdk.AccAddress([]byte("settlement_escrow")).String(): sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(100000000))),
+			authtypes.NewModuleAddress(milestone.ModuleName).String():  sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(100000000))),
+			authtypes.NewModuleAddress(settlement.ModuleName).String(): sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(100000000))),
 		},
 	}
 	staking := &mockStakingKeeper{}

@@ -39,6 +39,7 @@ import (
 	"github.com/sovereign-l1/chain/x/settlement"
 	"github.com/sovereign-l1/chain/x/validator"
 	"github.com/sovereign-l1/relayer"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 )
 
 // --- Phase 1 Genesis & Configuration Tests ---
@@ -570,8 +571,8 @@ func SetupP123Context(t *testing.T) *P123Context {
 	wasm := NewMockWasmKeeperP3()
 	bank := &mockBankKeeperP2{
 		balances: map[string]sdk.Coins{
-			sdk.AccAddress([]byte("milestone_escrow")).String():  sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(100000000))),
-			sdk.AccAddress([]byte("settlement_escrow")).String(): sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(100000000))),
+			authtypes.NewModuleAddress(milestone.ModuleName).String():  sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(100000000))),
+			authtypes.NewModuleAddress(settlement.ModuleName).String(): sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(100000000))),
 		},
 	}
 
