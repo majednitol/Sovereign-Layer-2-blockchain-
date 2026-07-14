@@ -8,11 +8,11 @@ require (
 	github.com/cosmos/cosmos-sdk v0.54.3
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0
 	github.com/jackc/pgx/v5 v5.7.5
-	github.com/nats-io/nats.go v1.35.0
-	github.com/nats-io/nkeys v0.4.7
+	github.com/nats-io/nats.go v1.52.0
+	github.com/nats-io/nkeys v0.4.15
 	github.com/prometheus/client_golang v1.23.2
 	github.com/sovereign-l1/chain v0.0.0-00010101000000-000000000000
-	google.golang.org/grpc v1.80.0
+	google.golang.org/grpc v1.82.0
 )
 
 require (
@@ -77,7 +77,9 @@ require (
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
+	github.com/nxadm/tail v1.4.11 // indirect
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20251114093237-2ab5a27a1729 // indirect
+	github.com/onsi/gomega v1.38.0 // indirect
 	github.com/petermattis/goid v0.0.0-20260330135022-df67b199bc81 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -90,6 +92,7 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/supranational/blst v0.3.16 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect

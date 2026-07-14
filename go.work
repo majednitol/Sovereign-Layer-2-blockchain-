@@ -4,8 +4,8 @@ use (
 	./backend
 	./chain
 	./e2e
+	./explorer-api
+	./explorer-indexer
 	./oracle
 	./relayer
-	./explorer-indexer
-	./explorer-api
 )

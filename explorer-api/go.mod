@@ -8,10 +8,10 @@ require (
 	github.com/cosmos/cosmos-sdk v0.54.3
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0
 	github.com/jackc/pgx/v5 v5.7.5
-	github.com/nats-io/nats.go v1.35.0
+	github.com/nats-io/nats.go v1.52.0
 	github.com/redis/go-redis/v9 v9.7.0
 	github.com/sovereign-l1/chain v0.0.0-00010101000000-000000000000
-	google.golang.org/grpc v1.80.0
+	google.golang.org/grpc v1.82.0
 )
 
 require (
@@ -22,7 +22,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/compress v1.18.6 // indirect
-	github.com/nats-io/nkeys v0.4.7 // indirect
+	github.com/nats-io/nkeys v0.4.15 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	golang.org/x/crypto v0.51.0 // indirect
 	golang.org/x/net v0.54.0 // indirect
