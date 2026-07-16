@@ -192,15 +192,25 @@ func (k Keeper) EndBlocker(ctx sdk.Context) []abci.ValidatorUpdate {
 				k.QueueEjection(ctx, valAddr)
 				k.RemoveValidatorActive(ctx, valAddr)
 				val, err := k.stakingKeeper.GetValidator(ctx, valAddr)
+				var pk crypto.PublicKey
 				if err == nil {
 					consAddr, err := val.GetConsAddr()
 					if err == nil {
 						_ = k.slashingKeeper.Tombstone(ctx, consAddr)
 					}
+					consPk, err := val.ConsPubKey()
+					if err == nil {
+						pk = crypto.PublicKey{
+							Sum: &crypto.PublicKey_Ed25519{
+								Ed25519: consPk.Bytes(),
+							},
+						}
+					}
 				}
-				// Tombstone/inactive updates
+				// Tombstone/inactive updates with consensus pubkey
 				updates = append(updates, abci.ValidatorUpdate{
-					Power: 0,
+					PubKey: pk,
+					Power:  0,
 				})
 			}
 		}
@@ -208,6 +218,34 @@ func (k Keeper) EndBlocker(ctx sdk.Context) []abci.ValidatorUpdate {
 	})
 
 	return updates
+}
+
+// GetAllActiveValidators returns all active validators in slots.
+func (k Keeper) GetAllActiveValidators(ctx sdk.Context) []string {
+	store := ctx.KVStore(k.storeKey)
+	iterator := storetypes.KVStorePrefixIterator(store, SlotKeyPrefix)
+	defer iterator.Close()
+
+	var validators []string
+	for ; iterator.Valid(); iterator.Next() {
+		valAddr := sdk.ValAddress(iterator.Key()[len(SlotKeyPrefix):])
+		validators = append(validators, valAddr.String())
+	}
+	return validators
+}
+
+// GetAllQueuedEjections returns all queued ejections.
+func (k Keeper) GetAllQueuedEjections(ctx sdk.Context) []string {
+	store := ctx.KVStore(k.storeKey)
+	iterator := storetypes.KVStorePrefixIterator(store, QueuedEjectionKeyPrefix)
+	defer iterator.Close()
+
+	var ejections []string
+	for ; iterator.Valid(); iterator.Next() {
+		valAddr := sdk.ValAddress(iterator.Key()[len(QueuedEjectionKeyPrefix):])
+		ejections = append(ejections, valAddr.String())
+	}
+	return ejections
 }
 
 func (k Keeper) RegisterInvariants(ir sdk.InvariantRegistry) {

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"cosmossdk.io/log/v2"
 	"cosmossdk.io/math"
 	legacytypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/store/v2/dbadapter"
@@ -71,7 +72,8 @@ func setupKeeper(t *testing.T, bank BankKeeper) (Keeper, sdk.Context) {
 		WithGasMeter(legacytypes.NewInfiniteGasMeter()).
 		WithBlockTime(time.Unix(1000, 0)).
 		WithChainID("sovereign-devnet-1").
-		WithEventManager(sdk.NewEventManager())
+		WithEventManager(sdk.NewEventManager()).
+		WithLogger(log.NewNopLogger())
 
 	storeKey := legacytypes.NewKVStoreKey(StoreKey)
 	keeper := NewKeeper(storeKey, nil, bank)
@@ -148,3 +150,68 @@ func TestWitnessSettlement(t *testing.T) {
 		t.Errorf("Expected transfer to %s, got %s", expectedDest, bank.transfers[0].dest)
 	}
 }
+
+func TestSettlementMsgServer(t *testing.T) {
+	bank := &mockBankKeeper{}
+	keeper, ctx := setupKeeper(t, bank)
+
+	pubKey, privKey, _ := ed25519.GenerateKey(nil)
+	witnessID := "witness_abc"
+	keeper.SetWitnessPubKey(ctx, witnessID, pubKey)
+
+	payloadHash := []byte("payload_hash_val_abc_123__________")
+	domainSeparator := ComputeDomainSeparator(ctx.ChainID(), payloadHash)
+	signature := ed25519.Sign(privKey, domainSeparator)
+	dest := sdk.AccAddress([]byte("payout_dest_addr____")).String()
+
+	msg := MsgSettlement{
+		Submitter:    sdk.AccAddress([]byte("submitter___________")).String(),
+		WitnessID:    witnessID,
+		Timestamp:    1000,
+		PayloadHash:  payloadHash,
+		Signature:    signature,
+		TransferAmt:  sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(1000))),
+		TransferDest: dest,
+	}
+
+	server := NewMsgServerImpl(keeper)
+	_, err := server.Settlement(sdk.WrapSDKContext(ctx), &msg)
+	if err != nil {
+		t.Fatalf("Expected msg server to process settlement successfully, got: %v", err)
+	}
+}
+
+func TestSettlementGenesis(t *testing.T) {
+	bank := &mockBankKeeper{}
+	keeper, ctx := setupKeeper(t, bank)
+
+	keeper.SetParams(ctx, Params{TimestampToleranceSeconds: 45})
+	keeper.SetWitnessPubKey(ctx, "w1", []byte("pubkey1"))
+	keeper.SetWitnessPubKey(ctx, "w2", []byte("pubkey2"))
+	keeper.MarkSettlementProcessed(ctx, []byte("nonce1"))
+
+	am := NewAppModule(keeper)
+	jsonBz := am.ExportGenesis(ctx, nil)
+
+	// Clean keeper state
+	keeper.DeleteWitnessPubKey(ctx, "w1")
+	keeper.DeleteWitnessPubKey(ctx, "w2")
+
+	am.InitGenesis(ctx, nil, jsonBz)
+
+	p := keeper.GetParams(ctx)
+	if p.TimestampToleranceSeconds != 45 {
+		t.Errorf("Expected tolerance 45, got %d", p.TimestampToleranceSeconds)
+	}
+
+	_, found := keeper.GetWitnessPubKey(ctx, "w1")
+	if !found {
+		t.Error("Expected w1 witness pubkey to be restored")
+	}
+
+	processed := keeper.HasSettlementBeenProcessed(ctx, []byte("nonce1"))
+	if !processed {
+		t.Error("Expected nonce1 to be restored as processed")
+	}
+}
+

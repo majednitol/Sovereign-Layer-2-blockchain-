@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"cosmossdk.io/log/v2"
 	"cosmossdk.io/math"
 	legacytypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/store/v2/dbadapter"
@@ -124,7 +125,9 @@ func setupKeeper(t *testing.T, maxValidators uint32, validators []struct {
 	ms := mockMultiStore{store: kvStore}
 	ctx := sdk.Context{}.
 		WithMultiStore(ms).
-		WithGasMeter(legacytypes.NewInfiniteGasMeter())
+		WithGasMeter(legacytypes.NewInfiniteGasMeter()).
+		WithLogger(log.NewNopLogger()).
+		WithEventManager(sdk.NewEventManager())
 
 	storeKey := legacytypes.NewKVStoreKey(StoreKey)
 	staking := mockStakingKeeper{validators: validators}
@@ -228,3 +231,92 @@ func TestValidatorKeeperEndBlocker(t *testing.T) {
 		t.Errorf("Expected 1 Tombstone call, got %d", len(slashing.tombstoneCalls))
 	}
 }
+
+func TestValidatorMsgServer(t *testing.T) {
+	valAddr1 := sdk.ValAddress([]byte("val_slot_1__________"))
+	keeper, ctx, _ := setupKeeper(t, 2, nil)
+
+	govAuthority := sdk.AccAddress([]byte("gov_________________")).String()
+	server := NewMsgServerImpl(keeper, govAuthority)
+
+	// Test FillValidatorSlot
+	msgFill := MsgFillValidatorSlot{
+		ValidatorAddress: valAddr1.String(),
+	}
+	_, err := server.FillValidatorSlot(sdk.WrapSDKContext(ctx), &msgFill)
+	if err != nil {
+		t.Fatalf("Expected successful FillValidatorSlot, got: %v", err)
+	}
+	if !keeper.IsValidatorActive(ctx, valAddr1) {
+		t.Error("Expected validator to be active after FillValidatorSlot")
+	}
+
+	// Test EjectValidator
+	msgEject := MsgEjectValidator{
+		ValidatorAddress: valAddr1.String(),
+	}
+	_, err = server.EjectValidator(sdk.WrapSDKContext(ctx), &msgEject)
+	if err != nil {
+		t.Fatalf("Expected successful EjectValidator, got: %v", err)
+	}
+	if keeper.IsValidatorActive(ctx, valAddr1) {
+		t.Error("Expected validator to be inactive after EjectValidator")
+	}
+
+	// Test UpdatePartitionScheme
+	msgUpdate := MsgUpdatePartitionScheme{
+		Authority: govAuthority,
+		NewScheme: "equal-slots-50",
+	}
+	_, err = server.UpdatePartitionScheme(sdk.WrapSDKContext(ctx), &msgUpdate)
+	if err != nil {
+		t.Fatalf("Expected successful UpdatePartitionScheme, got: %v", err)
+	}
+	if keeper.GetPartitionScheme(ctx) != "equal-slots-50" {
+		t.Errorf("Expected partition scheme equal-slots-50, got %s", keeper.GetPartitionScheme(ctx))
+	}
+
+	// Unauthorized update partition scheme
+	msgUpdateBad := MsgUpdatePartitionScheme{
+		Authority: sdk.AccAddress([]byte("bad_________________")).String(),
+		NewScheme: "equal-slots-10",
+	}
+	_, err = server.UpdatePartitionScheme(sdk.WrapSDKContext(ctx), &msgUpdateBad)
+	if err == nil {
+		t.Error("Expected unauthorized error for non-gov authority")
+	}
+}
+
+func TestValidatorGenesis(t *testing.T) {
+	valAddr1 := sdk.ValAddress([]byte("val1________________"))
+	valAddr2 := sdk.ValAddress([]byte("val2________________"))
+
+	keeper, ctx, _ := setupKeeper(t, 2, nil)
+
+	keeper.SetMaxValidators(ctx, 40)
+	keeper.SetPartitionScheme(ctx, "equal-slots-40")
+	keeper.SetValidatorActive(ctx, valAddr1)
+	keeper.QueueEjection(ctx, valAddr2)
+
+	am := NewAppModule(keeper)
+	jsonBz := am.ExportGenesis(ctx, nil)
+
+	// Clean state
+	keeper.RemoveValidatorActive(ctx, valAddr1)
+
+	am.InitGenesis(ctx, nil, jsonBz)
+
+	if keeper.GetMaxValidators(ctx) != 40 {
+		t.Errorf("Expected max validators 40, got %d", keeper.GetMaxValidators(ctx))
+	}
+	if keeper.GetPartitionScheme(ctx) != "equal-slots-40" {
+		t.Errorf("Expected partition scheme equal-slots-40, got %s", keeper.GetPartitionScheme(ctx))
+	}
+	if !keeper.IsValidatorActive(ctx, valAddr1) {
+		t.Error("Expected valAddr1 to be active after InitGenesis")
+	}
+	if !keeper.IsEjectionQueued(ctx, valAddr2) {
+		t.Error("Expected valAddr2 ejection to be queued after InitGenesis")
+	}
+}
+

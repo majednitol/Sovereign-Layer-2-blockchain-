@@ -2,6 +2,7 @@ package settlement
 
 import (
 	"crypto/sha256"
+	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
@@ -39,10 +40,28 @@ func (msg *MsgSettlement) ProtoMessage()  {}
 func (msg *MsgSettlement) ValidateBasic() error {
 	_, err := sdk.AccAddressFromBech32(msg.Submitter)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid submitter address: %w", err)
 	}
 	_, err = sdk.AccAddressFromBech32(msg.TransferDest)
-	return err
+	if err != nil {
+		return fmt.Errorf("invalid transfer destination address: %w", err)
+	}
+	if msg.WitnessID == "" {
+		return fmt.Errorf("witness ID cannot be empty")
+	}
+	if msg.Timestamp <= 0 {
+		return fmt.Errorf("timestamp must be positive")
+	}
+	if len(msg.PayloadHash) == 0 {
+		return fmt.Errorf("payload hash cannot be empty")
+	}
+	if len(msg.Signature) == 0 {
+		return fmt.Errorf("signature cannot be empty")
+	}
+	if msg.TransferAmt.Empty() || !msg.TransferAmt.IsValid() || !msg.TransferAmt.IsAllPositive() {
+		return fmt.Errorf("transfer amount must be valid and positive")
+	}
+	return nil
 }
 
 func (msg *MsgSettlement) GetSigners() []sdk.AccAddress {
@@ -51,6 +70,17 @@ func (msg *MsgSettlement) GetSigners() []sdk.AccAddress {
 		panic(err)
 	}
 	return []sdk.AccAddress{addr}
+}
+
+type Witness struct {
+	ID     string `json:"id"`
+	PubKey []byte `json:"pub_key"`
+}
+
+type GenesisState struct {
+	Params          Params    `json:"params"`
+	Witnesses       []Witness `json:"witnesses"`
+	ProcessedNonces [][]byte  `json:"processed_nonces"`
 }
 
 // ComputeDomainSeparator computes the domain separator bound to chain_id.

@@ -39,7 +39,9 @@ func (k Keeper) GetParams(ctx sdk.Context) Params {
 		}
 	}
 	var params Params
-	_ = json.Unmarshal(bz, &params)
+	if err := json.Unmarshal(bz, &params); err != nil {
+		panic(fmt.Sprintf("failed to unmarshal settlement params: %v", err))
+	}
 	return params
 }
 
@@ -68,6 +70,23 @@ func (k Keeper) GetWitnessPubKey(ctx sdk.Context, witnessID string) ([]byte, boo
 	return bz, true
 }
 
+// GetAllWitnesses returns all registered witnesses for genesis export.
+func (k Keeper) GetAllWitnesses(ctx sdk.Context) []Witness {
+	store := ctx.KVStore(k.storeKey)
+	iterator := storetypes.KVStorePrefixIterator(store, WitnessKeyPrefix)
+	defer iterator.Close()
+
+	var witnesses []Witness
+	for ; iterator.Valid(); iterator.Next() {
+		witnessID := string(iterator.Key()[len(WitnessKeyPrefix):])
+		witnesses = append(witnesses, Witness{
+			ID:     witnessID,
+			PubKey: iterator.Value(),
+		})
+	}
+	return witnesses
+}
+
 func (k Keeper) HasSettlementBeenProcessed(ctx sdk.Context, payloadHash []byte) bool {
 	store := ctx.KVStore(k.storeKey)
 	return store.Has(append(SettlementNonceKeyPrefix, payloadHash...))
@@ -76,6 +95,22 @@ func (k Keeper) HasSettlementBeenProcessed(ctx sdk.Context, payloadHash []byte) 
 func (k Keeper) MarkSettlementProcessed(ctx sdk.Context, payloadHash []byte) {
 	store := ctx.KVStore(k.storeKey)
 	store.Set(append(SettlementNonceKeyPrefix, payloadHash...), []byte{0x01})
+}
+
+// GetAllProcessedNonces returns all processed nonces for genesis export.
+func (k Keeper) GetAllProcessedNonces(ctx sdk.Context) [][]byte {
+	store := ctx.KVStore(k.storeKey)
+	iterator := storetypes.KVStorePrefixIterator(store, SettlementNonceKeyPrefix)
+	defer iterator.Close()
+
+	var nonces [][]byte
+	for ; iterator.Valid(); iterator.Next() {
+		nonce := iterator.Key()[len(SettlementNonceKeyPrefix):]
+		nonceCopy := make([]byte, len(nonce))
+		copy(nonceCopy, nonce)
+		nonces = append(nonces, nonceCopy)
+	}
+	return nonces
 }
 
 func (k Keeper) ProcessSettlement(ctx sdk.Context, msg MsgSettlement) error {

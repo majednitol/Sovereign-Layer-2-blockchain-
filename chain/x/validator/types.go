@@ -1,6 +1,9 @@
 package validator
 
 import (
+	"fmt"
+	"strings"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -27,8 +30,14 @@ func (msg *MsgFillValidatorSlot) String() string { return msg.ValidatorAddress }
 func (msg *MsgFillValidatorSlot) ProtoMessage()  {}
 
 func (msg *MsgFillValidatorSlot) ValidateBasic() error {
+	if msg.ValidatorAddress == "" {
+		return fmt.Errorf("validator address cannot be empty")
+	}
 	_, err := sdk.ValAddressFromBech32(msg.ValidatorAddress)
-	return err
+	if err != nil {
+		return fmt.Errorf("invalid validator address: %w", err)
+	}
+	return nil
 }
 
 func (msg *MsgFillValidatorSlot) GetSigners() []sdk.AccAddress {
@@ -49,8 +58,14 @@ func (msg *MsgEjectValidator) String() string { return msg.ValidatorAddress }
 func (msg *MsgEjectValidator) ProtoMessage()  {}
 
 func (msg *MsgEjectValidator) ValidateBasic() error {
+	if msg.ValidatorAddress == "" {
+		return fmt.Errorf("validator address cannot be empty")
+	}
 	_, err := sdk.ValAddressFromBech32(msg.ValidatorAddress)
-	return err
+	if err != nil {
+		return fmt.Errorf("invalid validator address: %w", err)
+	}
+	return nil
 }
 
 func (msg *MsgEjectValidator) GetSigners() []sdk.AccAddress {
@@ -72,8 +87,17 @@ func (msg *MsgUpdatePartitionScheme) String() string { return msg.NewScheme }
 func (msg *MsgUpdatePartitionScheme) ProtoMessage()  {}
 
 func (msg *MsgUpdatePartitionScheme) ValidateBasic() error {
+	if msg.Authority == "" {
+		return fmt.Errorf("authority cannot be empty")
+	}
 	_, err := sdk.AccAddressFromBech32(msg.Authority)
-	return err
+	if err != nil {
+		return fmt.Errorf("invalid authority address: %w", err)
+	}
+	if strings.TrimSpace(msg.NewScheme) == "" {
+		return fmt.Errorf("new scheme cannot be empty")
+	}
+	return nil
 }
 
 func (msg *MsgUpdatePartitionScheme) GetSigners() []sdk.AccAddress {
@@ -82,4 +106,12 @@ func (msg *MsgUpdatePartitionScheme) GetSigners() []sdk.AccAddress {
 		panic(err)
 	}
 	return []sdk.AccAddress{addr}
+}
+
+// GenesisState defines the validator module genesis state.
+type GenesisState struct {
+	MaxValidators    uint32   `json:"max_validators"`
+	PartitionScheme  string   `json:"partition_scheme"`
+	ActiveValidators []string `json:"active_validators"`
+	QueuedEjections  []string `json:"queued_ejections"`
 }
