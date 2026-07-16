@@ -37,20 +37,25 @@ func (k Keeper) GetParams(ctx sdk.Context) Params {
 	store := ctx.KVStore(k.storeKey)
 	bz := store.Get(ParamsKey)
 	if bz == nil {
+		// C1 FIX: Return safe zero-value defaults instead of placeholder addresses.
+		// These defaults will cause ValidateGenesis to fail if genesis doesn't
+		// explicitly set bridge params — which is the desired behavior.
 		return Params{
-			StandardFinalityDepth: 15,
-			LargeFinalityDepth:    50,
-			LargeTransferThreshold: 5000000000, // 5000 WSOV/uwsov threshold
-			QuorumThreshold:       3,
-			MaxUnlockPerBlock:     100000000000,
-			CircuitBreakerAddress: "cosmos1cb_addr",
-			GnosisSafeAddress:     "cosmos1gs_addr",
-			SupplyCap:             1000000000000,
-			LockBoxAddress:        "0x1234567890123456789012345678901234567890",
+			StandardFinalityDepth:  15,
+			LargeFinalityDepth:     50,
+			LargeTransferThreshold: 5000000000,
+			QuorumThreshold:        3,
+			MaxUnlockPerBlock:      100000000000,
+			CircuitBreakerAddress:  "", // MUST be set via genesis
+			GnosisSafeAddress:      "", // MUST be set via genesis
+			SupplyCap:              0,  // MUST be set via genesis — 0 blocks all deposits
+			LockBoxAddress:         "", // MUST be set via genesis
 		}
 	}
 	var params Params
-	_ = json.Unmarshal(bz, &params)
+	if err := json.Unmarshal(bz, &params); err != nil {
+		panic(fmt.Sprintf("failed to unmarshal bridge params from store: %v", err))
+	}
 	return params
 }
 

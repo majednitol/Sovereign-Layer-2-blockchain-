@@ -10,6 +10,7 @@ import (
 	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	tmtypes "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/telemetry"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
@@ -144,6 +145,22 @@ func (k Keeper) IsValidatorAttested(ctx sdk.Context, valAddr sdk.ValAddress) boo
 	return bz[0] == 0x01
 }
 
+// GetAllAttestedValidators returns all validators with explicit attestation status.
+func (k Keeper) GetAllAttestedValidators(ctx sdk.Context) []string {
+	store := ctx.KVStore(k.storeKey)
+	iterator := storetypes.KVStorePrefixIterator(store, AttestationKeyPrefix)
+	defer iterator.Close()
+
+	var validators []string
+	for ; iterator.Valid(); iterator.Next() {
+		if iterator.Value()[0] == 0x01 {
+			valAddr := sdk.ValAddress(iterator.Key()[len(AttestationKeyPrefix):])
+			validators = append(validators, valAddr.String())
+		}
+	}
+	return validators
+}
+
 // Sliding window helpers for liveness window (10,000 blocks)
 func (k Keeper) GetValidatorSignedCount(ctx sdk.Context, valAddr sdk.ValAddress) int64 {
 	store := ctx.KVStore(k.storeKey)
@@ -222,6 +239,16 @@ func (k Keeper) EndBlocker(ctx sdk.Context, lastProposalRejected bool) {
 		}
 	}
 
+	// Telemetry rejection count
+	telemetry.SetGauge(float32(k.GetConsecutiveRejectionCount(ctx)), "rejection_count")
+
+	// Telemetry degraded mode active status
+	var degradedVal float32
+	if k.IsDegradedMode(ctx) {
+		degradedVal = 1.0
+	}
+	telemetry.SetGauge(degradedVal, "degraded_mode_active")
+
 	// 2. Track rolling liveness window and bootstrapping
 	height := ctx.BlockHeight()
 	W := int64(10000)
@@ -232,9 +259,17 @@ func (k Keeper) EndBlocker(ctx sdk.Context, lastProposalRejected bool) {
 		signingMap[string(vote.Validator.Address)] = (vote.BlockIdFlag == tmtypes.BlockIDFlagCommit)
 	}
 
+	var totalValidators int32
+	var attestedValidators int32
+
 	// Iterate all last validators to update their rolling window
 	if k.stakingKeeper != nil {
 		_ = k.stakingKeeper.IterateLastValidatorPowers(ctx, func(valAddr sdk.ValAddress, power int64) bool {
+			totalValidators++
+			if k.IsValidatorAttested(ctx, valAddr) {
+				attestedValidators++
+			}
+
 			val, err := k.stakingKeeper.GetValidator(ctx, valAddr)
 			if err != nil {
 				return false
@@ -269,6 +304,7 @@ func (k Keeper) EndBlocker(ctx sdk.Context, lastProposalRejected bool) {
 			// Liveness / Bootstrapping Check
 			threshold := k.GetRequiredSigningThreshold(ctx, height)
 			if currentCount < threshold {
+				telemetry.IncrCounter(1.0, "bound_violations")
 				if k.slashingKeeper != nil {
 					_ = k.slashingKeeper.Jail(ctx, consAddr)
 				}
@@ -283,6 +319,14 @@ func (k Keeper) EndBlocker(ctx sdk.Context, lastProposalRejected bool) {
 
 			return false
 		})
+	}
+
+	// Telemetry attestation coverage
+	if totalValidators > 0 {
+		coverage := float32(attestedValidators) / float32(totalValidators)
+		telemetry.SetGauge(coverage, "attestation_coverage")
+	} else {
+		telemetry.SetGauge(0.0, "attestation_coverage")
 	}
 }
 

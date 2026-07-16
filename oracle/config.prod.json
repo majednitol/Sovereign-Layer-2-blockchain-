@@ -1,0 +1,16 @@
+{
+  "feeds": {
+    "BTC_USD": [
+      {"name": "primary-btc", "url": "OWNER_ACTION_REQUIRED:replace_with_real_btc_price_feed_url"},
+      {"name": "fallback-btc", "url": "OWNER_ACTION_REQUIRED:replace_with_fallback_btc_price_feed_url"}
+    ],
+    "ETH_USD": [
+      {"name": "primary-eth", "url": "OWNER_ACTION_REQUIRED:replace_with_real_eth_price_feed_url"},
+      {"name": "fallback-eth", "url": "OWNER_ACTION_REQUIRED:replace_with_fallback_eth_price_feed_url"}
+    ],
+    "CSOV_USD": [
+      {"name": "primary-csov", "url": "OWNER_ACTION_REQUIRED:replace_with_real_csov_price_feed_url"},
+      {"name": "fallback-csov", "url": "OWNER_ACTION_REQUIRED:replace_with_fallback_csov_price_feed_url"}
+    ]
+  }
+}

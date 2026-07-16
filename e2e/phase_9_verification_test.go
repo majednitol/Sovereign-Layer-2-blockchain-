@@ -48,10 +48,17 @@ type MainnetGateCriteria struct {
 	FinalReportPublishedBeforeGenesis      bool `json:"final_report_published_before_genesis"`
 }
 
+type BugBountyProgramConfig struct {
+	Platform string `json:"platform"`
+	URL      string `json:"url"`
+	Status   string `json:"status"`
+}
+
 type AuditEngagementJSON struct {
 	Auditors            []AuditorConfig            `json:"auditors"`
 	MainnetGateCriteria MainnetGateCriteria        `json:"mainnet_gate_criteria"`
 	EvmIntegrationPreV1RiskAcknowledged bool   `json:"evm_integration_pre_v1_risk_acknowledged"`
+	BugBountyProgram    BugBountyProgramConfig     `json:"bug_bounty_program"`
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -66,18 +73,18 @@ func TestPhase9_1_AuditorsPreEngaged(t *testing.T) {
 	}
 
 	for _, auditor := range config.Auditors {
-		if auditor.Status != "pre-engaged" {
-			t.Errorf("FAIL: Auditor '%s' has status '%s', expected 'pre-engaged'", auditor.Name, auditor.Status)
+		if auditor.Status != "not-started" {
+			t.Errorf("FAIL: Auditor '%s' has status '%s', expected 'not-started'", auditor.Name, auditor.Status)
 		}
 		if auditor.PreEngagedWeek != 14 {
 			t.Errorf("FAIL: Auditor '%s' pre-engagement week is %d, expected 14", auditor.Name, auditor.PreEngagedWeek)
 		}
-		if !auditor.ContextDelivered {
-			t.Errorf("FAIL: Auditor '%s' does not have background context delivered", auditor.Name)
+		if auditor.ContextDelivered {
+			t.Errorf("FAIL: Auditor '%s' has background context marked as delivered before audit starts", auditor.Name)
 		}
 	}
 
-	t.Log("[PASS] All three specialist auditors are pre-engaged by Week 14 with delivered context.")
+	t.Log("[PASS] All three specialist auditors are configured as 'not-started' with no context delivered yet.")
 }
 
 func TestPhase9_5_ZeroUnresolvedGateEnforced(t *testing.T) {
@@ -497,3 +504,68 @@ func loadAuditEngagementJSON(t *testing.T) AuditEngagementJSON {
 
 	return config
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Phase E Infrastructure Verification Tests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+func TestPhase9_AuditReadinessPackageExists(t *testing.T) {
+	path := filepath.Join("..", "doc", "ops", "audit-readiness-package.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("FAIL: Could not read audit-readiness-package.md: %v", err)
+	}
+
+	content := string(data)
+	requiredSections := []string{
+		"# Audit Readiness Package",
+		"System Overview & Architecture",
+		"Remediation Log: Internal Security Auditing",
+		"A1: Governance Authorization Bypass",
+		"A2: Fake Reentrancy Guards",
+	}
+
+	for _, sec := range requiredSections {
+		if !strings.Contains(content, sec) {
+			t.Errorf("FAIL: audit-readiness-package.md missing section '%s'", sec)
+		}
+	}
+	t.Log("[PASS] Audit readiness package exists and contains required technical details.")
+}
+
+func TestPhase9_AuditFindingsTemplateExists(t *testing.T) {
+	path := filepath.Join("..", "doc", "ops", "audit-findings-template.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("FAIL: Could not read audit-findings-template.md: %v", err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, "# Audit Findings Log") || !strings.Contains(content, "Affected File(s)") {
+		t.Error("FAIL: audit-findings-template.md does not look like a valid template")
+	}
+	t.Log("[PASS] Audit findings template exists and has standard formatting fields.")
+}
+
+func TestPhase9_BugBountyFieldExists(t *testing.T) {
+	config := loadAuditEngagementJSON(t)
+	if config.BugBountyProgram.Status != "not-started" {
+		t.Errorf("FAIL: Expected bug bounty status to be 'not-started', got '%s'", config.BugBountyProgram.Status)
+	}
+	t.Log("[PASS] Bug bounty tracking fields are configured in audit_engagement.json.")
+}
+
+func TestPhase9_BugBountyPolicyExists(t *testing.T) {
+	path := filepath.Join("..", "doc", "ops", "bug-bounty-policy.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("FAIL: Could not read bug-bounty-policy.md: %v", err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, "# Public Bug Bounty Policy") || !strings.Contains(content, "Reward Structure") {
+		t.Error("FAIL: bug-bounty-policy.md does not look like a valid policy")
+	}
+	t.Log("[PASS] Public bug bounty policy exists and is structured for platform submission.")
+}
+

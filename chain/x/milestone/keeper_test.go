@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"cosmossdk.io/log/v2"
 	legacytypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/store/v2/dbadapter"
 	dbm "github.com/cosmos/cosmos-db"
@@ -79,7 +80,8 @@ func setupKeeper(t *testing.T, oracle OracleKeeper, bank BankKeeper) (Keeper, sd
 	ctx := sdk.Context{}.
 		WithMultiStore(ms).
 		WithGasMeter(legacytypes.NewInfiniteGasMeter()).
-		WithEventManager(sdk.NewEventManager())
+		WithEventManager(sdk.NewEventManager()).
+		WithLogger(log.NewNopLogger())
 
 	storeKey := legacytypes.NewKVStoreKey(StoreKey)
 	keeper := NewKeeper(storeKey, nil, oracle, bank)
@@ -103,6 +105,7 @@ func TestMilestoneLifecycle(t *testing.T) {
 		RemainingBlocks:    5,
 		State:              StatePending,
 		VestingPoolAddress: vestingPool,
+		PayoutAmount:       10000000,
 	}
 
 	keeper.SetMilestone(ctx, m)

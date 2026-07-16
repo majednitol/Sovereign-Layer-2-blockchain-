@@ -47,3 +47,11 @@ func (msg *MsgUpdateCertificationParams) GetSigners() []sdk.AccAddress {
 	}
 	return []sdk.AccAddress{addr}
 }
+
+// CertGenesisState defines the certification module genesis state.
+type CertGenesisState struct {
+	Params                   Params   `json:"params"`
+	DegradedMode             bool     `json:"degraded_mode"`
+	ConsecutiveRejectionCount int64   `json:"consecutive_rejection_count"`
+	AttestedValidators       []string `json:"attested_validators"`
+}

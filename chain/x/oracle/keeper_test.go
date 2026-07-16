@@ -3,6 +3,7 @@ package oracle
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	legacytypes "github.com/cosmos/cosmos-sdk/store/v2/types"
@@ -202,3 +203,92 @@ func TestStalenessState(t *testing.T) {
 		t.Error("Expected feed to be stale at height 70")
 	}
 }
+
+func BenchmarkEndBlockerLargeCommitSet(b *testing.B) {
+	keeper, ctx := setupKeeper(nil)
+	keeper.SetParams(ctx, Params{
+		CommitWindow:             10,
+		RevealWindow:             10,
+		MinOperatorCommits:       1,
+		StalenessThresholdBlocks: 100,
+	})
+
+	// Pre-populate 1,000 historical commits that have already expired and been processed (height 10)
+	ctx = ctx.WithBlockHeight(10)
+	for i := 0; i < 1000; i++ {
+		operator := fmt.Sprintf("cosmosvaloper1x%d", i)
+		feedID := "BTC_USD"
+		roundID := uint64(1)
+		hash := ComputeCommitHash(operator, feedID, roundID, 50000, "nonce")
+		_ = keeper.CommitHash(ctx, operator, feedID, roundID, hash)
+	}
+
+	// Make sure those historical ones are processed (height 35, well past window of 20)
+	ctx = ctx.WithBlockHeight(35)
+	keeper.EndBlocker(ctx)
+
+	// Now run Benchmark for EndBlocker with 0 new expired commits in the current block height
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		keeper.EndBlocker(ctx)
+	}
+}
+
+func BenchmarkGetRevealedValuesLargeDataset(b *testing.B) {
+	keeper, ctx := setupKeeper(nil)
+	feedID := "BTC_USD"
+	roundID := uint64(1)
+
+	// Populate 1,000 reveals for other feeds/rounds
+	for i := 0; i < 1000; i++ {
+		operator := fmt.Sprintf("cosmosvaloper1x%d", i)
+		err := keeper.RevealReport(ctx, operator, "OTHER_FEED", roundID, uint64(i), "nonce")
+		if err == nil {
+			// since Commit is required, let's mock it
+			commitKey := append(CommitKeyPrefix, []byte(fmt.Sprintf("%s:%s:%d", operator, "OTHER_FEED", roundID))...)
+			store := ctx.KVStore(keeper.storeKey)
+			hash := ComputeCommitHash(operator, "OTHER_FEED", roundID, uint64(i), "nonce")
+			store.Set(commitKey, hash)
+			_ = keeper.RevealReport(ctx, operator, "OTHER_FEED", roundID, uint64(i), "nonce")
+		}
+	}
+
+	// Populate a few reveals for our target feed and round
+	for i := 0; i < 5; i++ {
+		operator := fmt.Sprintf("targetop%d", i)
+		commitKey := append(CommitKeyPrefix, []byte(fmt.Sprintf("%s:%s:%d", operator, feedID, roundID))...)
+		store := ctx.KVStore(keeper.storeKey)
+		hash := ComputeCommitHash(operator, feedID, roundID, 50000, "nonce")
+		store.Set(commitKey, hash)
+		_ = keeper.RevealReport(ctx, operator, feedID, roundID, 50000, "nonce")
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		values := keeper.GetRevealedValues(ctx, feedID, roundID)
+		if len(values) != 5 {
+			b.Fatalf("expected 5 values, got %d", len(values))
+		}
+	}
+}
+
+func TestEndBlockerBasic(t *testing.T) {
+	keeper, ctx := setupKeeper(t)
+	keeper.SetParams(ctx, Params{
+		CommitWindow:             10,
+		RevealWindow:             10,
+		MinOperatorCommits:       1,
+		StalenessThresholdBlocks: 100,
+	})
+
+	operator := "cosmosvaloper1x..."
+	feedID := "BTC_USD"
+	roundID := uint64(1)
+	hash := ComputeCommitHash(operator, feedID, roundID, 50000, "nonce")
+	_ = keeper.CommitHash(ctx, operator, feedID, roundID, hash)
+
+	ctx = ctx.WithBlockHeight(35)
+	keeper.EndBlocker(ctx)
+	keeper.EndBlocker(ctx)
+}
+

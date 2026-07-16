@@ -1,3 +1,5 @@
+// NOTE: These are mock-logic tests, NOT on-chain devnet integration tests
+
 package e2e
 
 import (
@@ -12,7 +14,7 @@ import (
 
 // TestPhase3Integration_GenesisState checks that the compiled WASM binaries are properly
 // injected and configured in the genesis.json document.
-func TestPhase3Integration_GenesisState(t *testing.T) {
+func TestPhase3MockLogic_GenesisState(t *testing.T) {
 	genesisPath := filepath.Join("..", "chain", "genesis.json")
 	data, err := os.ReadFile(genesisPath)
 	if err != nil {
@@ -86,7 +88,7 @@ func TestPhase3Integration_GenesisState(t *testing.T) {
 
 // TestPhase3Integration_GovernancePointerRotation simulates the governance module rotation
 // logic using the keeper package to verify that pointer adjustments enforce security checks.
-func TestPhase3Integration_GovernancePointerRotation(t *testing.T) {
+func TestPhase3MockLogic_GovernancePointerRotation(t *testing.T) {
 	// Initialize custom message
 	msg := &gov_ext.MsgMigrateContracts{
 		Authority:          "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8", // governance module

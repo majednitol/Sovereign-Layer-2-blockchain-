@@ -4,6 +4,7 @@
   "type": "object",
   "required": [
     "cold_multisig_address",
+    "governance_address",
     "is_paused",
     "rules"
   ],
@@ -12,10 +13,7 @@
       "type": "string"
     },
     "governance_address": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": "string"
     },
     "is_paused": {
       "type": "boolean"

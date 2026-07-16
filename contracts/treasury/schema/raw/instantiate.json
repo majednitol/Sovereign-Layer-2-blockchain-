@@ -3,10 +3,14 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "cold_multisig_address"
+    "cold_multisig_address",
+    "governance_address"
   ],
   "properties": {
     "cold_multisig_address": {
+      "type": "string"
+    },
+    "governance_address": {
       "type": "string"
     }
   }

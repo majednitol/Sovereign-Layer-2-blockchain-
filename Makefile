@@ -68,12 +68,22 @@ clean:
 
 build-cw-assets:
 	mkdir -p artifacts
-	cd contracts && cargo build --target wasm32-unknown-unknown --release --lib --workspace
+	cd contracts && RUSTFLAGS="-C target-feature=-bulk-memory" cargo build --target wasm32-unknown-unknown --release --lib --workspace
+	cp contracts/target/wasm32-unknown-unknown/release/constitution.wasm artifacts/constitution.wasm
+	cp contracts/target/wasm32-unknown-unknown/release/cw_counter.wasm artifacts/cw_counter.wasm
 	cp contracts/target/wasm32-unknown-unknown/release/cw20_token.wasm artifacts/cw20_token.wasm
 	cp contracts/target/wasm32-unknown-unknown/release/cw721_nft.wasm artifacts/cw721_nft.wasm
 	cp contracts/target/wasm32-unknown-unknown/release/cw1155_multi.wasm artifacts/cw1155_multi.wasm
+	cp contracts/target/wasm32-unknown-unknown/release/governance.wasm artifacts/governance.wasm
+	cp contracts/target/wasm32-unknown-unknown/release/reserve_fund.wasm artifacts/reserve_fund.wasm
+	cp contracts/target/wasm32-unknown-unknown/release/treasury.wasm artifacts/treasury.wasm
+	wasm-opt --llvm-memory-copy-fill-lowering artifacts/constitution.wasm -o artifacts/constitution.wasm
+	wasm-opt --llvm-memory-copy-fill-lowering artifacts/cw_counter.wasm -o artifacts/cw_counter.wasm
 	wasm-opt --llvm-memory-copy-fill-lowering artifacts/cw20_token.wasm -o artifacts/cw20_token.wasm
 	wasm-opt --llvm-memory-copy-fill-lowering artifacts/cw721_nft.wasm -o artifacts/cw721_nft.wasm
 	wasm-opt --llvm-memory-copy-fill-lowering artifacts/cw1155_multi.wasm -o artifacts/cw1155_multi.wasm
+	wasm-opt --llvm-memory-copy-fill-lowering artifacts/governance.wasm -o artifacts/governance.wasm
+	wasm-opt --llvm-memory-copy-fill-lowering artifacts/reserve_fund.wasm -o artifacts/reserve_fund.wasm
+	wasm-opt --llvm-memory-copy-fill-lowering artifacts/treasury.wasm -o artifacts/treasury.wasm
 	cd artifacts && (sha256sum *.wasm > checksums.txt || shasum -a 256 *.wasm > checksums.txt)
 

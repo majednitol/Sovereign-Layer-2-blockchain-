@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"encoding/json"
+	"fmt"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -27,8 +28,51 @@ func (AppModuleBasic) RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgBridgeOut{},
 	)
 }
-func (AppModuleBasic) DefaultGenesis(cdc codec.JSONCodec) json.RawMessage { return nil }
-func (AppModuleBasic) ValidateGenesis(cdc codec.JSONCodec, config client.TxEncodingConfig, bz json.RawMessage) error { return nil }
+func (AppModuleBasic) DefaultGenesis(cdc codec.JSONCodec) json.RawMessage {
+	defaultState := GenesisState{
+		Params: Params{
+			StandardFinalityDepth:  15,
+			LargeFinalityDepth:     50,
+			LargeTransferThreshold: 5000000000,
+			QuorumThreshold:        3,
+			MaxUnlockPerBlock:      100000000000,
+			SupplyCap:              1000000000000,
+		},
+		Relayers:     []Relayer{},
+		CosmosMinted: 0,
+	}
+	bz, _ := json.Marshal(defaultState)
+	return bz
+}
+func (AppModuleBasic) ValidateGenesis(cdc codec.JSONCodec, config client.TxEncodingConfig, bz json.RawMessage) error {
+	if bz == nil {
+		return nil
+	}
+	var state GenesisState
+	if err := json.Unmarshal(bz, &state); err != nil {
+		return fmt.Errorf("failed to unmarshal bridge genesis state: %w", err)
+	}
+	p := state.Params
+	if p.SupplyCap == 0 {
+		return fmt.Errorf("bridge supply_cap must be positive")
+	}
+	if p.QuorumThreshold == 0 {
+		return fmt.Errorf("bridge quorum_threshold must be positive")
+	}
+	if p.StandardFinalityDepth == 0 {
+		return fmt.Errorf("bridge standard_finality_depth must be positive")
+	}
+	if p.LargeFinalityDepth == 0 {
+		return fmt.Errorf("bridge large_finality_depth must be positive")
+	}
+	if p.CircuitBreakerAddress == "" {
+		return fmt.Errorf("bridge circuit_breaker_address must be set")
+	}
+	if p.LockBoxAddress == "" {
+		return fmt.Errorf("bridge lockbox_address must be set")
+	}
+	return nil
+}
 func (AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *runtime.ServeMux) {}
 
 type AppModule struct {
@@ -52,15 +96,26 @@ func (am AppModule) RegisterInvariants(ir sdk.InvariantRegistry) {
 	am.keeper.RegisterInvariants(ir)
 }
 func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONCodec, data json.RawMessage) []abci.ValidatorUpdate {
-	var genesisState GenesisState
-	if data != nil {
-		_ = json.Unmarshal(data, &genesisState)
-		am.keeper.SetParams(ctx, genesisState.Params)
-		for _, r := range genesisState.Relayers {
-			am.keeper.SetRelayer(ctx, r)
-		}
-		am.keeper.SetCosmosMinted(ctx, genesisState.CosmosMinted)
+	if data == nil {
+		return nil
 	}
+	var genesisState GenesisState
+	// C2 FIX: Panic on malformed genesis — bridge params are security-critical
+	if err := json.Unmarshal(data, &genesisState); err != nil {
+		panic(fmt.Sprintf("failed to unmarshal bridge genesis state: %v", err))
+	}
+	am.keeper.SetParams(ctx, genesisState.Params)
+	for _, r := range genesisState.Relayers {
+		am.keeper.SetRelayer(ctx, r)
+	}
+	am.keeper.SetCosmosMinted(ctx, genesisState.CosmosMinted)
+
+	ctx.Logger().Info("bridge module initialized from genesis",
+		"supply_cap", genesisState.Params.SupplyCap,
+		"quorum", genesisState.Params.QuorumThreshold,
+		"relayers", len(genesisState.Relayers),
+		"circuit_breaker", genesisState.Params.CircuitBreakerAddress,
+	)
 	return nil
 }
 func (am AppModule) ExportGenesis(ctx sdk.Context, cdc codec.JSONCodec) json.RawMessage {

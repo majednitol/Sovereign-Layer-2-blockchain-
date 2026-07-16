@@ -47,11 +47,13 @@ export default function RootLayout({
               <span>© {new Date().getFullYear()} Sovereign L1 Blockchain. All rights reserved.</span>
             </div>
             <div className="footer-right">
-              <a href="http://localhost:3001" target="_blank" rel="noopener noreferrer" className="footer-link">Explorer</a>
+              <a href="https://explorer.sovereign.l1" target="_blank" rel="noopener noreferrer" className="footer-link">Explorer</a>
+              <span className="footer-separator">•</span>
+              <a href="https://status.sovereign.l1" target="_blank" rel="noopener noreferrer" className="footer-link">Status</a>
               <span className="footer-separator">•</span>
               <a href="https://github.com/majednitol/Sovereign-L1-Blockchain" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a>
               <span className="footer-separator">•</span>
-              <a href="#" className="footer-link">Documentation</a>
+              <a href="https://docs.sovereign.l1" target="_blank" rel="noopener noreferrer" className="footer-link">Documentation</a>
             </div>
           </div>
         </footer>

@@ -29,6 +29,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+	"strings"
+	"encoding/hex"
+	"encoding/base64"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -417,7 +420,7 @@ func buildAppState(env string) map[string]interface{} {
 		},
 	}
 
-	governanceConfigVal := `{"constitution_address":"cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g","treasury_address":"cosmos1w8kmv94zcf8yysgw9dp8yzq6ffe2e8m0uj8dm0","reserve_fund_address":"cosmos1dag3w9ydhzmwpvd6asrt8elexa8s27ph7895jc"}`
+	governanceConfigVal := `{"constitution_address":"cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g","treasury_address":"cosmos1w8kmv94zcf8yysgw9dp8yzq6ffe2e8m0uj8dm0","reserve_fund_address":"cosmos1dag3w9ydhzmwpvd6asrt8elexa8s27ph7895jc","proposers":["cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g"],"approval_threshold":1}`
 	governanceContract := wasmtypes.Contract{
 		ContractAddress: "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
 		ContractInfo: wasmtypes.ContractInfo{
@@ -433,6 +436,10 @@ func buildAppState(env string) map[string]interface{} {
 			},
 			{
 				Key:   []byte("log_count"),
+				Value: []byte("0"),
+			},
+			{
+				Key:   []byte("proposal_count"),
 				Value: []byte("0"),
 			},
 		},
@@ -725,6 +732,37 @@ func buildAppState(env string) map[string]interface{} {
 	}
 
 	// --- Modify bridge ---
+	gnosisSafe := os.Getenv("BRIDGE_GNOSIS_SAFE_ADDRESS")
+	lockbox := os.Getenv("BRIDGE_LOCKBOX_ADDRESS")
+	circuitBreaker := os.Getenv("BRIDGE_CIRCUIT_BREAKER_ADDRESS")
+
+	if env == "prod" {
+		if gnosisSafe == "" || lockbox == "" || circuitBreaker == "" {
+			panic("production genesis build requires BRIDGE_GNOSIS_SAFE_ADDRESS, BRIDGE_LOCKBOX_ADDRESS, and BRIDGE_CIRCUIT_BREAKER_ADDRESS environment variables to be set")
+		}
+	} else {
+		if gnosisSafe == "" {
+			gnosisSafe = "cosmos1devgsaddressplaceholderxxxxx"
+		}
+		if lockbox == "" {
+			lockbox = "0xdeace2ea00000000000000000000000000000000"
+		}
+		if circuitBreaker == "" {
+			circuitBreaker = "cosmos1devcbaddressplaceholderxxxxx"
+		}
+	}
+
+	// Validate formats
+	if !strings.HasPrefix(gnosisSafe, "cosmos1") || len(gnosisSafe) < 10 {
+		panic(fmt.Sprintf("invalid gnosis_safe_address: %q", gnosisSafe))
+	}
+	if !strings.HasPrefix(circuitBreaker, "cosmos1") || len(circuitBreaker) < 10 {
+		panic(fmt.Sprintf("invalid circuit_breaker_address: %q", circuitBreaker))
+	}
+	if !strings.HasPrefix(lockbox, "0x") || len(lockbox) != 42 {
+		panic(fmt.Sprintf("invalid lockbox_address: %q (must be 20-byte hex address with 0x prefix)", lockbox))
+	}
+
 	appState["bridge"] = map[string]interface{}{
 		"params": map[string]interface{}{
 			"standard_finality_depth":  15,
@@ -732,14 +770,15 @@ func buildAppState(env string) map[string]interface{} {
 			"large_transfer_threshold": 5000000000,
 			"quorum_threshold":        3,
 			"max_unlock_per_block":     100000000000,
-			"circuit_breaker_address":  "cosmos1cb_addr",
-			"gnosis_safe_address":      "cosmos1gs_addr",
+			"circuit_breaker_address":  circuitBreaker,
+			"gnosis_safe_address":      gnosisSafe,
 			"supply_cap":              1000000000000,
-			"lockbox_address":         "0x1234567890123456789012345678901234567890",
+			"lockbox_address":         lockbox,
 		},
 		"relayers":      []interface{}{},
 		"cosmos_minted": 0,
 	}
+
 	if env == "dev" {
 		// Inject into auth accounts
 		if auth, ok := appState["auth"].(map[string]interface{}); ok {
@@ -822,7 +861,6 @@ func createGenesisBalance(address string) map[string]interface{} {
 		"address": address,
 		"coins": []map[string]interface{}{
 			{"denom": "aesov", "amount": "1000000000000000000000000"},
-			{"denom": "uwsov", "amount": "1000000000000000"},
 			{"denom": "ucsov", "amount": "1000000000000000"},
 		},
 	}
@@ -893,6 +931,17 @@ func main() {
 	fmt.Println()
 
 	if verifyOnly {
+		if err := VerifyGenesisWasmChecksums(env); err != nil {
+			fmt.Fprintf(os.Stderr, "VerifyGenesisWasmChecksums failed: %v\n", err)
+			os.Exit(1)
+		}
+		if fileFailures := VerifyGenesisFileInvariants(outPath, env); len(fileFailures) > 0 {
+			fmt.Fprintln(os.Stderr, "=== GENESIS FILE INVARIANT FAILURES ===")
+			for _, f := range fileFailures {
+				fmt.Fprintln(os.Stderr, f)
+			}
+			os.Exit(1)
+		}
 		fmt.Println("Skipping genesis file generation (--verify flag set).")
 		return
 	}
@@ -911,6 +960,18 @@ func main() {
 	}
 
 	fmt.Printf("[OK] Genesis written to %s\n", outPath)
+	if err := VerifyGenesisWasmChecksums(env); err != nil {
+		fmt.Fprintf(os.Stderr, "VerifyGenesisWasmChecksums failed on generated genesis: %v\n", err)
+		os.Exit(1)
+	}
+	if fileFailures := VerifyGenesisFileInvariants(outPath, env); len(fileFailures) > 0 {
+		fmt.Fprintln(os.Stderr, "=== GENESIS FILE INVARIANT FAILURES ON GENERATED FILE ===")
+		for _, f := range fileFailures {
+			fmt.Fprintln(os.Stderr, f)
+		}
+		os.Exit(1)
+	}
+
 	fmt.Printf("     Chain ID   : %s\n", chainID)
 	fmt.Printf("     Environment: %s\n", env)
 	fmt.Printf("     Genesis Time: %s\n", genesisTime.Format(time.RFC3339))
@@ -918,4 +979,215 @@ func main() {
 	fmt.Printf("     BSC Escrow  : %d ucsov (%d TOKEN)\n", BscEscrowBalance, BscEscrowBalance/1_000_000)
 	fmt.Printf("     EVM Chain ID: %d\n", EVMChainID)
 	fmt.Printf("     EVM Denom   : %s\n", EVMDenom)
+}
+
+func VerifyGenesisWasmChecksums(env string) error {
+	var genesisPath string
+	if env == "dev" {
+		genesisPath = "chain/genesis.dev.json"
+	} else {
+		genesisPath = "chain/genesis.prod.json"
+	}
+
+	genesisData, err := os.ReadFile(genesisPath)
+	if os.IsNotExist(err) {
+		fmt.Printf("[INFO] Genesis file %s does not exist, skipping checksum verification.\n", genesisPath)
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to read genesis file: %w", err)
+	}
+
+	// Parse genesis to find the wasm module state
+	var genesisDoc struct {
+		AppState map[string]json.RawMessage `json:"app_state"`
+	}
+	if err := json.Unmarshal(genesisData, &genesisDoc); err != nil {
+		return fmt.Errorf("failed to parse genesis app state: %w", err)
+	}
+
+	wasmRaw, ok := genesisDoc.AppState["wasm"]
+	if !ok {
+		return fmt.Errorf("wasm module state not found in genesis")
+	}
+
+	var wasmState struct {
+		Codes []struct {
+			CodeID    uint64 `json:"code_id"`
+			CodeBytes string `json:"code_bytes"`
+		} `json:"codes"`
+	}
+	if err := json.Unmarshal(wasmRaw, &wasmState); err != nil {
+		return fmt.Errorf("failed to parse wasm state: %w", err)
+	}
+
+	// Load checksums from artifacts/checksums.txt
+	checksumsData, err := os.ReadFile("artifacts/checksums.txt")
+	if err != nil {
+		return fmt.Errorf("failed to read artifacts/checksums.txt: %w", err)
+	}
+
+	lines := strings.Split(string(checksumsData), "\n")
+	checksumMap := make(map[string]string) // name -> sha256hex
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) >= 2 {
+			checksumMap[parts[1]] = parts[0]
+		}
+	}
+
+	// The codes in genesis are compiled in this order (1: constitution, 2: treasury, 3: reserve_fund, 4: governance)
+	codeIDMap := map[uint64]string{
+		1: "constitution.wasm",
+		2: "treasury.wasm",
+		3: "reserve_fund.wasm",
+		4: "governance.wasm",
+	}
+
+	for _, code := range wasmState.Codes {
+		filename, ok := codeIDMap[code.CodeID]
+		if !ok {
+			continue
+		}
+		expectedHash, ok := checksumMap[filename]
+		if !ok {
+			return fmt.Errorf("missing checksum for %s in checksums.txt", filename)
+		}
+
+		codeBytes, err := hex.DecodeString(code.CodeBytes)
+		if err != nil {
+			// Try base64 decoding as well, just in case
+			codeBytes, err = base64.StdEncoding.DecodeString(code.CodeBytes)
+			if err != nil {
+				return fmt.Errorf("failed to decode code_bytes for code_id %d: %w", code.CodeID, err)
+			}
+		}
+
+		hash := sha256.Sum256(codeBytes)
+		actualHash := fmt.Sprintf("%x", hash)
+		if actualHash != expectedHash {
+			return fmt.Errorf("checksum mismatch for %s (CodeID: %d): expected %s, got %s", filename, code.CodeID, expectedHash, actualHash)
+		}
+		fmt.Printf("[PASS] Verified genesis hash for %s matches artifacts/checksums.txt (%s)\n", filename, actualHash)
+	}
+
+	return nil
+}
+
+func VerifyGenesisFileInvariants(filePath string, env string) []string {
+	var failures []string
+
+	genesisData, err := os.ReadFile(filePath)
+	if err != nil {
+		failures = append(failures, fmt.Sprintf("FAIL: failed to read genesis file %s: %v", filePath, err))
+		return failures
+	}
+
+	var genesisDoc struct {
+		ChainID  string `json:"chain_id"`
+		AppState map[string]json.RawMessage `json:"app_state"`
+	}
+	if err := json.Unmarshal(genesisData, &genesisDoc); err != nil {
+		failures = append(failures, fmt.Sprintf("FAIL: failed to parse genesis %s: %v", filePath, err))
+		return failures
+	}
+
+	// 1. Verify chain-id matches
+	if genesisDoc.ChainID != "sovereign-1" {
+		failures = append(failures, fmt.Sprintf("FAIL: expected chain_id 'sovereign-1', got %q", genesisDoc.ChainID))
+	} else {
+		fmt.Printf("[PASS] File invariant: chain_id = %s\n", genesisDoc.ChainID)
+	}
+
+	// 2. Verify bank supply for uwsov is absent or exactly 0
+	var bankState struct {
+		Supply []struct {
+			Denom  string `json:"denom"`
+			Amount string `json:"amount"`
+		} `json:"supply"`
+		Balances []struct {
+			Address string `json:"address"`
+			Coins   []struct {
+				Denom  string `json:"denom"`
+				Amount string `json:"amount"`
+			} `json:"coins"`
+		} `json:"balances"`
+	}
+	if bankRaw, ok := genesisDoc.AppState["bank"]; ok {
+		if err := json.Unmarshal(bankRaw, &bankState); err == nil {
+			for _, coin := range bankState.Supply {
+				if coin.Denom == "uwsov" {
+					if coin.Amount != "0" && coin.Amount != "" {
+						failures = append(failures, fmt.Sprintf("FAIL: bank supply for uwsov must be 0, got %s", coin.Amount))
+					}
+				}
+			}
+			// 3. Verify no account has uwsov > 0 balance at genesis
+			for _, balance := range bankState.Balances {
+				for _, coin := range balance.Coins {
+					if coin.Denom == "uwsov" {
+						if coin.Amount != "0" && coin.Amount != "" {
+							failures = append(failures, fmt.Sprintf("FAIL: account %s has non-zero uwsov balance: %s", balance.Address, coin.Amount))
+						}
+					}
+				}
+			}
+		} else {
+			failures = append(failures, fmt.Sprintf("FAIL: failed to parse bank state in %s: %v", filePath, err))
+		}
+	}
+
+	// 4. Verify bridge state
+	var bridgeState struct {
+		CosmosMinted int64 `json:"cosmos_minted"`
+		Params       struct {
+			GnosisSafeAddress     string `json:"gnosis_safe_address"`
+			LockboxAddress        string `json:"lockbox_address"`
+			CircuitBreakerAddress string `json:"circuit_breaker_address"`
+		} `json:"params"`
+	}
+	if bridgeRaw, ok := genesisDoc.AppState["bridge"]; ok {
+		if err := json.Unmarshal(bridgeRaw, &bridgeState); err == nil {
+			if bridgeState.CosmosMinted != 0 {
+				failures = append(failures, fmt.Sprintf("FAIL: bridge cosmos_minted must be 0, got %d", bridgeState.CosmosMinted))
+			} else {
+				fmt.Printf("[PASS] File invariant: bridge cosmos_minted = 0\n")
+			}
+
+			// Verify no placeholder addresses in bridge params
+			gs := bridgeState.Params.GnosisSafeAddress
+			lb := bridgeState.Params.LockboxAddress
+			cb := bridgeState.Params.CircuitBreakerAddress
+
+			if env == "prod" {
+				if gs == "cosmos1gs_addr" || gs == "cosmos1devgsaddressplaceholderxxxxx" || gs == "" {
+					failures = append(failures, fmt.Sprintf("FAIL: production bridge gnosis_safe_address must not be a placeholder, got %q", gs))
+				}
+				if cb == "cosmos1cb_addr" || cb == "cosmos1devcbaddressplaceholderxxxxx" || cb == "" {
+					failures = append(failures, fmt.Sprintf("FAIL: production bridge circuit_breaker_address must not be a placeholder, got %q", cb))
+				}
+				if lb == "0x1234567890123456789012345678901234567890" || lb == "0xdeace2ea00000000000000000000000000000000" || lb == "" {
+					failures = append(failures, fmt.Sprintf("FAIL: production bridge lockbox_address must not be a placeholder, got %q", lb))
+				}
+			} else {
+				// Format check only
+				if !strings.HasPrefix(gs, "cosmos1") || len(gs) < 10 {
+					failures = append(failures, fmt.Sprintf("FAIL: invalid gnosis_safe_address format: %q", gs))
+				}
+				if !strings.HasPrefix(cb, "cosmos1") || len(cb) < 10 {
+					failures = append(failures, fmt.Sprintf("FAIL: invalid circuit_breaker_address format: %q", cb))
+				}
+				if !strings.HasPrefix(lb, "0x") || len(lb) != 42 {
+					failures = append(failures, fmt.Sprintf("FAIL: invalid lockbox_address format: %q", lb))
+				}
+			}
+		} else {
+			failures = append(failures, fmt.Sprintf("FAIL: failed to parse bridge state in %s: %v", filePath, err))
+		}
+	}
+
+	return failures
 }

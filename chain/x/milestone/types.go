@@ -1,6 +1,8 @@
 package milestone
 
 import (
+	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -55,7 +57,31 @@ func (msg *MsgCreateMilestone) ProtoMessage()  {}
 
 func (msg *MsgCreateMilestone) ValidateBasic() error {
 	_, err := sdk.AccAddressFromBech32(msg.Creator)
-	return err
+	if err != nil {
+		return fmt.Errorf("invalid creator address: %w", err)
+	}
+	if msg.ID == "" {
+		return fmt.Errorf("milestone ID cannot be empty")
+	}
+	if msg.FeedID == "" {
+		return fmt.Errorf("feed_id cannot be empty")
+	}
+	if msg.TargetPrice == 0 {
+		return fmt.Errorf("target_price must be positive")
+	}
+	if msg.DurationBlocks <= 0 {
+		return fmt.Errorf("duration_blocks must be positive")
+	}
+	if msg.VestingPoolAddress == "" {
+		return fmt.Errorf("vesting_pool_address cannot be empty")
+	}
+	if _, err := sdk.AccAddressFromBech32(msg.VestingPoolAddress); err != nil {
+		return fmt.Errorf("invalid vesting_pool_address: %w", err)
+	}
+	if msg.PayoutAmount == 0 {
+		return fmt.Errorf("payout_amount must be positive")
+	}
+	return nil
 }
 
 func (msg *MsgCreateMilestone) GetSigners() []sdk.AccAddress {
@@ -64,4 +90,10 @@ func (msg *MsgCreateMilestone) GetSigners() []sdk.AccAddress {
 		panic(err)
 	}
 	return []sdk.AccAddress{addr}
+}
+
+// MilestoneGenesisState defines the milestone module genesis state.
+type MilestoneGenesisState struct {
+	Params     Params      `json:"params"`
+	Milestones []Milestone `json:"milestones"`
 }

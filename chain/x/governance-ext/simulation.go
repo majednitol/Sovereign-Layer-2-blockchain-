@@ -7,6 +7,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
+	simutil "github.com/sovereign-l1/chain/simutil"
 )
 
 // SimulateMsgMigrateContracts simulates a MsgMigrateContracts transaction.
@@ -28,7 +29,7 @@ func SimulateMsgMigrateContracts(k Keeper) simtypes.Operation {
 			ExecutionDelaySecs: 604800, // 7 days
 		}
 
-		err := k.ExecuteProposal(ctx, &msg)
+		err := simutil.NewSimGov(k).ProposeAndExecute(ctx, &msg)
 		if err != nil {
 			return simtypes.NoOpMsg(ModuleName, "MsgMigrateContracts", err.Error()), nil, nil
 		}
@@ -54,7 +55,7 @@ func SimulateMsgUpdateValidatorSlot(k Keeper) simtypes.Operation {
 			MaxValidators: uint32(r.Intn(50) + 1),
 		}
 
-		err := k.ExecuteProposal(ctx, &msg)
+		err := simutil.NewSimGov(k).ProposeAndExecute(ctx, &msg)
 		if err != nil {
 			return simtypes.NoOpMsg(ModuleName, "MsgUpdateValidatorSlot", err.Error()), nil, nil
 		}
@@ -81,7 +82,7 @@ func SimulateMsgUpdateMilestone(k Keeper) simtypes.Operation {
 			TargetPrice: uint64(r.Intn(100000) + 50000),
 		}
 
-		err := k.ExecuteProposal(ctx, &msg)
+		err := simutil.NewSimGov(k).ProposeAndExecute(ctx, &msg)
 		if err != nil {
 			return simtypes.NoOpMsg(ModuleName, "MsgUpdateMilestone", err.Error()), nil, nil
 		}
@@ -109,7 +110,7 @@ func SimulateMsgUpdateOracleOperator(k Keeper) simtypes.Operation {
 			Active:          r.Intn(2) == 0,
 		}
 
-		err := k.ExecuteProposal(ctx, &msg)
+		err := simutil.NewSimGov(k).ProposeAndExecute(ctx, &msg)
 		if err != nil {
 			return simtypes.NoOpMsg(ModuleName, "MsgUpdateOracleOperator", err.Error()), nil, nil
 		}
@@ -138,7 +139,7 @@ func SimulateMsgUpdateWitnessRegistry(k Keeper) simtypes.Operation {
 			PubKey:         []byte("mock_witness_public_key_32_bytes_len"),
 		}
 
-		err := k.ExecuteProposal(ctx, &msg)
+		err := simutil.NewSimGov(k).ProposeAndExecute(ctx, &msg)
 		if err != nil {
 			return simtypes.NoOpMsg(ModuleName, "MsgUpdateWitnessRegistry", err.Error()), nil, nil
 		}
@@ -167,7 +168,7 @@ func SimulateMsgUpdateBridgeRelayerSet(k Keeper) simtypes.Operation {
 			PubKey:         []byte("mock_relayer_public_key_33_bytes_len"),
 		}
 
-		err := k.ExecuteProposal(ctx, &msg)
+		err := simutil.NewSimGov(k).ProposeAndExecute(ctx, &msg)
 		if err != nil {
 			return simtypes.NoOpMsg(ModuleName, "MsgUpdateBridgeRelayerSet", err.Error()), nil, nil
 		}

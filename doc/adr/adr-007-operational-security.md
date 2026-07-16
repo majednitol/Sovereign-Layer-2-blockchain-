@@ -136,28 +136,37 @@ Before starting implementation, key framework dependency versions are pinned in 
 ---
 
 ### 9. Cold Multi-Sig Topology & Recovery Duties
-To safeguard treasury assets and allow rapid intervention during smart contract exploits, a 3-of-5 cold multi-sig address is configured as the `cold_multisig_address` across all deployed contracts.
 
-* **Cold Multi-Sig Address**: `cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh`
+> ⚠️ **IMPORTANT SECURITY NOTICE**: All public key values in this section are fabricated placeholders. Real operational keys must be generated using hardware security modules (YubiHSM, Ledger, or air-gapped signing devices) held by distinct, accountable entities before deploying to mainnet. Raw public keys must not be published in public repositories — use SHA-256 key fingerprints referenced in a secure private registry instead.
+
+To safeguard treasury assets and allow rapid intervention during smart contract exploits, a 5-of-7 cold multi-sig address is configured as the `cold_multisig_address` across all deployed contracts.
+
+* **Cold Multi-Sig Address**: `cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh` (PLACEHOLDER)
 * **Key Holders**:
   1. **Custodian 1 (Operations Lead)**:
-     - Public Key: `cosmospub1addwnpepqdqxl5e4hlw9e7d8z3p962fghj839qdsmqpx3rqtq7zls3s9wphn`
+     - Public Key: `cosmospub1addwnpepqdqxl5e4hlw9e7d8z3p962fghj839qdsmqpx3rqtq7zls3s9wphn` (PLACEHOLDER)
      - Duty: Custody of primary operational keys, coordinating proposals.
   2. **Custodian 2 (Security Officer)**:
-     - Public Key: `cosmospub1addwnpepqvsm3qgdls30swpe7d3r92fghj839qdsmqpx3rqtq7zls3s9wphn`
+     - Public Key: `cosmospub1addwnpepqvsm3qgdls30swpe7d3r92fghj839qdsmqpx3rqtq7zls3s9wphn` (PLACEHOLDER)
      - Duty: Active monitoring of bridge flow and contract events, verifying upgrades.
   3. **Custodian 3 (Technical Architect)**:
-     - Public Key: `cosmospub1addwnpepq8smde7d8z3p962fghj839qdsmqpx3rqtq7zls3s9wphn`
+     - Public Key: `cosmospub1addwnpepq8smde7d8z3p962fghj839qdsmqpx3rqtq7zls3s9wphn` (PLACEHOLDER)
      - Duty: Technical validation of transaction payloads, contract migration verification.
-  4. **Custodian 4 (Validator Representative)**:
-     - Public Key: `cosmospub1addwnpepqty8s7d8z3p962fghj839qdsmqpx3rqtq7zls3s9wphn`
+  4. **Custodian 4 (Validator Representative 1)**:
+     - Public Key: `cosmospub1addwnpepqty8s7d8z3p962fghj839qdsmqpx3rqtq7zls3s9wphn` (PLACEHOLDER)
      - Duty: Representing validator interests during emergency halts.
   5. **Custodian 5 (Foundation Custodian)**:
-     - Public Key: `cosmospub1addwnpepqy3w7d8z3p962fghj839qdsmqpx3rqtq7zls3s9wphn`
+     - Public Key: `cosmospub1addwnpepqy3w7d8z3p962fghj839qdsmqpx3rqtq7zls3s9wphn` (PLACEHOLDER)
      - Duty: Backup recovery and offline key storage in hardware modules.
+  6. **Custodian 6 (Validator Representative 2)**:
+     - Public Key: `cosmospub1addwnpepqy3w7d8z3p962fghj839qdsmqpx3rqtq7zls3s9wph6` (PLACEHOLDER)
+     - Duty: Representing validator interests and geographic node diversity.
+  7. **Custodian 7 (Legal Trustee)**:
+     - Public Key: `cosmospub1addwnpepqy3w7d8z3p962fghj839qdsmqpx3rqtq7zls3s9wph7` (PLACEHOLDER)
+     - Duty: Verification of governance actions against the registered legal charters.
 
 * **Operational Duties & Thresholds**:
-  - **Emergency Pause (3-of-5)**: The multi-sig address is authorized to invoke `EmergencyPause` on the Constitution, Treasury, and Reserve Fund contracts. The execution of this transaction itself on-chain requires a 3-of-5 threshold of signing keys.
-  - **Governance Pointer Rotation (3-of-5)**: In the event of a governance module compromise, the multi-sig is authorized to rotate the `governance_address` pointer to a new governance contract.
+  - **Emergency Pause (5-of-7)**: The multi-sig address is authorized to invoke `EmergencyPause` on the Constitution, Treasury, and Reserve Fund contracts. The execution of this transaction itself on-chain requires a 5-of-7 threshold of signing keys.
+  - **Governance Pointer Rotation (5-of-7)**: In the event of a governance module compromise, the multi-sig is authorized to rotate the `governance_address` pointer to a new governance contract.
   - **Disaster Recovery**: Unpausing any contract requires a proposal passing through the active `governance_address`, ensuring that the cold multi-sig cannot unilaterally unpause without governance alignment.
 

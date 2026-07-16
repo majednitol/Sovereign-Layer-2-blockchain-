@@ -157,6 +157,16 @@ func (k Keeper) IterateMilestones(ctx sdk.Context, handler func(m Milestone) boo
 	}
 }
 
+// GetAllMilestones returns all milestones for genesis export.
+func (k Keeper) GetAllMilestones(ctx sdk.Context) []Milestone {
+	var milestones []Milestone
+	k.IterateMilestones(ctx, func(m Milestone) bool {
+		milestones = append(milestones, m)
+		return false
+	})
+	return milestones
+}
+
 // IsFeedStaleBlocked checks if a feed is currently marked as stale blocked in the milestone module.
 func (k Keeper) IsFeedStaleBlocked(ctx sdk.Context, feedID string) bool {
 	store := ctx.KVStore(k.storeKey)
@@ -277,13 +287,60 @@ func (k Keeper) triggerVestingPayout(ctx sdk.Context, m Milestone) {
 	))
 
 	poolAddr, err := sdk.AccAddressFromBech32(m.VestingPoolAddress)
-	if err == nil && k.bankKeeper != nil {
-		payoutAmt := m.PayoutAmount
-		if payoutAmt == 0 {
-			payoutAmt = 10000000 // Fallback to 10M if uninitialized
-		}
-		amount := sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(int64(payoutAmt))))
-		escrowAddr := authtypes.NewModuleAddress(ModuleName)
-		_ = k.bankKeeper.SendCoins(ctx, escrowAddr, poolAddr, amount)
+	if err != nil {
+		ctx.Logger().Error("milestone payout failed: invalid vesting pool address",
+			"milestone_id", m.ID,
+			"address", m.VestingPoolAddress,
+			"error", err,
+		)
+		ctx.EventManager().EmitEvent(sdk.NewEvent(
+			"milestone_payout_failed",
+			sdk.NewAttribute("milestone_id", m.ID),
+			sdk.NewAttribute("reason", "invalid_vesting_pool_address"),
+		))
+		return
 	}
+
+	if k.bankKeeper == nil {
+		ctx.Logger().Error("milestone payout failed: bank keeper is nil", "milestone_id", m.ID)
+		return
+	}
+
+	payoutAmt := m.PayoutAmount
+	if payoutAmt == 0 {
+		ctx.Logger().Error("milestone payout failed: zero payout amount", "milestone_id", m.ID)
+		ctx.EventManager().EmitEvent(sdk.NewEvent(
+			"milestone_payout_failed",
+			sdk.NewAttribute("milestone_id", m.ID),
+			sdk.NewAttribute("reason", "zero_payout_amount"),
+		))
+		return
+	}
+
+	amount := sdk.NewCoins(sdk.NewCoin("ucsov", math.NewInt(int64(payoutAmt))))
+	escrowAddr := authtypes.NewModuleAddress(ModuleName)
+
+	// M2 FIX: Handle SendCoins error instead of discarding it
+	if err := k.bankKeeper.SendCoins(ctx, escrowAddr, poolAddr, amount); err != nil {
+		ctx.Logger().Error("milestone payout failed: SendCoins error",
+			"milestone_id", m.ID,
+			"from", escrowAddr.String(),
+			"to", poolAddr.String(),
+			"amount", amount.String(),
+			"error", err,
+		)
+		ctx.EventManager().EmitEvent(sdk.NewEvent(
+			"milestone_payout_failed",
+			sdk.NewAttribute("milestone_id", m.ID),
+			sdk.NewAttribute("reason", err.Error()),
+		))
+		return
+	}
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"milestone_payout_success",
+		sdk.NewAttribute("milestone_id", m.ID),
+		sdk.NewAttribute("amount", amount.String()),
+		sdk.NewAttribute("recipient", poolAddr.String()),
+	))
 }

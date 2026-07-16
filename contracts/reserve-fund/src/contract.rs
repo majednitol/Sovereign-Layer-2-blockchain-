@@ -2,10 +2,12 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_json_binary, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    StdResult, QueryRequest,
+    StdResult, QueryRequest, SubMsg, Reply,
 };
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, SovereignQuery, MilestoneResponse};
 use crate::state::{Config, CONFIG};
+
+const DISBURSE_REPLY_ID: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -15,7 +17,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let config = Config {
-        governance_address: None,
+        governance_address: deps.api.addr_validate(&msg.governance_address)?,
         cold_multisig_address: deps.api.addr_validate(&msg.cold_multisig_address)?,
         min_balance_threshold: msg.min_balance_threshold,
         is_paused: false,
@@ -25,6 +27,7 @@ pub fn instantiate(
     Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("cold_multisig", msg.cold_multisig_address)
+        .add_attribute("governance_address", msg.governance_address)
         .add_attribute("min_balance_threshold", msg.min_balance_threshold))
 }
 
@@ -36,27 +39,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, StdError> {
     let mut config = CONFIG.load(deps.storage)?;
-
-    // 1. One-time setup of governance address
-    if let ExecuteMsg::SetupGovernanceAddress { address } = msg {
-        if config.governance_address.is_some() {
-            return Err(StdError::generic_err("Governance address is already setup"));
-        }
-        let gov_addr = deps.api.addr_validate(&address)?;
-        config.governance_address = Some(gov_addr.clone());
-        CONFIG.save(deps.storage, &config)?;
-        return Ok(Response::new()
-            .add_attribute("action", "setup_governance")
-            .add_attribute("governance_address", gov_addr));
-    }
-
-    // 2. Load and validate standard permissions
-    let gov_addr = config.governance_address.clone().ok_or_else(|| {
-        StdError::generic_err("Governance address not set. SetupGovernanceAddress must be called first.")
-    })?;
+    let gov_addr = config.governance_address.clone();
 
     match msg {
-        ExecuteMsg::SetupGovernanceAddress { .. } => unreachable!(),
         ExecuteMsg::DisburseMilestone { milestone_id, recipient, amount, denom } => {
             if config.is_paused {
                 return Err(StdError::generic_err("Contract is paused"));
@@ -96,11 +81,10 @@ pub fn execute(
                 amount: vec![Coin { denom, amount }],
             };
 
-            config.reentrancy_lock = false;
-            CONFIG.save(deps.storage, &config)?;
+            let sub_msg = SubMsg::reply_on_success(send_msg, DISBURSE_REPLY_ID);
 
             Ok(Response::new()
-                .add_message(send_msg)
+                .add_submessage(sub_msg)
                 .add_attribute("action", "disburse_milestone")
                 .add_attribute("milestone_id", milestone_id)
                 .add_attribute("recipient", recipient)
@@ -136,7 +120,7 @@ pub fn execute(
                 return Err(StdError::generic_err("Unauthorized: Only governance or cold multi-sig can update governance address"));
             }
             let new_addr = deps.api.addr_validate(&new_address)?;
-            config.governance_address = Some(new_addr);
+            config.governance_address = new_addr;
             CONFIG.save(deps.storage, &config)?;
             Ok(Response::new().add_attribute("action", "update_governance_address"))
         }
@@ -171,12 +155,28 @@ pub fn query(deps: Deps<SovereignQuery>, _env: Env, msg: QueryMsg) -> StdResult<
         QueryMsg::GetConfig {} => {
             let config = CONFIG.load(deps.storage)?;
             to_json_binary(&ConfigResponse {
-                governance_address: config.governance_address.map(|a| a.into_string()),
+                governance_address: config.governance_address.into_string(),
                 cold_multisig_address: config.cold_multisig_address.into_string(),
                 min_balance_threshold: config.min_balance_threshold,
                 is_paused: config.is_paused,
             })
         }
+    }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(
+    deps: DepsMut<SovereignQuery>,
+    _env: Env,
+    msg: Reply,
+) -> StdResult<Response> {
+    if msg.id == DISBURSE_REPLY_ID {
+        let mut config = CONFIG.load(deps.storage)?;
+        config.reentrancy_lock = false;
+        CONFIG.save(deps.storage, &config)?;
+        Ok(Response::new().add_attribute("action", "reply_disburse_success"))
+    } else {
+        Err(StdError::generic_err("Unknown reply ID"))
     }
 }
 
@@ -210,6 +210,26 @@ mod tests {
     }
 
     #[test]
+    fn test_initialization() {
+        let mut deps = mock_dependencies_with_custom_querier(&[], true);
+
+        let instantiate_msg = InstantiateMsg {
+            cold_multisig_address: "multisig_addr".to_string(),
+            governance_address: "governance_addr".to_string(),
+            min_balance_threshold: Uint128::new(20),
+        };
+        instantiate(deps.as_mut(), mock_env(), mock_info("creator", &[]), instantiate_msg).unwrap();
+
+        // Check config
+        let query_bin = query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap();
+        let config_res: ConfigResponse = from_json(&query_bin).unwrap();
+        assert_eq!(config_res.governance_address, "governance_addr");
+        assert_eq!(config_res.cold_multisig_address, "multisig_addr");
+        assert_eq!(config_res.min_balance_threshold, Uint128::new(20));
+        assert!(!config_res.is_paused);
+    }
+
+    #[test]
     fn test_milestone_disbursement_and_minimum_balance() {
         // Contract balance has 100 tokens, min balance threshold is 20 tokens
         let mut deps = mock_dependencies_with_custom_querier(
@@ -219,15 +239,10 @@ mod tests {
 
         let instantiate_msg = InstantiateMsg {
             cold_multisig_address: "multisig_addr".to_string(),
+            governance_address: "governance_addr".to_string(),
             min_balance_threshold: Uint128::new(20),
         };
         instantiate(deps.as_mut(), mock_env(), mock_info("creator", &[]), instantiate_msg).unwrap();
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("any", &[]),
-            ExecuteMsg::SetupGovernanceAddress { address: "governance_addr".to_string() },
-        ).unwrap();
 
         // Disburse 30 tokens (100 - 30 = 70 > 20) -> Should succeed
         let res = execute(
@@ -250,15 +265,10 @@ mod tests {
         );
         let instantiate_msg = InstantiateMsg {
             cold_multisig_address: "multisig_addr".to_string(),
+            governance_address: "governance_addr".to_string(),
             min_balance_threshold: Uint128::new(20),
         };
         instantiate(deps_fail.as_mut(), mock_env(), mock_info("creator", &[]), instantiate_msg).unwrap();
-        execute(
-            deps_fail.as_mut(),
-            mock_env(),
-            mock_info("any", &[]),
-            ExecuteMsg::SetupGovernanceAddress { address: "governance_addr".to_string() },
-        ).unwrap();
 
         // Disburse 60 tokens (70 - 60 = 10 < 20) -> Should fail due to min balance threshold
         let err = execute(
@@ -285,15 +295,10 @@ mod tests {
 
         let instantiate_msg = InstantiateMsg {
             cold_multisig_address: "multisig_addr".to_string(),
+            governance_address: "governance_addr".to_string(),
             min_balance_threshold: Uint128::new(20),
         };
         instantiate(deps.as_mut(), mock_env(), mock_info("creator", &[]), instantiate_msg).unwrap();
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("any", &[]),
-            ExecuteMsg::SetupGovernanceAddress { address: "governance_addr".to_string() },
-        ).unwrap();
 
         // Disburse -> Should fail because milestone is not achieved
         let err = execute(
@@ -321,6 +326,67 @@ mod tests {
         // Verify updated governance address
         let query_bin = query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap();
         let config_res: ConfigResponse = from_json(&query_bin).unwrap();
-        assert_eq!(config_res.governance_address.unwrap(), "new_governance_addr");
+        assert_eq!(config_res.governance_address, "new_governance_addr");
+    }
+
+    #[test]
+    fn test_reentrancy_protection() {
+        let mut deps = mock_dependencies_with_custom_querier(
+            &[Coin { denom: "ucsov".to_string(), amount: Uint128::new(100) }],
+            true, // Milestone achieved
+        );
+
+        let instantiate_msg = InstantiateMsg {
+            cold_multisig_address: "multisig_addr".to_string(),
+            governance_address: "governance_addr".to_string(),
+            min_balance_threshold: Uint128::new(20),
+        };
+        instantiate(deps.as_mut(), mock_env(), mock_info("creator", &[]), instantiate_msg).unwrap();
+
+        // Disburse 30 tokens (100 - 30 = 70 > 20) -> Should succeed and lock
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("governance_addr", &[]),
+            ExecuteMsg::DisburseMilestone {
+                milestone_id: "milestone_a".to_string(),
+                recipient: "recipient_addr".to_string(),
+                amount: Uint128::new(30),
+                denom: "ucsov".to_string(),
+            },
+        ).unwrap();
+
+        // Verify reentrancy_lock is set to true
+        let config = CONFIG.load(deps.as_ref().storage).unwrap();
+        assert!(config.reentrancy_lock);
+
+        // Try calling disburse again -> should fail with reentrancy error
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("governance_addr", &[]),
+            ExecuteMsg::DisburseMilestone {
+                milestone_id: "milestone_a".to_string(),
+                recipient: "another_recipient".to_string(),
+                amount: Uint128::new(10),
+                denom: "ucsov".to_string(),
+            },
+        ).unwrap_err();
+        assert!(err.to_string().contains("Reentrancy guard: Operation in progress"));
+
+        // Simulate successful reply callback
+        use cosmwasm_std::{SubMsgResponse, SubMsgResult};
+        let reply_msg = Reply {
+            id: DISBURSE_REPLY_ID,
+            result: SubMsgResult::Ok(SubMsgResponse {
+                events: vec![],
+                data: None,
+            }),
+        };
+        reply(deps.as_mut(), mock_env(), reply_msg).unwrap();
+
+        // Verify reentrancy_lock is now false
+        let config = CONFIG.load(deps.as_ref().storage).unwrap();
+        assert!(!config.reentrancy_lock);
     }
 }

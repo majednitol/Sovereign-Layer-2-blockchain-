@@ -273,7 +273,7 @@ export default function Dashboard() {
         try {
           const bridgeCall = await queryClient.getBridgeVolume({
             tokenAddress: "uwsov",
-            chainId: "sovereign-testnet-1",
+            chainId: "sovereign-1",
             timeframe: "daily",
           });
           const minted = parseFloat(bridgeCall.response.totalMinted || "0");

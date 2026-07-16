@@ -323,3 +323,63 @@ func TestPhase10_7_MultiRegionDeployments(t *testing.T) {
 
 	t.Log("[PASS] 10.7: Multi-region K8s deployment topology, secure WireGuard tunnels, and synchronous DB replication configs are verified.")
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Phase H Ceremony and Launch Day Verification Tests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+func TestPhase10_GenesisCeremonyScriptExists(t *testing.T) {
+	path := filepath.Join("..", "scripts", "genesis-ceremony.sh")
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("FAIL: scripts/genesis-ceremony.sh not found: %v", err)
+	}
+
+	// Check if script is executable (perm matches at least 0111)
+	if info.Mode()&0111 == 0 {
+		t.Errorf("FAIL: scripts/genesis-ceremony.sh is not executable. Mode: %s", info.Mode())
+	}
+	t.Log("[PASS] Genesis ceremony script exists and is executable.")
+}
+
+func TestPhase10_LaunchDayRunbookExists(t *testing.T) {
+	path := filepath.Join("..", "doc", "mainnet", "launch-day-runbook.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("FAIL: doc/mainnet/launch-day-runbook.md not found: %v", err)
+	}
+
+	content := string(data)
+	requiredSections := []string{
+		"# Mainnet Cutover Launch Day Runbook",
+		"T-24h: Genesis Ceremony & Verification",
+		"T-0: Chain Start & Genesis Block 1",
+		"T+48h: Post-Launch Stability",
+		"Emergency Pause & Rollback Operations",
+	}
+
+	for _, sec := range requiredSections {
+		if !strings.Contains(content, sec) {
+			t.Errorf("FAIL: launch-day-runbook.md missing required section: %s", sec)
+		}
+	}
+	t.Log("[PASS] Launch day runbook exists and outlines full launch day timeline.")
+}
+
+func TestPhase10_GentxDirectoryExists(t *testing.T) {
+	path := filepath.Join("..", "infra", "mainnet", "gentxs")
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("FAIL: infra/mainnet/gentxs directory not found: %v", err)
+	}
+	if !info.IsDir() {
+		t.Fatal("FAIL: infra/mainnet/gentxs is not a directory")
+	}
+
+	readmePath := filepath.Join(path, "README.md")
+	if _, err := os.Stat(readmePath); err != nil {
+		t.Fatalf("FAIL: infra/mainnet/gentxs/README.md not found: %v", err)
+	}
+	t.Log("[PASS] Mainnet gentx registry directory and README are present.")
+}
+

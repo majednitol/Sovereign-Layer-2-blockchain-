@@ -9,6 +9,7 @@ import (
 	dbm "github.com/cosmos/cosmos-db"
 	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/sovereign-l1/chain/simutil"
 )
 
 type mockMultiStore struct {
@@ -80,6 +81,7 @@ func setupKeeper(t *testing.T, wasm WasmKeeper) (Keeper, sdk.Context) {
 func TestMsgMigrateContractsBypass(t *testing.T) {
 	wasm := &mockWasmKeeper{failExecute: true} // if constitution check executes, it will fail
 	keeper, ctx := setupKeeper(t, wasm)
+	simGov := simutil.NewSimGov(keeper)
 
 	msg := &MsgMigrateContracts{
 		Authority:          "authority",
@@ -89,7 +91,7 @@ func TestMsgMigrateContractsBypass(t *testing.T) {
 	}
 
 	// Should succeed (bypasses Constitution) and not trigger Wasm execution
-	err := keeper.ExecuteProposal(ctx, msg)
+	err := simGov.ProposeAndExecute(ctx, msg)
 	if err != nil {
 		t.Errorf("Expected successful execution of MsgMigrateContracts, got: %v", err)
 	}
@@ -100,7 +102,7 @@ func TestMsgMigrateContractsBypass(t *testing.T) {
 	// Should fail due to delay < 7 days
 	invalidMsg := msg
 	invalidMsg.ExecutionDelaySecs = 1000
-	err = keeper.ExecuteProposal(ctx, invalidMsg)
+	err = simGov.ProposeAndExecute(ctx, invalidMsg)
 	if err == nil {
 		t.Error("Expected error for delay < 7 days")
 	}
@@ -109,6 +111,7 @@ func TestMsgMigrateContractsBypass(t *testing.T) {
 func TestMsgUpdateGasLimitBypass(t *testing.T) {
 	wasm := &mockWasmKeeper{failExecute: true} // if constitution check executes, it will fail
 	keeper, ctx := setupKeeper(t, wasm)
+	simGov := simutil.NewSimGov(keeper)
 
 	msg := &MsgUpdateGasLimit{
 		Authority: "authority",
@@ -116,7 +119,7 @@ func TestMsgUpdateGasLimitBypass(t *testing.T) {
 	}
 
 	// Should succeed (bypasses Constitution) and not trigger Wasm execution
-	err := keeper.ExecuteProposal(ctx, msg)
+	err := simGov.ProposeAndExecute(ctx, msg)
 	if err != nil {
 		t.Errorf("Expected successful execution of MsgUpdateGasLimit, got: %v", err)
 	}
@@ -127,7 +130,7 @@ func TestMsgUpdateGasLimitBypass(t *testing.T) {
 	// Should fail due to out-of-bounds gas limit
 	invalidMsg := msg
 	invalidMsg.GasLimit = 50000
-	err = keeper.ExecuteProposal(ctx, invalidMsg)
+	err = simGov.ProposeAndExecute(ctx, invalidMsg)
 	if err == nil {
 		t.Error("Expected error for gas limit below minimum bounds")
 	}
@@ -136,12 +139,13 @@ func TestMsgUpdateGasLimitBypass(t *testing.T) {
 func TestConstitutionCheckFallbacks(t *testing.T) {
 	wasm := &mockWasmKeeper{failExecute: false}
 	keeper, ctx := setupKeeper(t, wasm)
+	simGov := simutil.NewSimGov(keeper)
 
 	// Dummy message that does not bypass
 	msg := dummyMsg{}
 
 	// Case 1: Wasm executes successfully -> proposal succeeds
-	err := keeper.ExecuteProposal(ctx, msg)
+	err := simGov.ProposeAndExecute(ctx, msg)
 	if err != nil {
 		t.Errorf("Expected successful execution, got error: %v", err)
 	}
@@ -151,7 +155,7 @@ func TestConstitutionCheckFallbacks(t *testing.T) {
 
 	// Case 2: Wasm fails -> proposal fails
 	wasm.failExecute = true
-	err = keeper.ExecuteProposal(ctx, msg)
+	err = simGov.ProposeAndExecute(ctx, msg)
 	if err == nil {
 		t.Error("Expected error when Wasm execution fails")
 	}
@@ -160,6 +164,7 @@ func TestConstitutionCheckFallbacks(t *testing.T) {
 func TestCustomProposalsConstitutionCheck(t *testing.T) {
 	wasm := &mockWasmKeeper{failExecute: false}
 	keeper, ctx := setupKeeper(t, wasm)
+	simGov := simutil.NewSimGov(keeper)
 
 	msgs := []sdk.Msg{
 		&MsgUpdateValidatorSlot{Authority: "authority", MaxValidators: 10},
@@ -171,7 +176,7 @@ func TestCustomProposalsConstitutionCheck(t *testing.T) {
 
 	for _, msg := range msgs {
 		wasm.executed = false
-		err := keeper.ExecuteProposal(ctx, msg)
+		err := simGov.ProposeAndExecute(ctx, msg)
 		if err != nil {
 			t.Errorf("Expected successful execution for %T, got: %v", msg, err)
 		}
@@ -181,7 +186,7 @@ func TestCustomProposalsConstitutionCheck(t *testing.T) {
 
 		// Now make constitution check fail
 		wasm.failExecute = true
-		err = keeper.ExecuteProposal(ctx, msg)
+		err = simGov.ProposeAndExecute(ctx, msg)
 		if err == nil {
 			t.Errorf("Expected failure for %T when Wasm check fails", msg)
 		}

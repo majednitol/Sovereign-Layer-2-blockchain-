@@ -3,13 +3,26 @@
   "title": "ConfigResponse",
   "type": "object",
   "required": [
+    "approval_threshold",
     "constitution_address",
+    "proposers",
     "reserve_fund_address",
     "treasury_address"
   ],
   "properties": {
+    "approval_threshold": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
     "constitution_address": {
       "type": "string"
+    },
+    "proposers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "reserve_fund_address": {
       "type": "string"

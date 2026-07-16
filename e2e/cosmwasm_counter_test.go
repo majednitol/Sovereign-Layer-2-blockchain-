@@ -29,11 +29,20 @@ func dockerExec(t *testing.T, args ...string) (string, error) {
 }
 
 func TestCosmWasmCounter(t *testing.T) {
+	// Skip test if docker daemon is not available or if the chain-node container is not running
+	if _, err := exec.Command("docker", "info").Output(); err != nil {
+		t.Skip("Docker daemon is not running, skipping CosmWasm Counter integration test.")
+	}
+	containerStatus, err := exec.Command("docker", "ps", "--filter", "name=chain-node", "--filter", "status=running", "--quiet").Output()
+	if err != nil || strings.TrimSpace(string(containerStatus)) == "" {
+		t.Skip("Docker container 'chain-node' is not running, skipping CosmWasm Counter integration test.")
+	}
+
 	t.Log("Starting CosmWasm Counter Integration Test")
 
 	// 1. Copy the Wasm file into the container
 	t.Log("Copying cw_counter.wasm to chain-node container")
-	_, err := runCmd(t, "docker", "cp", "contracts/cosmwasm/cw_counter.wasm", "chain-node:/tmp/cw_counter.wasm")
+	_, err = runCmd(t, "docker", "cp", "contracts/cosmwasm/cw_counter.wasm", "chain-node:/tmp/cw_counter.wasm")
 	if err != nil {
 		t.Fatalf("Failed to copy Wasm binary to container: %v", err)
 	}

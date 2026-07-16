@@ -1734,8 +1734,8 @@ func TestComprehensivePhase7WalletConfigParsing(t *testing.T) {
 		t.Fatalf("Failed to parse wallets.json as JSON: %v", err)
 	}
 
-	if config.Keplr.ChainID != "sovereign-testnet-1" {
-		t.Errorf("Expected Keplr ChainID 'sovereign-testnet-1', got %s", config.Keplr.ChainID)
+	if config.Keplr.ChainID != "sovereign-1" {
+		t.Errorf("Expected Keplr ChainID 'sovereign-1', got %s", config.Keplr.ChainID)
 	}
 	if config.MetaMaskBsc.ChainID != "0x61" {
 		t.Errorf("Expected MetaMask BSC ChainID '0x61', got %s", config.MetaMaskBsc.ChainID)

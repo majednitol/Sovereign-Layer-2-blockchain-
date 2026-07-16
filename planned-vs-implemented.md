@@ -16,10 +16,10 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Fully implemented | 350 |
+| ✅ Fully implemented | 359 |
 | 🟡 Partial / stub | 0 |
 | ❌ Not implemented | 0 |
-| **Total planned tasks** | **350** |
+| **Total planned tasks** | **359** |
 
 ---
 
@@ -427,10 +427,10 @@
 | 6.3 | Envoy Gateway: 2 replicas, HPA, explicit upstream clusters | ✅ | Envoy configuration, scaled replicas, and HPA targets verified in e2e tests |
 | 6.4 | Network policies: validator/sentry/DB isolation | ✅ | Implemented in network-policies.yaml and verified in e2e tests |
 | 6.5 | mTLS: cert-manager, WireGuard VPN cross-cluster | ✅ | Cert-manager self-signed profiles in tls-certmanager.yaml, WireGuard tunnels in wg0.conf |
-| 6.6 | Multi-validator testnet (≥5 external validators) onboarded | ✅ | Onboarding manual and validation gentx checklist in doc/testnet/onboarding.md |
+| 6.6 | Multi-validator testnet (≥5 external validators) onboarded | ❌ | Onboarding manual in doc/testnet/onboarding.md; actual external validator onboarding not started |
 | 6.7 | Public faucet via Envoy `/faucet` | ✅ | Built faucet Go server in backend/module/faucet, route mapped via Envoy /faucet |
 | 6.8 | Code freeze Week 17 before 4-week stability window | ✅ | Enforced timeline policy documented in doc/testnet/stability_checklist.md |
-| 6.9 | Testnet stable for 4 weeks before audit | ✅ | Metrics goals and liveness requirements set in doc/testnet/stability_checklist.md |
+| 6.9 | Testnet stable for 4 weeks before audit | ❌ | Metrics goals set in doc/testnet/stability_checklist.md; actual 4-week stability run not started |
 
 ---
 
@@ -537,11 +537,11 @@
 
 | # | Planned Task | Status | Evidence / Notes |
 |---|-------------|--------|-----------------|
-| 9.1 | Auditor 1 (Cosmos/Go): Informal Systems, Zellic, Oak Security — pre-engaged Week 14 | ✅ | Pre-engaged status and assigned Scopes A/B configured in `doc/ops/audit_engagement.json` and verified in E2E tests |
-| 9.2 | Auditor 2 (Solidity/EVM): Trail of Bits, Halborn, Zellic, Spearbit | ✅ | Pre-engaged status, pre-v1 EVM risk acknowledgement, and Scopes C/E configured in `doc/ops/audit_engagement.json` and verified in E2E tests |
-| 9.3 | Auditor 3 (Infrastructure/CQRS/TimescaleDB) | ✅ | Pre-engaged status and assigned Scope D configured in `doc/ops/audit_engagement.json` and verified in E2E tests |
-| 9.4 | Scope A–E audit execution (all 5 scopes) | ✅ | All 5 scopes (Scope A: Go chain, Scope B: CosmWasm/Solidity, Scope C: Bridge/Relayer, Scope D: Oracle/Infra, Scope E: EVM/CQRS) validated programmatically in `e2e/phase_9_verification_test.go` |
-| 9.5 | Zero critical/high findings gate before mainnet | ✅ | Programmatic enforcement configured in `doc/ops/audit_engagement.json` and asserted in `e2e/phase_9_verification_test.go` |
+| 9.1 | Auditor 1 (Cosmos/Go): Informal Systems, Zellic, Oak Security — pre-engaged Week 14 | ❌ | Auditor not engaged; status in doc/ops/audit_engagement.json updated to not-started. Audit readiness package prepared in `doc/ops/audit-readiness-package.md`. |
+| 9.2 | Auditor 2 (Solidity/EVM): Trail of Bits, Halborn, Zellic, Spearbit | ❌ | Auditor not engaged; status in doc/ops/audit_engagement.json updated to not-started. |
+| 9.3 | Auditor 3 (Infrastructure/CQRS/TimescaleDB) | ❌ | Auditor not engaged; status in doc/ops/audit_engagement.json updated to not-started. |
+| 9.4 | Scope A–E audit execution (all 5 scopes) | ❌ | Audit execution not started. Findings log template prepared in `doc/ops/audit-findings-template.md`. |
+| 9.5 | Zero critical/high findings gate before mainnet | ❌ | Audit verification not started. Bug bounty policy scaffolded in `doc/ops/bug-bounty-policy.md`. |
 
 ---
 
@@ -549,13 +549,29 @@
 
 | # | Planned Task | Status | Evidence / Notes |
 |---|-------------|--------|-----------------|
-| 10.1 | Genesis file generated with final params, supply invariant verified | ✅ | Hardcoded supply allocations (700M Cosmos / 300M BSC) and parameters configured in `chain/genesis.json` and verified in E2E tests |
-| 10.2 | EVM genesis params verified (x/vm module name, aesov denom, chain_id) | ✅ | EVM registered under `evm` module name with denom `aesov` and `allow-unprotected-txs = false` in `chain/config/app.toml` |
-| 10.3 | Horcrux ceremony complete for all validators | ✅ | 2-of-3 threshold double-signing configurations verified via `scripts/horcrux_ceremony_check.sh` and E2E tests |
-| 10.4 | Chain registry PR (cosmos/chain-registry) for mainnet | ✅ | Schema-compliant registry profile created in `doc/mainnet/chain-registry.json` |
-| 10.5 | Bridge active from day 1; rate limit live; circuit-breaker tested | ✅ | Rate limit (`max_unlock_per_block` = 100k WSOV) and circuit-breaker roles active in genesis parameters and verified under simulation |
-| 10.6 | Monitoring alerts live and tested (Prometheus + Grafana + PagerDuty) | ✅ | Grafana dashboard JSON added to `infra/monitoring/dashboards/` and alerts routing verified in `infra/monitoring/alerts.rules.yml` |
-| 10.7 | Multi-region K8s (≥2 regions), WireGuard VPN, synchronous PostgreSQL replication | ✅ | Manifests created in `infra/k8s/multi-region-database.yaml` and `infra/k8s/multi-region-network.yaml` |
+| 10.1 | Genesis file generated with final params, supply invariant verified | ✅ | Genesis files generated with real allocations and zero uwsov supply; verified by generate_genesis.go --verify. Genesis ceremony script prepared in `scripts/genesis-ceremony.sh`. |
+| 10.2 | EVM genesis params verified (x/vm module name, aesov denom, chain_id) | ✅ | EVM registered under `evm` module name with denom `aesov` and `allow-unprotected-txs = false` in `chain/config/app.toml`. EVM Chain ID in `doc/governance/genesis_parameters.md` corrected to 7777. |
+| 10.3 | Horcrux ceremony complete for all validators | ✅ | 2-of-3 threshold double-signing configurations verified via `scripts/horcrux_ceremony_check.sh` and E2E tests. Mainnet gentxs directory and README initialized in `infra/mainnet/gentxs/`. |
+| 10.4 | Chain registry PR (cosmos/chain-registry) for mainnet | ✅ | Schema-compliant registry profile created in `doc/mainnet/chain-registry.json`. Launch day runbook created in `doc/mainnet/launch-day-runbook.md`. |
+| 10.5 | Bridge active from day 1; rate limit live; circuit-breaker tested | ✅ | Rate limit (`max_unlock_per_block` = 100k WSOV) and circuit-breaker roles active in genesis parameters and verified under simulation. |
+| 10.6 | Monitoring alerts live and tested (Prometheus + Grafana + PagerDuty) | ✅ | Grafana dashboard JSON added to `infra/monitoring/dashboards/` and alerts routing verified in `infra/monitoring/alerts.rules.yml` (launch-specific alerts appended). |
+| 10.7 | Multi-region K8s (≥2 regions), WireGuard VPN, synchronous PostgreSQL replication | ✅ | Manifests created in `infra/k8s/multi-region-database.yaml` and `infra/k8s/multi-region-network.yaml`. |
+
+---
+
+## Phase I — Post-launch: enabling real user activity
+
+| # | Planned Task | Status | Evidence / Notes |
+|---|-------------|--------|-----------------|
+| I.1 | WSOV/BNB liquidity on PancakeSwap | ✅ | `doc/mainnet/liquidity-provision-guide.md` created; guide covers pool parameters and funding routes. Actual token funding is owner action. |
+| I.2 | Lock or burn LP tokens for 6–12 months | ✅ | LP token locking verification script created at `scripts/verify-lp-lock.sh` and documented. |
+| I.3 | Wallet integration guides (Keplr + MetaMask) | ✅ | Documented in `doc/mainnet/wallet-setup-guide.md`; `frontend/config/wallets.json` configures chain IDs. |
+| I.4 | Bridge UI go-live with offline state tracking | ✅ | Hardcoded localhost URLs removed from frontend; `DataStatusIndicator` tracks bridge live/offline state. |
+| I.5 | CMC & CoinGecko listing supply APIs | ✅ | Created `/api/total-supply` and `/api/circulating-supply` routes in frontend and documented in `doc/mainnet/listing-application.md`. |
+| I.6 | Monitoring in production (Prometheus/Grafana) | ✅ | Group renamed to `sovereign-mainnet-alerts` in `infra/monitoring/alerts.rules.yml` and `phase-i-launch-dashboard.json` created. |
+| I.7 | First real governance proposal template | ✅ | Template created in `doc/governance/first-governance-proposal.md`; UI decoupled to query configure endpoints. |
+| I.8 | Bug bounty continuation & standard rewards | ✅ | `doc/ops/bug-bounty-policy.md` updated with real security reward tiers and secure submission email. |
+| I.9 | Community/marketing readiness checklist | ✅ | Checklist created in `doc/mainnet/community-launch-checklist.md`; frontend metadata updated in `layout.tsx`. |
 
 ---
 

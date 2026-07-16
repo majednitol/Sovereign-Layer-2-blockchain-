@@ -1,4 +1,15 @@
 {
+  "last_verified": "2026-07-15",
+  "note": "No audit firm has been formally engaged. This file tracks aspirational audit targets only. Status fields are updated to reflect that audits are not started.",
+  "engagement_letter_date": null,
+  "scheduled_start_date": null,
+  "scheduled_end_date": null,
+  "audit_report_path": null,
+  "bug_bounty_program": {
+    "platform": null,
+    "url": null,
+    "status": "not-started"
+  },
   "auditors": [
     {
       "id": 1,
@@ -6,8 +17,8 @@
       "specialization": "Cosmos SDK / Go chain specialist",
       "assigned_scopes": ["Scope A", "Scope B"],
       "pre_engaged_week": 14,
-      "status": "pre-engaged",
-      "context_delivered": true
+      "status": "not-started",
+      "context_delivered": false
     },
     {
       "id": 2,
@@ -15,8 +26,8 @@
       "specialization": "Solidity / EVM specialist",
       "assigned_scopes": ["Scope C", "Scope E"],
       "pre_engaged_week": 14,
-      "status": "pre-engaged",
-      "context_delivered": true,
+      "status": "not-started",
+      "context_delivered": false,
       "requirements": {
         "evm_on_cosmos_experience": true,
         "cosmos_evm_pre_v1_risk_acknowledged": true
@@ -28,8 +39,8 @@
       "specialization": "Infrastructure / Distributed Systems specialist",
       "assigned_scopes": ["Scope D"],
       "pre_engaged_week": 14,
-      "status": "pre-engaged",
-      "context_delivered": true
+      "status": "not-started",
+      "context_delivered": false
     }
   ],
   "scopes": {

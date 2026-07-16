@@ -534,15 +534,28 @@ func NewApp(
 	app.BridgeKeeper = bridge.NewKeeper(keys[bridge.StoreKey], appCodec, app.BankKeeper)
 	app.CertificationKeeper = certification.NewKeeper(keys[certification.StoreKey], appCodec, app.StakingKeeper, app.SlashingKeeper)
 
-	// Register EVM Custom Precompiles
-	app.EVMKeeper.RegisterStaticPrecompile(
-		precompiles.OraclePrecompileAddress,
-		precompiles.NewOraclePrecompile(app.OracleKeeper),
-	)
-	app.EVMKeeper.RegisterStaticPrecompile(
-		precompiles.MilestonePrecompileAddress,
-		precompiles.NewMilestonePrecompile(app.MilestoneKeeper),
-	)
+	// PRECOMPILE POLICY (A13 — Mainnet v1.0 Decision):
+	// Custom EVM precompiles (Oracle, Milestone) are DISABLED by default.
+	// They are gated behind the ENABLE_CUSTOM_PRECOMPILES environment variable.
+	//
+	// Rationale: These precompiles bypass CosmWasm-level authorization checks
+	// and have not been audited for cross-runtime interaction safety. They will
+	// remain opt-in until:
+	//   1. An external security audit explicitly covers them (Phase E)
+	//   2. EVM/CosmWasm coexistence tests exercise both runtimes in the same block (A13)
+	//   3. Governance votes to enable them post-launch
+	//
+	// To enable for development/testing: export ENABLE_CUSTOM_PRECOMPILES=true
+	if os.Getenv("ENABLE_CUSTOM_PRECOMPILES") == "true" {
+		app.EVMKeeper.RegisterStaticPrecompile(
+			precompiles.OraclePrecompileAddress,
+			precompiles.NewOraclePrecompile(app.OracleKeeper),
+		)
+		app.EVMKeeper.RegisterStaticPrecompile(
+			precompiles.MilestonePrecompileAddress,
+			precompiles.NewMilestonePrecompile(app.MilestoneKeeper),
+		)
+	}
 
 	// Wire CosmWasm Constitution contract address to x/governance-ext
 	app.GovExtKeeper = gext.NewKeeper(

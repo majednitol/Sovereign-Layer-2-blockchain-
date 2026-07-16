@@ -52,8 +52,8 @@ export default function WalletConnect({
           console.warn("Failed to suggest Keplr chain:", e);
         }
       }
-      await win.keplr.enable("sovereign-testnet-1");
-      const offlineSigner = win.keplr.getOfflineSigner("sovereign-testnet-1");
+      await win.keplr.enable("sovereign-1");
+      const offlineSigner = win.keplr.getOfflineSigner("sovereign-1");
       const accounts = await offlineSigner.getAccounts();
       setL1Address(accounts[0].address);
       localStorage.setItem("l1_address", accounts[0].address);

@@ -1,0 +1,12 @@
+{
+  "feeds": {
+    "BTC_USD": [
+      {"name": "primary-btc", "url": "http://localhost:8080/price/btc"},
+      {"name": "fallback-btc", "url": "http://localhost:8081/price/btc"}
+    ],
+    "ETH_USD": [
+      {"name": "primary-eth", "url": "http://localhost:8082/price/eth"},
+      {"name": "fallback-eth", "url": "http://localhost:8083/price/eth"}
+    ]
+  }
+}

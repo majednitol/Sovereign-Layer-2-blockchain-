@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -119,21 +120,28 @@ func (k Keeper) ExecuteProposal(ctx sdk.Context, proposal sdk.Msg) error {
 	// 2. Perform Constitution check via Wasm contract call if not bypassed
 	if !bypass && k.wasmKeeper != nil && len(k.constitutionAddr) > 0 {
 		// Call Constitution check with serialized proposal payload
+		summaryBytes, err := json.Marshal(proposal)
+		if err != nil {
+			return fmt.Errorf("failed to marshal proposal: %w", err)
+		}
+		summaryStr := string(summaryBytes)
+
 		type checkProposalMsg struct {
 			CheckProposal struct {
-				ProposalType string  `json:"proposal_type"`
-				Proposal     sdk.Msg `json:"proposal"`
+				ProposalType string `json:"proposal_type"`
+				Summary      string `json:"summary"`
 			} `json:"check_proposal"`
 		}
 		var msgPayload checkProposalMsg
 		msgPayload.CheckProposal.ProposalType = fmt.Sprintf("%T", proposal)
-		msgPayload.CheckProposal.Proposal = proposal
+		msgPayload.CheckProposal.Summary = summaryStr
 		checkMsg, err := json.Marshal(msgPayload)
 		if err != nil {
 			return fmt.Errorf("failed to marshal constitution check payload: %w", err)
 		}
 
-		_, err = k.wasmKeeper.Execute(ctx, k.constitutionAddr, sdk.AccAddress([]byte("govext_module")), checkMsg, nil)
+		callerAddr := authtypes.NewModuleAddress(ModuleName)
+		_, err = k.wasmKeeper.Execute(ctx, k.constitutionAddr, callerAddr, checkMsg, nil)
 		if err != nil {
 			return fmt.Errorf("constitution compliance check failed: %w", err)
 		}

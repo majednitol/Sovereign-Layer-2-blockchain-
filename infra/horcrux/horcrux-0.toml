@@ -1,3 +1,6 @@
+# ⚠️ SECURITY WARNING: The key shard key-file listed below must be generated via
+# Shamir's Secret Sharing from the master consensus private key. Do NOT copy the
+# same key material to peer cosigner nodes. Never reuse test keys for production.
 threshold = 2
 
 [cosigner]
@@ -11,7 +14,7 @@ peers = [
 ]
 
 [chain]
-chain-id = "sovereign-testnet-1"
+chain-id = "sovereign-1"
 key-file = "/secrets/share-1.key"
 state-file = "/data/state.json"
 double-sign-protection = true

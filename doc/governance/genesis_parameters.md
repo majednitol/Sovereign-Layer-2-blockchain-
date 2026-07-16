@@ -42,5 +42,7 @@ This document outlines the formal technical and governance constants established
 ## 4. Chain Identifiers
 
 - **Cosmos Chain ID**: `sovereign-testnet-1` (for testnet), `sovereign-1` (for mainnet)
-- **EVM Chain ID**: `9001` (registered on chainlist.org)
+- **EVM Chain ID**: `7777` (registered as mainnet EVM execution layer)
 - **Address Derivation Path**: `m/44'/60'/0'/0/0` (Ethereum BIP-44 path for dual-address compatibility)
+
+For a detailed breakdown of token distribution, vesting, and allocations, refer to the [Tokenomics Document](file:///Users/majedurrahman/Sovereign/doc/governance/tokenomics.md).

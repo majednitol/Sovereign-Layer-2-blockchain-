@@ -14,7 +14,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let config = Config {
-        governance_address: None,
+        governance_address: deps.api.addr_validate(&msg.governance_address)?,
         cold_multisig_address: deps.api.addr_validate(&msg.cold_multisig_address)?,
         rules: msg.rules,
         is_paused: false,
@@ -22,7 +22,8 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new()
         .add_attribute("action", "instantiate")
-        .add_attribute("cold_multisig", msg.cold_multisig_address))
+        .add_attribute("cold_multisig", msg.cold_multisig_address)
+        .add_attribute("governance_address", msg.governance_address))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -33,27 +34,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, StdError> {
     let mut config = CONFIG.load(deps.storage)?;
-
-    // 1. SetupGovernanceAddress is a one-time operation, allowed only when governance_address is None.
-    if let ExecuteMsg::SetupGovernanceAddress { address } = msg {
-        if config.governance_address.is_some() {
-            return Err(StdError::generic_err("Governance address is already setup"));
-        }
-        let gov_addr = deps.api.addr_validate(&address)?;
-        config.governance_address = Some(gov_addr.clone());
-        CONFIG.save(deps.storage, &config)?;
-        return Ok(Response::new()
-            .add_attribute("action", "setup_governance")
-            .add_attribute("governance_address", gov_addr));
-    }
-
-    // 2. Load and validate standard permissions.
-    let gov_addr = config.governance_address.clone().ok_or_else(|| {
-        StdError::generic_err("Governance address not set. SetupGovernanceAddress must be called first.")
-    })?;
+    let gov_addr = config.governance_address.clone();
 
     match msg {
-        ExecuteMsg::SetupGovernanceAddress { .. } => unreachable!(),
         ExecuteMsg::UpdateConstitution { rules } => {
             if config.is_paused {
                 return Err(StdError::generic_err("Contract is paused"));
@@ -95,15 +78,20 @@ pub fn execute(
                 return Err(StdError::generic_err("Unauthorized: Only governance or cold multi-sig can update governance address"));
             }
             let new_addr = deps.api.addr_validate(&new_address)?;
-            config.governance_address = Some(new_addr);
+            config.governance_address = new_addr;
             CONFIG.save(deps.storage, &config)?;
             Ok(Response::new().add_attribute("action", "update_governance_address"))
         }
-        ExecuteMsg::CheckProposal {} => {
+        ExecuteMsg::CheckProposal { proposal_type, summary } => {
             if config.is_paused {
                 return Err(StdError::generic_err("Contract is paused"));
             }
-            Ok(Response::new().add_attribute("action", "check_proposal"))
+            if summary.contains("VIOLATION") {
+                return Err(StdError::generic_err("Proposal violates constitution"));
+            }
+            Ok(Response::new()
+                .add_attribute("action", "check_proposal")
+                .add_attribute("proposal_type", proposal_type))
         }
     }
 }
@@ -116,7 +104,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&ConstitutionResponse {
                 rules: config.rules,
                 is_paused: config.is_paused,
-                governance_address: config.governance_address.map(|a| a.into_string()),
+                governance_address: config.governance_address.into_string(),
                 cold_multisig_address: config.cold_multisig_address.into_string(),
             })
         }
@@ -130,12 +118,13 @@ mod tests {
     use cosmwasm_std::from_json;
 
     #[test]
-    fn test_initialization_and_governance_setup() {
+    fn test_initialization() {
         let mut deps = mock_dependencies();
 
         let instantiate_msg = InstantiateMsg {
             rules: "My Constitution Rules".to_string(),
             cold_multisig_address: "multisig_addr".to_string(),
+            governance_address: "governance_addr".to_string(),
         };
 
         // Instantiate
@@ -143,7 +132,7 @@ mod tests {
         let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
         assert_eq!(res.attributes[0].value, "instantiate");
 
-        // Try standard execute before governance setup - should fail
+        // Try standard execute from random sender - should fail
         let info = mock_info("multisig_addr", &[]);
         let err = execute(
             deps.as_mut(),
@@ -151,19 +140,7 @@ mod tests {
             info,
             ExecuteMsg::UpdateConstitution { rules: "New rules".to_string() },
         ).unwrap_err();
-        assert!(err.to_string().contains("Governance address not set"));
-
-        // Setup governance address
-        let setup_msg = ExecuteMsg::SetupGovernanceAddress { address: "governance_addr".to_string() };
-        let info = mock_info("any_caller", &[]);
-        let res = execute(deps.as_mut(), mock_env(), info, setup_msg).unwrap();
-        assert_eq!(res.attributes[0].value, "setup_governance");
-
-        // Try setting governance again - should fail
-        let setup_msg_again = ExecuteMsg::SetupGovernanceAddress { address: "another_gov".to_string() };
-        let info = mock_info("any_caller", &[]);
-        let err = execute(deps.as_mut(), mock_env(), info, setup_msg_again).unwrap_err();
-        assert!(err.to_string().contains("Governance address is already setup"));
+        assert!(err.to_string().contains("Unauthorized: Only governance can update constitution"));
     }
 
     #[test]
@@ -174,21 +151,19 @@ mod tests {
         let instantiate_msg = InstantiateMsg {
             rules: "Rules 1".to_string(),
             cold_multisig_address: "multisig_addr".to_string(),
+            governance_address: "governance_addr".to_string(),
         };
         instantiate(deps.as_mut(), mock_env(), mock_info("creator", &[]), instantiate_msg).unwrap();
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("any_caller", &[]),
-            ExecuteMsg::SetupGovernanceAddress { address: "governance_addr".to_string() },
-        ).unwrap();
 
         // Check proposal initially passes
         let check_res = execute(
             deps.as_mut(),
             mock_env(),
             mock_info("any_caller", &[]),
-            ExecuteMsg::CheckProposal {},
+            ExecuteMsg::CheckProposal {
+                proposal_type: "test".to_string(),
+                summary: "Clean summary".to_string(),
+            },
         ).unwrap();
         assert_eq!(check_res.attributes[0].value, "check_proposal");
 
@@ -206,7 +181,10 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             mock_info("any_caller", &[]),
-            ExecuteMsg::CheckProposal {},
+            ExecuteMsg::CheckProposal {
+                proposal_type: "test".to_string(),
+                summary: "Clean summary".to_string(),
+            },
         ).unwrap_err();
         assert!(check_err.to_string().contains("Contract is paused"));
 
@@ -273,6 +251,6 @@ mod tests {
         // Verify updated governance address
         let query_bin = query(deps.as_ref(), mock_env(), QueryMsg::GetConstitution {}).unwrap();
         let query_res: ConstitutionResponse = from_json(&query_bin).unwrap();
-        assert_eq!(query_res.governance_address.unwrap(), "new_governance_addr");
+        assert_eq!(query_res.governance_address, "new_governance_addr");
     }
 }

@@ -27,7 +27,8 @@ export default function Governance() {
 
   const fetchProposals = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/rest/cosmos/gov/v1beta1/proposals");
+      const restBase = process.env.NEXT_PUBLIC_COSMOS_REST_URL || "http://localhost:8080";
+      const res = await fetch(`${restBase}/api/rest/cosmos/gov/v1beta1/proposals`);
       const data = await res.json();
       if (data && data.proposals) {
         setProposals(
@@ -108,14 +109,15 @@ export default function Governance() {
 
     try {
       setLoading(true);
-      const chainId = "sovereign-testnet-1";
+      const chainId = "sovereign-1";
       await win.keplr.enable(chainId);
       const offlineSigner = win.keplr.getOfflineSigner(chainId);
       const accounts = await offlineSigner.getAccounts();
       const sender = accounts[0].address;
 
+      const rpcUrl = process.env.NEXT_PUBLIC_COSMOS_RPC_URL || "http://localhost:26657";
       const client = await SigningStargateClient.connectWithSigner(
-        "http://localhost:26657",
+        rpcUrl,
         offlineSigner
       );
 

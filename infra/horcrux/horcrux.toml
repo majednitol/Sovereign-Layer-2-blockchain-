@@ -1,5 +1,10 @@
 # Horcrux Configuration Template (2-of-3 threshold signer configuration)
-
+#
+# ⚠️ SECURITY WARNING: The validator private key must be split using Shamir's Secret
+# Sharing (SSS) into 3 distinct key shards (share-1.key, share-2.key, share-3.key)
+# and distributed securely to each cosigner node. NEVER reuse or copy the same
+# test key across nodes, and never use pre-configured test keys on mainnet.
+#
 # Threshold settings
 threshold = 2
 
@@ -17,7 +22,7 @@ peers = [
 
 # Chains to sign for
 [chain]
-chain-id = "sovereign-testnet-1"
+chain-id = "sovereign-1"
 key-file = "/secrets/share.key"
 state-file = "/data/state.json"
 double-sign-protection = true

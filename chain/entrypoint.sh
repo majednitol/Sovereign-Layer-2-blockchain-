@@ -2,7 +2,7 @@
 set -eu
 
 CHAIN_HOME="${CHAIN_HOME:-/root/.sovereign}"
-CHAIN_ID="${CHAIN_ID:-sovereign-testnet-1}"
+CHAIN_ID="${CHAIN_ID:-sovereign-1}"
 MONIKER="${MONIKER:-sovereign-node}"
 
 # Always initialize fresh for devnet (volume-mounted genesis.json overrides)

@@ -231,6 +231,7 @@ fn test_multi_contract_flow() {
             &ConstitutionInstantiateMsg {
                 rules: "Safe rules".to_string(),
                 cold_multisig_address: cold_multisig.to_string(),
+                governance_address: "contract3".to_string(),
             },
             &[],
             "Constitution",
@@ -245,6 +246,7 @@ fn test_multi_contract_flow() {
             Addr::unchecked("creator"),
             &TreasuryInstantiateMsg {
                 cold_multisig_address: cold_multisig.to_string(),
+                governance_address: "contract3".to_string(),
             },
             &[],
             "Treasury",
@@ -259,6 +261,7 @@ fn test_multi_contract_flow() {
             Addr::unchecked("creator"),
             &ReserveInstantiateMsg {
                 cold_multisig_address: cold_multisig.to_string(),
+                governance_address: "contract3".to_string(),
                 min_balance_threshold: Uint128::new(100_000),
             },
             &[],
@@ -291,6 +294,8 @@ fn test_multi_contract_flow() {
                 constitution_address: constitution_addr.to_string(),
                 treasury_address: treasury_addr.to_string(),
                 reserve_fund_address: reserve_addr.to_string(),
+                proposers: vec!["proposer".to_string()],
+                approval_threshold: 1,
             },
             &[],
             "Governance",
@@ -298,53 +303,8 @@ fn test_multi_contract_flow() {
         )
         .unwrap();
 
-    // 5. Setup Governance addresses inside target contracts (one-time setup)
-    app.execute_contract(
-        Addr::unchecked("any_caller"),
-        constitution_addr.clone(),
-        &ConstitutionExecuteMsg::SetupGovernanceAddress {
-            address: governance_addr.to_string(),
-        },
-        &[],
-    )
-    .unwrap();
-
-    app.execute_contract(
-        Addr::unchecked("any_caller"),
-        treasury_addr.clone(),
-        &TreasuryExecuteMsg::SetupGovernanceAddress {
-            address: governance_addr.to_string(),
-        },
-        &[],
-    )
-    .unwrap();
-
-    app.execute_contract(
-        Addr::unchecked("any_caller"),
-        reserve_addr.clone(),
-        &ReserveExecuteMsg::SetupGovernanceAddress {
-            address: governance_addr.to_string(),
-        },
-        &[],
-    )
-    .unwrap();
-
-    // Second call to SetupGovernanceAddress must fail
-    let err = app
-        .execute_contract(
-            Addr::unchecked("any_caller"),
-            constitution_addr.clone(),
-            &ConstitutionExecuteMsg::SetupGovernanceAddress {
-                address: governance_addr.to_string(),
-            },
-            &[],
-        )
-        .unwrap_err();
-    assert!(
-        format!("{:#}", err).contains("already setup"),
-        "Expected 'already setup' in error, got: {}",
-        err
-    );
+    // Verify governance address matches precalculation
+    assert_eq!(governance_addr.to_string(), "contract3");
 
     // --- CONSTITUTION TESTS ---
     // Update constitution rules by non-governance (should fail)
@@ -497,6 +457,24 @@ fn test_multi_contract_flow() {
     )
     .unwrap();
 
+    // Approve proposal 1
+    app.execute_contract(
+        Addr::unchecked("proposer"),
+        governance_addr.clone(),
+        &GovernanceExecuteMsg::ApproveProposal { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    // Execute proposal 1
+    app.execute_contract(
+        Addr::unchecked("proposer"),
+        governance_addr.clone(),
+        &GovernanceExecuteMsg::ExecuteProposal { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
     // Verify audit log has 1 entry
     let audit_logs: AuditLogsResponse = app
         .wrap()
@@ -557,6 +535,8 @@ fn test_multi_contract_flow() {
                 constitution_address: constitution_addr.to_string(),
                 treasury_address: treasury_addr.to_string(),
                 reserve_fund_address: reserve_addr.to_string(),
+                proposers: vec!["proposer".to_string()],
+                approval_threshold: 1,
             },
             &[],
             "New Governance",

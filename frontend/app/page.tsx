@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import WalletConnect from "../components/WalletConnect";
 import BridgeTracker from "../components/BridgeTracker";
+import DataStatusIndicator from "../components/DataStatusIndicator";
 import { QueryServiceClient } from "@workspace/api-spec";
 import { transport } from "../config/grpc-client";
 
@@ -45,6 +46,8 @@ export default function Home() {
   const [l2Address, setL2Address] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
   const [activeTxs, setActiveTxs] = useState<BridgeTx[]>([]);
+  const [connStatus, setConnStatus] = useState<"live" | "degraded" | "offline">("live");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const [metrics, setMetrics] = useState({
     totalVolume: "0 WSOV",
@@ -53,62 +56,76 @@ export default function Home() {
     rewardsRunway: "—",
   });
 
+  const fetchRealMetrics = async () => {
+    let volumeVal = "0 WSOV";
+    let uptimeVal = "0.00%";
+    let validatorVal = "0 / 0";
+    let failedCount = 0;
+
+    // 1. Get total volume from bridge volume API
+    try {
+      const bridgeCall = await queryClient.getBridgeVolume({
+        tokenAddress: "uwsov",
+        chainId: "sovereign-1",
+        timeframe: "all",
+      });
+      const volumeStr = bridgeCall.response.totalMinted || "0";
+      const parsedVolume = parseFloat(volumeStr);
+      volumeVal = `${parsedVolume.toLocaleString()} WSOV`;
+    } catch (e) {
+      volumeVal = "Unavailable (API Error)";
+      failedCount++;
+    }
+
+    // 2. Get validator uptime (average of primary validators)
+    try {
+      const res = await queryClient.getValidatorUptime({ validatorAddress: "FC77EDB49C1CA633E23F6D59E0C51DC86ED1C61C" });
+      if (res.response && res.response.uptimePercentage > 0) {
+        uptimeVal = `${res.response.uptimePercentage.toFixed(2)}%`;
+      }
+    } catch (e) {
+      uptimeVal = "Unavailable (API Error)";
+      failedCount++;
+    }
+
+    // 3. Get active validator count by fetching cosmos staking endpoint
+    try {
+      const res = await fetch("http://localhost:8080/api/rest/cosmos/staking/v1beta1/validators");
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.validators && data.validators.length > 0) {
+          const total = data.validators.length;
+          const active = data.validators.filter((v: any) => v.status === "BOND_STATUS_BONDED").length;
+          validatorVal = `${active} / ${total}`;
+        }
+      } else {
+        validatorVal = "Unavailable (API Error)";
+        failedCount++;
+      }
+    } catch (e) {
+      validatorVal = "Unavailable (API Error)";
+      failedCount++;
+    }
+
+    setMetrics({
+      totalVolume: volumeVal,
+      uptime: uptimeVal,
+      validatorCount: validatorVal,
+      rewardsRunway: "—",
+    });
+
+    if (failedCount === 3) {
+      setConnStatus("offline");
+    } else if (failedCount > 0) {
+      setConnStatus("degraded");
+    } else {
+      setConnStatus("live");
+    }
+    setLastUpdated(new Date());
+  };
+
   // Poll real bridge metrics (total volume, uptime, validator count) from backend APIs
   useEffect(() => {
-    const fetchRealMetrics = async () => {
-      let volumeNum = 0;
-      let avgUptime = "0.00%";
-      let activeValidators = 0;
-      let totalValidators = 0;
-
-      // 1. Get total volume from bridge volume API
-      try {
-        const bridgeCall = await queryClient.getBridgeVolume({
-          tokenAddress: "uwsov",
-          chainId: "sovereign-testnet-1",
-          timeframe: "all",
-        });
-        const volumeStr = bridgeCall.response.totalMinted || "0";
-        const parsedVolume = parseFloat(volumeStr);
-        if (parsedVolume > 0) {
-          volumeNum = parsedVolume;
-        }
-      } catch (e) {
-        // Fallback to default/mock
-      }
-
-      // 2. Get validator uptime (average of primary validators)
-      try {
-        const res = await queryClient.getValidatorUptime({ validatorAddress: "FC77EDB49C1CA633E23F6D59E0C51DC86ED1C61C" });
-        if (res.response && res.response.uptimePercentage > 0) {
-          avgUptime = `${res.response.uptimePercentage.toFixed(2)}%`;
-        }
-      } catch (e) {
-        // Fallback to default/mock
-      }
-
-      // 3. Get active validator count by fetching cosmos staking endpoint
-      try {
-        const res = await fetch("http://localhost:8080/api/rest/cosmos/staking/v1beta1/validators");
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.validators && data.validators.length > 0) {
-            totalValidators = data.validators.length;
-            activeValidators = data.validators.filter((v: any) => v.status === "BOND_STATUS_BONDED").length;
-          }
-        }
-      } catch (e) {
-        // Fallback to default/mock
-      }
-
-      setMetrics({
-        totalVolume: `${volumeNum.toLocaleString()} WSOV`,
-        uptime: avgUptime,
-        validatorCount: `${activeValidators} / ${totalValidators}`,
-        rewardsRunway: "—",
-      });
-    };
-
     fetchRealMetrics();
     const interval = setInterval(fetchRealMetrics, 10000);
     return () => clearInterval(interval);
@@ -215,7 +232,8 @@ export default function Home() {
       setAmount("");
 
       // Update total volume metric
-      const currentVol = parseFloat(metrics.totalVolume.replace(/,/g, ""));
+      const parsedVol = parseFloat(metrics.totalVolume.replace(/,/g, ""));
+      const currentVol = isNaN(parsedVol) ? 0 : parsedVol;
       const updatedVol = (currentVol + value).toLocaleString() + " WSOV";
       setMetrics(prev => ({ ...prev, totalVolume: updatedVol }));
     } catch (err: any) {
@@ -236,6 +254,12 @@ export default function Home() {
       <p style={{ color: "var(--text-secondary)", marginBottom: "2rem", fontSize: "1.05rem" }}>
         Initiate cross-chain deposits from Binance Smart Chain and track real-time confirmations on the Sovereign L1.
       </p>
+
+      <DataStatusIndicator
+        status={connStatus}
+        lastUpdated={lastUpdated}
+        onRefresh={fetchRealMetrics}
+      />
 
       {/* Wallet connection panel */}
       <WalletConnect 
@@ -295,9 +319,9 @@ export default function Home() {
               type="submit" 
               className="btn btn-primary" 
               style={{ width: "100%" }}
-              disabled={!l1Address}
+              disabled={!l1Address || connStatus === "offline"}
             >
-              Bridge Tokens Inbound
+              {connStatus === "offline" ? "Bridge Offline (API Connection Failed)" : "Bridge Tokens Inbound"}
             </button>
           </form>
         </div>

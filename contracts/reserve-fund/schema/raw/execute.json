@@ -5,26 +5,6 @@
     {
       "type": "object",
       "required": [
-        "setup_governance_address"
-      ],
-      "properties": {
-        "setup_governance_address": {
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "disburse_milestone"
       ],
       "properties": {

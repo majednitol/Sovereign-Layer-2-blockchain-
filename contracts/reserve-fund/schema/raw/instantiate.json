@@ -4,10 +4,14 @@
   "type": "object",
   "required": [
     "cold_multisig_address",
+    "governance_address",
     "min_balance_threshold"
   ],
   "properties": {
     "cold_multisig_address": {
+      "type": "string"
+    },
+    "governance_address": {
       "type": "string"
     },
     "min_balance_threshold": {

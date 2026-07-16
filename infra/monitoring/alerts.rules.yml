@@ -1,5 +1,5 @@
 groups:
-  - name: sovereign-testnet-alerts
+  - name: sovereign-mainnet-alerts
     rules:
       - alert: ChainHalted
         expr: delta(tendermint_consensus_latest_block_height[15s]) == 0
@@ -129,4 +129,34 @@ groups:
         annotations:
           summary: "Oracle Price Feeds Stale Invariant Breach"
           description: "No oracle reveal commits received for more than 5 minutes."
+
+      - alert: LaunchBlockProductionStalled
+        expr: rate(tendermint_consensus_height[2m]) == 0
+        for: 30s
+        labels:
+          severity: critical
+          pagerduty: "true"
+        annotations:
+          summary: "Launch Critical: Block production is stalled"
+          description: "The chain height has not increased for over 30 seconds during launch window."
+
+      - alert: LaunchValidatorMissing
+        expr: tendermint_consensus_validators < 30
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Launch Warning: Validator set cardinality low"
+          description: "Validator set is below the 30 active slots threshold."
+
+      - alert: LaunchBridgeInvariantDrift
+        expr: delta(sovereign_bridge_cosmos_minted[5m]) > 0 and rate(sovereign_bridge_processed_events_total[5m]) == 0
+        for: 1m
+        labels:
+          severity: critical
+          pagerduty: "true"
+        annotations:
+          summary: "Launch Critical: Bridge invariant drift detected"
+          description: "Cosmos minted balance changed without processed lock box event records."
+
 

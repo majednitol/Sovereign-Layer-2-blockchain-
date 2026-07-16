@@ -341,7 +341,7 @@ func TestPhase6_HorcruxConfigs(t *testing.T) {
 
 		// Assert chain-id
 		chainIDKey := "chain-id"
-		if cid, ok := config[chainIDKey]; !ok || cid != "sovereign-testnet-1" {
+		if cid, ok := config[chainIDKey]; !ok || cid != "sovereign-1" {
 			t.Errorf("FAIL: %s: invalid chain-id target '%s'", file, cid)
 		}
 	}

@@ -16,6 +16,9 @@ type KeyManager interface {
 	GetPublicKey() []byte
 }
 
+// MockHSMKeyManager is for LOCAL DEVELOPMENT AND TESTING ONLY.
+// It generates a random ephemeral Ed25519 keypair in memory.
+// On mainnet, NewHSMKeyManager will refuse to return this.
 type MockHSMKeyManager struct {
 	privKey ed25519.PrivateKey
 	pubKey  ed25519.PublicKey
@@ -46,42 +49,73 @@ type HSMKeyManager struct {
 	pubKey []byte
 }
 
+// NewHSMKeyManager initializes key management for the oracle daemon.
+//
+// PRODUCTION MODE (ALLOW_MOCK_HSM unset or "false"):
+//   - Requires HSM_CONFIG to be set to a valid PKCS#11 config
+//   - Returns an error (never falls back to mock) on any HSM failure
+//
+// DEVELOPMENT MODE (ALLOW_MOCK_HSM="true"):
+//   - Falls back to MockHSMKeyManager if HSM is unavailable
+//   - Prints warnings on each fallback
 func NewHSMKeyManager(configPath string, keyID []byte) (KeyManager, error) {
+	allowMock := os.Getenv("ALLOW_MOCK_HSM") == "true"
+
 	if configPath == "" {
-		fmt.Println("[HSM] Config path is empty, falling back to Mock HSM Key Manager")
-		return NewMockHSMKeyManager()
+		if allowMock {
+			fmt.Println("[HSM] WARNING: Config path is empty, using Mock HSM Key Manager (ALLOW_MOCK_HSM=true)")
+			return NewMockHSMKeyManager()
+		}
+		return nil, fmt.Errorf("HSM_CONFIG is not set. " +
+			"Set HSM_CONFIG to a valid PKCS#11 configuration file path. " +
+			"For development only, set ALLOW_MOCK_HSM=true to use an ephemeral key")
 	}
 
 	bz, err := os.ReadFile(configPath)
 	if err != nil {
-		fmt.Printf("[HSM] Failed to read config file from %s: %v. Falling back to Mock HSM Key Manager.\n", configPath, err)
-		return NewMockHSMKeyManager()
+		if allowMock {
+			fmt.Printf("[HSM] WARNING: Failed to read config file from %s: %v. Using Mock HSM (ALLOW_MOCK_HSM=true).\n", configPath, err)
+			return NewMockHSMKeyManager()
+		}
+		return nil, fmt.Errorf("failed to read HSM config file from %s: %w", configPath, err)
 	}
 
 	var config crypto11.Config
 	err = json.Unmarshal(bz, &config)
 	if err != nil {
-		fmt.Printf("[HSM] Failed to parse config JSON: %v. Falling back to Mock HSM Key Manager.\n", err)
-		return NewMockHSMKeyManager()
+		if allowMock {
+			fmt.Printf("[HSM] WARNING: Failed to parse config JSON: %v. Using Mock HSM (ALLOW_MOCK_HSM=true).\n", err)
+			return NewMockHSMKeyManager()
+		}
+		return nil, fmt.Errorf("failed to parse HSM config JSON: %w", err)
 	}
 
 	ctx, err := crypto11.Configure(&config)
 	if err != nil {
-		fmt.Printf("[HSM] Failed to configure PKCS#11: %v. Falling back to Mock HSM Key Manager.\n", err)
-		return NewMockHSMKeyManager()
+		if allowMock {
+			fmt.Printf("[HSM] WARNING: Failed to configure PKCS#11: %v. Using Mock HSM (ALLOW_MOCK_HSM=true).\n", err)
+			return NewMockHSMKeyManager()
+		}
+		return nil, fmt.Errorf("failed to configure PKCS#11: %w. "+
+			"Ensure the PKCS#11 library is installed and the HSM device is connected", err)
 	}
 
 	signer, err := ctx.FindKeyPair(keyID, nil)
 	if err != nil || signer == nil {
-		fmt.Printf("[HSM] Key pair not found or error: %v. Falling back to Mock HSM Key Manager.\n", err)
-		return NewMockHSMKeyManager()
+		if allowMock {
+			fmt.Printf("[HSM] WARNING: Key pair not found: %v. Using Mock HSM (ALLOW_MOCK_HSM=true).\n", err)
+			return NewMockHSMKeyManager()
+		}
+		return nil, fmt.Errorf("HSM key pair not found for keyID %x: %w. "+
+			"Ensure the oracle key is provisioned on the HSM device", keyID, err)
 	}
 
 	pubBytes, ok := signer.Public().(ed25519.PublicKey)
 	if !ok {
-		return nil, fmt.Errorf("HSM key is not an Ed25519 key")
+		return nil, fmt.Errorf("HSM key is not an Ed25519 key — oracle requires Ed25519 for Cosmos SDK compatibility")
 	}
 
+	fmt.Println("[HSM] Successfully initialized PKCS#11 hardware key manager")
 	return &HSMKeyManager{
 		ctx:    ctx,
 		signer: signer,

@@ -100,6 +100,21 @@ func (k Keeper) HasAnyOperator(ctx sdk.Context) bool {
 	return iterator.Valid()
 }
 
+// GetAllActiveOperators returns all registered active operator addresses.
+func (k Keeper) GetAllActiveOperators(ctx sdk.Context) []string {
+	store := ctx.KVStore(k.storeKey)
+	iterator := storetypes.KVStorePrefixIterator(store, OperatorKeyPrefix)
+	defer iterator.Close()
+
+	var operators []string
+	for ; iterator.Valid(); iterator.Next() {
+		// Key format: OperatorKeyPrefix (1 byte) + operator address
+		operator := string(iterator.Key()[len(OperatorKeyPrefix):])
+		operators = append(operators, operator)
+	}
+	return operators
+}
+
 // GetCommitHeight retrieves the block height of an operator's commit.
 func (k Keeper) GetCommitHeight(ctx sdk.Context, operator string, feedID string, roundID uint64) int64 {
 	store := ctx.KVStore(k.storeKey)
@@ -121,9 +136,27 @@ func (k Keeper) CommitHash(ctx sdk.Context, operator string, feedID string, roun
 	store.Set(commitKey, hash)
 
 	commitHeightKey := append(CommitHeightKeyPrefix, []byte(fmt.Sprintf("%s:%s:%d", operator, feedID, roundID))...)
+	
+	// Handle old expiry index deletion if this is a commit update
+	oldHeightBz := store.Get(commitHeightKey)
+	params := k.GetParams(ctx)
+	if oldHeightBz != nil {
+		oldHeight := int64(binary.BigEndian.Uint64(oldHeightBz))
+		oldExpiry := oldHeight + params.CommitWindow + params.RevealWindow
+		oldExpiryKey := append(ExpiryKeyPrefix, Uint64ToBytes(uint64(oldExpiry))...)
+		oldExpiryKey = append(oldExpiryKey, []byte(fmt.Sprintf(":%s:%s:%d", operator, feedID, roundID))...)
+		store.Delete(oldExpiryKey)
+	}
+
 	heightBz := make([]byte, 8)
 	binary.BigEndian.PutUint64(heightBz, uint64(ctx.BlockHeight()))
 	store.Set(commitHeightKey, heightBz)
+
+	// Write new expiry index
+	expiryHeight := ctx.BlockHeight() + params.CommitWindow + params.RevealWindow
+	expiryKey := append(ExpiryKeyPrefix, Uint64ToBytes(uint64(expiryHeight))...)
+	expiryKey = append(expiryKey, []byte(fmt.Sprintf(":%s:%s:%d", operator, feedID, roundID))...)
+	store.Set(expiryKey, []byte{1})
 
 	return nil
 }
@@ -132,6 +165,35 @@ func (k Keeper) GetCommit(ctx sdk.Context, operator string, feedID string, round
 	store := ctx.KVStore(k.storeKey)
 	commitKey := append(CommitKeyPrefix, []byte(fmt.Sprintf("%s:%s:%d", operator, feedID, roundID))...)
 	return store.Get(commitKey)
+}
+
+func Uint64ToBytes(v uint64) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, v)
+	return b
+}
+
+func GetRevealKey(feedID string, roundID uint64, operator string) []byte {
+	bz := make([]byte, 8)
+	binary.BigEndian.PutUint64(bz, roundID)
+
+	key := append(RevealKeyPrefix, []byte(feedID)...)
+	key = append(key, ':')
+	key = append(key, bz...)
+	key = append(key, ':')
+	key = append(key, []byte(operator)...)
+	return key
+}
+
+func GetRevealPrefix(feedID string, roundID uint64) []byte {
+	bz := make([]byte, 8)
+	binary.BigEndian.PutUint64(bz, roundID)
+
+	key := append(RevealKeyPrefix, []byte(feedID)...)
+	key = append(key, ':')
+	key = append(key, bz...)
+	key = append(key, ':')
+	return key
 }
 
 func (k Keeper) RevealReport(ctx sdk.Context, operator string, feedID string, roundID uint64, value uint64, nonce string) error {
@@ -150,7 +212,7 @@ func (k Keeper) RevealReport(ctx sdk.Context, operator string, feedID string, ro
 	}
 
 	store := ctx.KVStore(k.storeKey)
-	revealKey := append(RevealKeyPrefix, []byte(fmt.Sprintf("%s:%s:%d", operator, feedID, roundID))...)
+	revealKey := GetRevealKey(feedID, roundID, operator)
 	bz := make([]byte, 8)
 	binary.BigEndian.PutUint64(bz, value)
 	store.Set(revealKey, bz)
@@ -160,7 +222,7 @@ func (k Keeper) RevealReport(ctx sdk.Context, operator string, feedID string, ro
 
 func (k Keeper) GetReveal(ctx sdk.Context, operator string, feedID string, roundID uint64) (uint64, bool) {
 	store := ctx.KVStore(k.storeKey)
-	revealKey := append(RevealKeyPrefix, []byte(fmt.Sprintf("%s:%s:%d", operator, feedID, roundID))...)
+	revealKey := GetRevealKey(feedID, roundID, operator)
 	bz := store.Get(revealKey)
 	if bz == nil {
 		return 0, false
@@ -173,20 +235,13 @@ func (k Keeper) GetRevealedValues(ctx sdk.Context, feedID string, roundID uint64
 	store := ctx.KVStore(k.storeKey)
 	var values []uint64
 
-	iterator := storetypes.KVStorePrefixIterator(store, RevealKeyPrefix)
+	prefix := GetRevealPrefix(feedID, roundID)
+	iterator := storetypes.KVStorePrefixIterator(store, prefix)
 	defer iterator.Close()
 
 	for ; iterator.Valid(); iterator.Next() {
-		// Key format: Prefix + operator + ":" + feedID + ":" + roundID
-		keyStr := string(iterator.Key()[len(RevealKeyPrefix):])
-		parts := strings.Split(keyStr, ":")
-		if len(parts) == 3 {
-			rID, err := strconv.ParseUint(parts[2], 10, 64)
-			if err == nil && parts[1] == feedID && rID == roundID {
-				val := binary.BigEndian.Uint64(iterator.Value())
-				values = append(values, val)
-			}
-		}
+		val := binary.BigEndian.Uint64(iterator.Value())
+		values = append(values, val)
 	}
 
 	return values
@@ -302,18 +357,26 @@ func (k Keeper) IsFeedStale(ctx sdk.Context, feedID string) bool {
 // EndBlocker processes committed but unrevealed reports, and slashes/jails operators.
 func (k Keeper) EndBlocker(ctx sdk.Context) {
 	store := ctx.KVStore(k.storeKey)
-	params := k.GetParams(ctx)
 
-	// We iterate over all commits in the store
-	iterator := storetypes.KVStorePrefixIterator(store, CommitKeyPrefix)
+	// Range query from ExpiryKeyPrefix + Uint64ToBytes(0) to ExpiryKeyPrefix + Uint64ToBytes(currentBlockHeight + 1)
+	start := append(ExpiryKeyPrefix, Uint64ToBytes(0)...)
+	end := append(ExpiryKeyPrefix, Uint64ToBytes(uint64(ctx.BlockHeight()+1))...)
+
+	iterator := store.Iterator(start, end)
 	defer iterator.Close()
 
-	var commitsToDelete [][]byte
+	var indexKeysToDelete [][]byte
 	for ; iterator.Valid(); iterator.Next() {
-		key := iterator.Key()
-		// Key format: CommitKeyPrefix + operator + ":" + feedID + ":" + roundID
-		keyBytes := key[len(CommitKeyPrefix):]
-		parts := strings.Split(string(keyBytes), ":")
+		indexKey := iterator.Key()
+		indexKeysToDelete = append(indexKeysToDelete, indexKey)
+
+		// Parse operator, feedID, roundID from indexKey
+		// format: ExpiryKeyPrefix (1) + expiryHeight (8) + ":" + operator + ":" + feedID + ":" + roundID
+		if len(indexKey) < len(ExpiryKeyPrefix)+8+1 {
+			continue
+		}
+		dataBytes := indexKey[len(ExpiryKeyPrefix)+8+1:] // skip Prefix + height + ":"
+		parts := strings.Split(string(dataBytes), ":")
 		if len(parts) != 3 {
 			continue
 		}
@@ -324,42 +387,34 @@ func (k Keeper) EndBlocker(ctx sdk.Context) {
 			continue
 		}
 
-		commitHeight := k.GetCommitHeight(ctx, operator, feedID, roundID)
-		if commitHeight == 0 {
-			continue
-		}
-
-		// Check if the reveal window has fully expired
-		if ctx.BlockHeight() > commitHeight+params.CommitWindow+params.RevealWindow {
-			// Check if reveal exists
-			_, revealed := k.GetReveal(ctx, operator, feedID, roundID)
-			if !revealed {
-				// Slash and jail the operator
-				valAddr, err := sdk.ValAddressFromBech32(operator)
-				if err == nil && k.stakingKeeper != nil && k.slashingKeeper != nil {
-					val, err := k.stakingKeeper.GetValidator(ctx, valAddr)
+		// Check if reveal exists
+		_, revealed := k.GetReveal(ctx, operator, feedID, roundID)
+		if !revealed {
+			// Slash and jail the operator
+			valAddr, err := sdk.ValAddressFromBech32(operator)
+			if err == nil && k.stakingKeeper != nil && k.slashingKeeper != nil {
+				val, err := k.stakingKeeper.GetValidator(ctx, valAddr)
+				if err == nil {
+					consAddr, err := val.GetConsAddr()
 					if err == nil {
-						consAddr, err := val.GetConsAddr()
-						if err == nil {
-							fraction := math.LegacyNewDecWithPrec(1, 2) // 1% slashing penalty
-							_ = k.slashingKeeper.Slash(ctx, consAddr, fraction, val.GetConsensusPower(sdk.DefaultPowerReduction), ctx.BlockHeight())
-							_ = k.slashingKeeper.Jail(ctx, consAddr)
-						}
+						fraction := math.LegacyNewDecWithPrec(1, 2) // 1% slashing penalty
+						_ = k.slashingKeeper.Slash(ctx, consAddr, fraction, val.GetConsensusPower(sdk.DefaultPowerReduction), ctx.BlockHeight())
+						_ = k.slashingKeeper.Jail(ctx, consAddr)
 					}
 				}
 			}
-			// Mark this commit for deletion so we don't process it repeatedly
-			commitsToDelete = append(commitsToDelete, key)
 		}
+
+		// Delete the commit and commit height keys
+		commitKey := append(CommitKeyPrefix, []byte(fmt.Sprintf("%s:%s:%d", operator, feedID, roundID))...)
+		store.Delete(commitKey)
+		commitHeightKey := append(CommitHeightKeyPrefix, []byte(fmt.Sprintf("%s:%s:%d", operator, feedID, roundID))...)
+		store.Delete(commitHeightKey)
 	}
 
-	// Delete expired commits and their corresponding commit heights
-	for _, key := range commitsToDelete {
+	// Delete the expired index keys
+	for _, key := range indexKeysToDelete {
 		store.Delete(key)
-		// Corresponding height key
-		keyBytes := key[len(CommitKeyPrefix):]
-		heightKey := append(CommitHeightKeyPrefix, keyBytes...)
-		store.Delete(heightKey)
 	}
 }
 

@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
-	"math/rand"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -12,6 +15,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/sovereign-l1/chain/x/oracle"
 )
 
@@ -81,11 +85,10 @@ func retryWithBackoff(ctx context.Context, feedID, stage string, operation func(
 	}
 }
 
-func runFeedWorker(ctx context.Context, feedID string, sources []PriceSource, client *ChainClient, hsm KeyManager, maxRounds int, wg *sync.WaitGroup) {
+func runFeedWorker(ctx context.Context, operator string, feedID string, sources []PriceSource, client *ChainClient, hsm KeyManager, maxRounds int, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	fetcher := NewFetcher(sources)
-	operator := "cosmosvaloper1x..."
 	roundID := uint64(1)
 
 	for {
@@ -113,7 +116,14 @@ func runFeedWorker(ctx context.Context, feedID string, sources []PriceSource, cl
 		}
 
 		priceValue.WithLabelValues(feedID).Set(float64(value))
-		nonce := fmt.Sprintf("nonce_%d_%d", roundID, rand.Intn(100000))
+
+		// M2 FIX: Use crypto/rand for nonce generation (256-bit entropy)
+		nonceBytes := make([]byte, 32)
+		if _, err := rand.Read(nonceBytes); err != nil {
+			fmt.Printf("[Oracle] [%s] FATAL: crypto/rand failed: %v\n", feedID, err)
+			return
+		}
+		nonce := hex.EncodeToString(nonceBytes)
 		hash := oracle.ComputeCommitHash(operator, feedID, roundID, value, nonce)
 
 		// 2. Commit Stage
@@ -162,23 +172,86 @@ func main() {
 		}
 	}()
 
-	feeds := map[string][]PriceSource{
-		"BTC_USD": {
-			{Name: "primary-btc", URL: "http://localhost:8080/price/btc"},
-			{Name: "fallback-btc", URL: "http://localhost:8081/price/btc"},
-		},
-		"ETH_USD": {
-			{Name: "primary-eth", URL: "http://localhost:8082/price/eth"},
-			{Name: "fallback-eth", URL: "http://localhost:8083/price/eth"},
-		},
+	// 1. Load config file
+	configPath := os.Getenv("ORACLE_CONFIG")
+	if configPath == "" {
+		configPath = "config.json"
+	}
+	configFile, err := os.ReadFile(configPath)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to read config file at %s: %v", configPath, err))
 	}
 
+	var cfgData struct {
+		Feeds map[string][]PriceSource `json:"feeds"`
+	}
+	if err := json.Unmarshal(configFile, &cfgData); err != nil {
+		panic(fmt.Sprintf("Failed to parse config file: %v", err))
+	}
+
+	// 2. Initialize HSM and Client
 	hsm, err := NewHSMKeyManager(os.Getenv("HSM_CONFIG"), []byte("oracle_key"))
 	if err != nil {
 		panic(fmt.Sprintf("Failed to initialize HSM key manager: %v", err))
 	}
 
-	client := NewChainClient("localhost:9090", hsm)
+	grpcEndpoint := os.Getenv("GRPC_ENDPOINT")
+	if grpcEndpoint == "" {
+		grpcEndpoint = "localhost:9090"
+	}
+
+	chainID := os.Getenv("CHAIN_ID")
+	if chainID == "" {
+		chainID = "sovereign-1"
+	}
+
+	client := NewChainClient(grpcEndpoint, hsm, chainID)
+
+	// 3. Resolve operator address dynamically — FATAL on failure.
+	// Running with a placeholder address on mainnet would silently
+	// submit oracle reports that validators will reject, wasting gas
+	// and masking a critical configuration error.
+	operator, err := client.GetOperatorAddress()
+	if err != nil {
+		log.Fatalf("[Oracle] FATAL: Failed to derive operator address from HSM: %v. "+
+			"Cannot run oracle daemon without a valid operator identity. "+
+			"Ensure HSM_CONFIG is set and the oracle key is provisioned.", err)
+	}
+	fmt.Printf("[Oracle] Derived operator address dynamically: %s\n", operator)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Initialize account sequence from chain before starting workers
+	accAddr := sdk.AccAddress(sdk.ValAddress(operator).Bytes()).String()
+	if err := client.initSequence(ctx, accAddr); err != nil {
+		log.Printf("[Oracle] WARNING: Failed to initialize account sequence: %v. Will retry on first tx.\n", err)
+	}
+
+	// 4. Query active feeds from the chain (with fallback to config feeds)
+	var activeFeeds []string
+	chainFeeds, err := client.GetActiveFeeds(ctx)
+	if err != nil || len(chainFeeds) == 0 {
+		fmt.Printf("[Oracle] [WARNING] Failed to query active feeds from chain: %v. Falling back to all feeds configured in config.json.\n", err)
+		for feedID := range cfgData.Feeds {
+			activeFeeds = append(activeFeeds, feedID)
+		}
+	} else {
+		fmt.Printf("[Oracle] Successfully queried active feeds from chain: %v\n", chainFeeds)
+		// Filter/only run feeds configured in config.json that are active on-chain
+		for _, f := range chainFeeds {
+			if _, exists := cfgData.Feeds[f]; exists {
+				activeFeeds = append(activeFeeds, f)
+			}
+		}
+		// If intersection is empty, fallback to config feeds
+		if len(activeFeeds) == 0 {
+			fmt.Printf("[Oracle] No active feeds intersected with config.json, running all feeds in config.json.\n")
+			for feedID := range cfgData.Feeds {
+				activeFeeds = append(activeFeeds, feedID)
+			}
+		}
+	}
 
 	maxRounds := 0
 	if maxRoundsStr := os.Getenv("MAX_ROUNDS"); maxRoundsStr != "" {
@@ -188,13 +261,11 @@ func main() {
 		}
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	var wg sync.WaitGroup
-	for feedID, sources := range feeds {
+	for _, feedID := range activeFeeds {
+		sources := cfgData.Feeds[feedID]
 		wg.Add(1)
-		go runFeedWorker(ctx, feedID, sources, client, hsm, maxRounds, &wg)
+		go runFeedWorker(ctx, operator, feedID, sources, client, hsm, maxRounds, &wg)
 	}
 
 	wg.Wait()

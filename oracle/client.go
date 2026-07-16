@@ -3,11 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	sdkclient "github.com/cosmos/cosmos-sdk/client/grpc/cmtservice"
+	cryptoed25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
+	signing "github.com/cosmos/cosmos-sdk/types/tx/signing"
+	gogoproto "github.com/cosmos/gogoproto/proto"
 	oracle "github.com/sovereign-l1/chain/x/oracle"
 	"google.golang.org/grpc"
 )
@@ -15,12 +21,19 @@ import (
 type ChainClient struct {
 	endpoint   string
 	keyManager KeyManager
+	chainID    string
+
+	mu       sync.Mutex
+	sequence uint64
+	accNum   uint64
+	seqInit  bool
 }
 
-func NewChainClient(endpoint string, km KeyManager) *ChainClient {
+func NewChainClient(endpoint string, km KeyManager, chainID string) *ChainClient {
 	return &ChainClient{
 		endpoint:   endpoint,
 		keyManager: km,
+		chainID:    chainID,
 	}
 }
 
@@ -51,6 +64,48 @@ func (c *ChainClient) BroadcastReveal(ctx context.Context, operator string, feed
 	return c.sendTx(ctx, msg)
 }
 
+// initSequence fetches the current account number and sequence from the chain.
+func (c *ChainClient) initSequence(ctx context.Context, address string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.seqInit {
+		return nil
+	}
+
+	conn, err := grpc.DialContext(ctx, c.endpoint, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("failed to dial gRPC for account query: %w", err)
+	}
+	defer conn.Close()
+
+	authClient := authtypes.NewQueryClient(conn)
+	resp, err := authClient.Account(ctx, &authtypes.QueryAccountRequest{Address: address})
+	if err != nil {
+		return fmt.Errorf("failed to query account %s: %w", address, err)
+	}
+
+	var baseAccount authtypes.BaseAccount
+	if err := baseAccount.Unmarshal(resp.Account.Value); err != nil {
+		return fmt.Errorf("failed to unmarshal account: %w", err)
+	}
+
+	c.accNum = baseAccount.AccountNumber
+	c.sequence = baseAccount.Sequence
+	c.seqInit = true
+	fmt.Printf("[L1 Client] Initialized account: number=%d, sequence=%d\n", c.accNum, c.sequence)
+	return nil
+}
+
+// getAndIncrementSequence returns the current sequence and increments it atomically.
+func (c *ChainClient) getAndIncrementSequence() uint64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	seq := c.sequence
+	c.sequence++
+	return seq
+}
+
 func (c *ChainClient) sendTx(ctx context.Context, msg sdk.Msg) error {
 	conn, err := grpc.DialContext(ctx, c.endpoint, grpc.WithInsecure())
 	if err != nil {
@@ -75,14 +130,61 @@ func (c *ChainClient) sendTx(ctx context.Context, msg sdk.Msg) error {
 		return fmt.Errorf("failed to marshal tx body: %w", err)
 	}
 
-	sig, err := c.keyManager.Sign(bodyBytes)
+	// Build proper AuthInfo with signer info and fee
+	pubKeyBytes := c.keyManager.GetPublicKey()
+	cosmosPubKey := &cryptoed25519.PubKey{Key: pubKeyBytes}
+	anyPubKey, err := codectypes.NewAnyWithValue(cosmosPubKey)
+	if err != nil {
+		return fmt.Errorf("failed to pack public key: %w", err)
+	}
+
+	seq := c.getAndIncrementSequence()
+
+	authInfo := &txtypes.AuthInfo{
+		SignerInfos: []*txtypes.SignerInfo{
+			{
+				PublicKey: anyPubKey,
+				ModeInfo: &txtypes.ModeInfo{
+					Sum: &txtypes.ModeInfo_Single_{
+						Single: &txtypes.ModeInfo_Single{
+							Mode: signing.SignMode_SIGN_MODE_DIRECT,
+						},
+					},
+				},
+				Sequence: seq,
+			},
+		},
+		Fee: &txtypes.Fee{
+			Amount:   sdk.NewCoins(sdk.NewInt64Coin("ucsov", 5000)),
+			GasLimit: 200000,
+		},
+	}
+
+	authInfoBytes, err := protoCodec.Marshal(authInfo)
+	if err != nil {
+		return fmt.Errorf("failed to marshal auth info: %w", err)
+	}
+
+	// Construct the correct SignDoc per Cosmos SDK spec
+	signDoc := &txtypes.SignDoc{
+		BodyBytes:     bodyBytes,
+		AuthInfoBytes: authInfoBytes,
+		ChainId:       c.chainID,
+		AccountNumber: c.accNum,
+	}
+	signDocBytes, err := protoCodec.Marshal(signDoc)
+	if err != nil {
+		return fmt.Errorf("failed to marshal sign doc: %w", err)
+	}
+
+	sig, err := c.keyManager.Sign(signDocBytes)
 	if err != nil {
 		return fmt.Errorf("failed to sign tx: %w", err)
 	}
 
 	tx := &txtypes.Tx{
 		Body:       txBody,
-		AuthInfo:   &txtypes.AuthInfo{},
+		AuthInfo:   authInfo,
 		Signatures: [][]byte{sig},
 	}
 
@@ -96,18 +198,92 @@ func (c *ChainClient) sendTx(ctx context.Context, msg sdk.Msg) error {
 		Mode:    txtypes.BroadcastMode_BROADCAST_MODE_SYNC,
 	}
 
+	// C1 FIX: Return gRPC errors instead of swallowing them
 	resp, err := txClient.BroadcastTx(ctx, req)
 	if err != nil {
-		fmt.Printf("[L1 Client] gRPC Broadcast failed (node offline fallback): %v\n", err)
-		return nil
+		return fmt.Errorf("gRPC broadcast failed: %w", err)
 	}
 
 	if resp.TxResponse != nil && resp.TxResponse.Code != 0 {
+		// Sequence mismatch — reset and retry on next call
+		if resp.TxResponse.Code == 32 { // sdkerrors.ErrWrongSequence
+			c.mu.Lock()
+			c.seqInit = false
+			c.mu.Unlock()
+		}
 		return fmt.Errorf("tx failed with code %d: %s", resp.TxResponse.Code, resp.TxResponse.RawLog)
 	}
 
 	if resp.TxResponse != nil {
-		fmt.Printf("[L1 Client] Tx broadcasted successfully: %s\n", resp.TxResponse.TxHash)
+		fmt.Printf("[L1 Client] Tx broadcasted successfully: %s (seq=%d)\n", resp.TxResponse.TxHash, seq)
 	}
 	return nil
 }
+
+// GetOperatorAddress dynamically derives the validator operator address from the HSM key.
+func (c *ChainClient) GetOperatorAddress() (string, error) {
+	pubKeyBytes := c.keyManager.GetPublicKey()
+	if len(pubKeyBytes) != 32 {
+		return "", fmt.Errorf("invalid public key length: got %d, expected 32", len(pubKeyBytes))
+	}
+	cosmosPubKey := &cryptoed25519.PubKey{Key: pubKeyBytes}
+	addr := sdk.ValAddress(cosmosPubKey.Address().Bytes())
+	return addr.String(), nil
+}
+
+// GetActiveFeeds queries the chain for active feeds registered in x/milestone store.
+func (c *ChainClient) GetActiveFeeds(ctx context.Context) ([]string, error) {
+	conn, err := grpc.DialContext(ctx, c.endpoint, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial gRPC: %w", err)
+	}
+	defer conn.Close()
+
+	client := sdkclient.NewServiceClient(conn)
+	req := &sdkclient.ABCIQueryRequest{
+		Path: "/store/milestone/subspace",
+		Data: []byte{0x03}, // ActiveFeedsKeyPrefix
+	}
+
+	resp, err := client.ABCIQuery(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("ABCI query failed: %w", err)
+	}
+
+	if resp.Code != 0 {
+		return nil, fmt.Errorf("ABCI query returned error code %d: %s", resp.Code, resp.Log)
+	}
+
+	var pairs KVPairs
+	if err := gogoproto.Unmarshal(resp.Value, &pairs); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal KVPairs: %w", err)
+	}
+
+	var feeds []string
+	for _, pair := range pairs.Pairs {
+		// Key format is prefix (0x03) + feedID
+		if len(pair.Key) > 1 && pair.Key[0] == 0x03 {
+			feedID := string(pair.Key[1:])
+			feeds = append(feeds, feedID)
+		}
+	}
+
+	return feeds, nil
+}
+
+type KVPair struct {
+	Key   []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (m *KVPair) Reset()         { *m = KVPair{} }
+func (m *KVPair) String() string { return gogoproto.CompactTextString(m) }
+func (*KVPair) ProtoMessage()    {}
+
+type KVPairs struct {
+	Pairs []KVPair `protobuf:"bytes,1,rep,name=pairs,proto3" json:"pairs"`
+}
+
+func (m *KVPairs) Reset()         { *m = KVPairs{} }
+func (m *KVPairs) String() string { return gogoproto.CompactTextString(m) }
+func (*KVPairs) ProtoMessage()    {}

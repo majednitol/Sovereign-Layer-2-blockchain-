@@ -7,10 +7,14 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
-      "cold_multisig_address"
+      "cold_multisig_address",
+      "governance_address"
     ],
     "properties": {
       "cold_multisig_address": {
+        "type": "string"
+      },
+      "governance_address": {
         "type": "string"
       }
     }
@@ -19,26 +23,6 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "ExecuteMsg",
     "oneOf": [
-      {
-        "type": "object",
-        "required": [
-          "setup_governance_address"
-        ],
-        "properties": {
-          "setup_governance_address": {
-            "type": "object",
-            "required": [
-              "address"
-            ],
-            "properties": {
-              "address": {
-                "type": "string"
-              }
-            }
-          }
-        },
-        "additionalProperties": false
-      },
       {
         "type": "object",
         "required": [
@@ -186,6 +170,7 @@
       "type": "object",
       "required": [
         "cold_multisig_address",
+        "governance_address",
         "is_paused"
       ],
       "properties": {
@@ -193,10 +178,7 @@
           "type": "string"
         },
         "governance_address": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "is_paused": {
           "type": "boolean"

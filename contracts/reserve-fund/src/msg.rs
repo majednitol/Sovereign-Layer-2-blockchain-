@@ -1,19 +1,18 @@
 use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use cosmwasm_std::{Uint128, CustomQuery};
-
 use cosmwasm_schema::QueryResponses;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub cold_multisig_address: String,
+    pub governance_address: String,
     pub min_balance_threshold: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    SetupGovernanceAddress { address: String },
     DisburseMilestone { milestone_id: String, recipient: String, amount: Uint128, denom: String },
     EmergencyPause {},
     Unpause {},
@@ -31,7 +30,7 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
-    pub governance_address: Option<String>,
+    pub governance_address: String,
     pub cold_multisig_address: String,
     pub min_balance_threshold: Uint128,
     pub is_paused: bool,

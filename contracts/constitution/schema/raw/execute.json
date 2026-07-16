@@ -5,26 +5,6 @@
     {
       "type": "object",
       "required": [
-        "setup_governance_address"
-      ],
-      "properties": {
-        "setup_governance_address": {
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "update_constitution"
       ],
       "properties": {
@@ -113,7 +93,19 @@
       ],
       "properties": {
         "check_proposal": {
-          "type": "object"
+          "type": "object",
+          "required": [
+            "proposal_type",
+            "summary"
+          ],
+          "properties": {
+            "proposal_type": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            }
+          }
         }
       },
       "additionalProperties": false

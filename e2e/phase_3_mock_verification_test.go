@@ -1,3 +1,5 @@
+// NOTE: These are mock-logic tests, NOT on-chain devnet integration tests
+
 package e2e
 
 import (
@@ -53,7 +55,7 @@ type phase3GovernanceState struct {
 // --- Verification Tests ---
 
 // 1. WASM Contract Compilation and Binary Size Verification
-func TestPhase3WasmCompilationAndStructure(t *testing.T) {
+func TestPhase3MockLogic_WasmCompilationAndStructure(t *testing.T) {
 	// Verify compiled WASM binaries are generated and non-empty
 	wasmFiles := []string{
 		"constitution.wasm",
@@ -63,7 +65,7 @@ func TestPhase3WasmCompilationAndStructure(t *testing.T) {
 	}
 
 	for _, file := range wasmFiles {
-		path := filepath.Join("..", "contracts", "target", "wasm32-unknown-unknown", "release", file)
+		path := filepath.Join("..", "artifacts", file)
 		info, err := os.Stat(path)
 		if err != nil {
 			t.Fatalf("FAIL: Required compiled CosmWasm binary %s is missing: %v", file, err)
@@ -76,7 +78,7 @@ func TestPhase3WasmCompilationAndStructure(t *testing.T) {
 }
 
 // 2. Constitution Contract: EmergencyPause Blocks ExecuteMsg Only, Never QueryMsg
-func TestPhase3ConstitutionLogic(t *testing.T) {
+func TestPhase3MockLogic_ConstitutionLogic(t *testing.T) {
 	state := phase3ConstitutionState{
 		governanceAddress:   "cosmos1gov...",
 		coldMultisigAddress: "cosmos1cold...",
@@ -130,7 +132,7 @@ func TestPhase3ConstitutionLogic(t *testing.T) {
 }
 
 // 3. Treasury Contract: Emergency pause-only (no fund access/unpause) and Governance-only unpause
-func TestPhase3TreasuryLogic(t *testing.T) {
+func TestPhase3MockLogic_TreasuryLogic(t *testing.T) {
 	state := phase3TreasuryState{
 		governanceAddress:   "cosmos1gov...",
 		coldMultisigAddress: "cosmos1cold...",
@@ -207,7 +209,7 @@ func TestPhase3TreasuryLogic(t *testing.T) {
 }
 
 // 4. Reserve Fund: Milestone gating, reentrancy guards, and minimum balance circuit-breaker
-func TestPhase3ReserveFundLogic(t *testing.T) {
+func TestPhase3MockLogic_ReserveFundLogic(t *testing.T) {
 	state := phase3ReserveFundState{
 		governanceAddress:   "cosmos1gov...",
 		coldMultisigAddress: "cosmos1cold...",
@@ -272,7 +274,7 @@ func TestPhase3ReserveFundLogic(t *testing.T) {
 }
 
 // 5. Governance: Constitution compliance, audit logging, and contract replacement procedure
-func TestPhase3GovernanceAndReplacementProcedure(t *testing.T) {
+func TestPhase3MockLogic_GovernanceAndReplacementProcedure(t *testing.T) {
 	gov := phase3GovernanceState{
 		constitutionAddress: "cosmos1constitution...",
 		treasuryAddress:     "cosmos1treasury...",

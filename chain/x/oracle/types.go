@@ -20,6 +20,7 @@ var (
 	ParamsKey             = []byte{0x04}
 	OperatorKeyPrefix     = []byte{0x05}
 	CommitHeightKeyPrefix = []byte{0x06}
+	ExpiryKeyPrefix       = []byte{0x07}
 )
 
 type Params struct {
@@ -83,4 +84,15 @@ func ComputeCommitHash(operator, feedID string, roundID uint64, value uint64, no
 	h := sha256.New()
 	h.Write([]byte(fmt.Sprintf("%s:%s:%d:%d:%s", operator, feedID, roundID, value, nonce)))
 	return h.Sum(nil)
+}
+
+// GenesisState defines the oracle module genesis state.
+type GenesisState struct {
+	Params    Params   `json:"params"`
+	Operators []string `json:"operators"`
+}
+
+// ErrInvalidParams returns a formatted error for invalid genesis params.
+func ErrInvalidParams(msg string) error {
+	return fmt.Errorf("invalid oracle genesis params: %s", msg)
 }
