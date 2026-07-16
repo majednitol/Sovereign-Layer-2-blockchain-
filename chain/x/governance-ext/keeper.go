@@ -85,13 +85,18 @@ func (k Keeper) GetParams(ctx sdk.Context) Params {
 		}
 	}
 	var params Params
-	_ = json.Unmarshal(bz, &params)
+	if err := json.Unmarshal(bz, &params); err != nil {
+		panic(fmt.Sprintf("failed to unmarshal govext params: %v", err))
+	}
 	return params
 }
 
 func (k Keeper) SetParams(ctx sdk.Context, params Params) {
 	store := ctx.KVStore(k.storeKey)
-	bz, _ := json.Marshal(params)
+	bz, err := json.Marshal(params)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal govext params: %v", err))
+	}
 	store.Set(ParamsKey, bz)
 }
 

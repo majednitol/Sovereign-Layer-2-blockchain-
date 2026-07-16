@@ -1,6 +1,8 @@
 package gov_ext
 
 import (
+	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -19,6 +21,11 @@ type Params struct {
 	MaxGasLimit int64 `json:"max_gas_limit"` // e.g. 2,000,000
 }
 
+// GenesisState defines the governance-ext module genesis state.
+type GenesisState struct {
+	Params Params `json:"params"`
+}
+
 type MsgMigrateContracts struct {
 	Authority          string `json:"authority"`
 	ContractAddress    string `json:"contract_address"`
@@ -31,12 +38,27 @@ func (msg *MsgMigrateContracts) String() string { return msg.ContractAddress }
 func (msg *MsgMigrateContracts) ProtoMessage()  {}
 
 func (msg *MsgMigrateContracts) ValidateBasic() error {
+	if msg.Authority == "" {
+		return fmt.Errorf("authority cannot be empty")
+	}
 	_, err := sdk.AccAddressFromBech32(msg.Authority)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid authority address: %w", err)
+	}
+	if msg.ContractAddress == "" {
+		return fmt.Errorf("contract address cannot be empty")
 	}
 	_, err = sdk.AccAddressFromBech32(msg.ContractAddress)
-	return err
+	if err != nil {
+		return fmt.Errorf("invalid contract address: %w", err)
+	}
+	if msg.NewCodeID == 0 {
+		return fmt.Errorf("new code ID must be positive")
+	}
+	if msg.ExecutionDelaySecs < 604800 {
+		return fmt.Errorf("execution delay must be at least 7 days (604800s), got %d", msg.ExecutionDelaySecs)
+	}
+	return nil
 }
 
 func (msg *MsgMigrateContracts) GetSigners() []sdk.AccAddress {
@@ -57,8 +79,17 @@ func (msg *MsgUpdateGasLimit) String() string { return msg.Authority }
 func (msg *MsgUpdateGasLimit) ProtoMessage()  {}
 
 func (msg *MsgUpdateGasLimit) ValidateBasic() error {
+	if msg.Authority == "" {
+		return fmt.Errorf("authority cannot be empty")
+	}
 	_, err := sdk.AccAddressFromBech32(msg.Authority)
-	return err
+	if err != nil {
+		return fmt.Errorf("invalid authority address: %w", err)
+	}
+	if msg.GasLimit <= 0 {
+		return fmt.Errorf("gas limit must be positive")
+	}
+	return nil
 }
 
 func (msg *MsgUpdateGasLimit) GetSigners() []sdk.AccAddress {
@@ -79,8 +110,17 @@ func (msg *MsgUpdateValidatorSlot) String() string { return msg.Authority }
 func (msg *MsgUpdateValidatorSlot) ProtoMessage()  {}
 
 func (msg *MsgUpdateValidatorSlot) ValidateBasic() error {
+	if msg.Authority == "" {
+		return fmt.Errorf("authority cannot be empty")
+	}
 	_, err := sdk.AccAddressFromBech32(msg.Authority)
-	return err
+	if err != nil {
+		return fmt.Errorf("invalid authority address: %w", err)
+	}
+	if msg.MaxValidators == 0 {
+		return fmt.Errorf("max validators must be positive")
+	}
+	return nil
 }
 
 func (msg *MsgUpdateValidatorSlot) GetSigners() []sdk.AccAddress {
@@ -102,8 +142,20 @@ func (msg *MsgUpdateMilestone) String() string { return msg.Authority }
 func (msg *MsgUpdateMilestone) ProtoMessage()  {}
 
 func (msg *MsgUpdateMilestone) ValidateBasic() error {
+	if msg.Authority == "" {
+		return fmt.Errorf("authority cannot be empty")
+	}
 	_, err := sdk.AccAddressFromBech32(msg.Authority)
-	return err
+	if err != nil {
+		return fmt.Errorf("invalid authority address: %w", err)
+	}
+	if msg.MilestoneID == "" {
+		return fmt.Errorf("milestone ID cannot be empty")
+	}
+	if msg.TargetPrice == 0 {
+		return fmt.Errorf("target price must be positive")
+	}
+	return nil
 }
 
 func (msg *MsgUpdateMilestone) GetSigners() []sdk.AccAddress {
@@ -125,12 +177,21 @@ func (msg *MsgUpdateOracleOperator) String() string { return msg.Authority }
 func (msg *MsgUpdateOracleOperator) ProtoMessage()  {}
 
 func (msg *MsgUpdateOracleOperator) ValidateBasic() error {
+	if msg.Authority == "" {
+		return fmt.Errorf("authority cannot be empty")
+	}
 	_, err := sdk.AccAddressFromBech32(msg.Authority)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid authority address: %w", err)
+	}
+	if msg.OperatorAddress == "" {
+		return fmt.Errorf("operator address cannot be empty")
 	}
 	_, err = sdk.AccAddressFromBech32(msg.OperatorAddress)
-	return err
+	if err != nil {
+		return fmt.Errorf("invalid operator address: %w", err)
+	}
+	return nil
 }
 
 func (msg *MsgUpdateOracleOperator) GetSigners() []sdk.AccAddress {
@@ -153,12 +214,24 @@ func (msg *MsgUpdateWitnessRegistry) String() string { return msg.Authority }
 func (msg *MsgUpdateWitnessRegistry) ProtoMessage()  {}
 
 func (msg *MsgUpdateWitnessRegistry) ValidateBasic() error {
+	if msg.Authority == "" {
+		return fmt.Errorf("authority cannot be empty")
+	}
 	_, err := sdk.AccAddressFromBech32(msg.Authority)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid authority address: %w", err)
+	}
+	if msg.WitnessAddress == "" {
+		return fmt.Errorf("witness address cannot be empty")
 	}
 	_, err = sdk.AccAddressFromBech32(msg.WitnessAddress)
-	return err
+	if err != nil {
+		return fmt.Errorf("invalid witness address: %w", err)
+	}
+	if msg.Active && len(msg.PubKey) == 0 {
+		return fmt.Errorf("public key is required when activating witness")
+	}
+	return nil
 }
 
 func (msg *MsgUpdateWitnessRegistry) GetSigners() []sdk.AccAddress {
@@ -181,12 +254,24 @@ func (msg *MsgUpdateBridgeRelayerSet) String() string { return msg.Authority }
 func (msg *MsgUpdateBridgeRelayerSet) ProtoMessage()  {}
 
 func (msg *MsgUpdateBridgeRelayerSet) ValidateBasic() error {
+	if msg.Authority == "" {
+		return fmt.Errorf("authority cannot be empty")
+	}
 	_, err := sdk.AccAddressFromBech32(msg.Authority)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid authority address: %w", err)
+	}
+	if msg.RelayerAddress == "" {
+		return fmt.Errorf("relayer address cannot be empty")
 	}
 	_, err = sdk.AccAddressFromBech32(msg.RelayerAddress)
-	return err
+	if err != nil {
+		return fmt.Errorf("invalid relayer address: %w", err)
+	}
+	if msg.Active && len(msg.PubKey) == 0 {
+		return fmt.Errorf("public key is required when activating relayer")
+	}
+	return nil
 }
 
 func (msg *MsgUpdateBridgeRelayerSet) GetSigners() []sdk.AccAddress {

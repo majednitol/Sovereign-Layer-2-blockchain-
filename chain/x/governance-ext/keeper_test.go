@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"cosmossdk.io/log/v2"
 	legacytypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/store/v2/dbadapter"
 	dbm "github.com/cosmos/cosmos-db"
@@ -69,7 +70,8 @@ func setupKeeper(t *testing.T, wasm WasmKeeper) (Keeper, sdk.Context) {
 	ctx := sdk.Context{}.
 		WithMultiStore(ms).
 		WithGasMeter(legacytypes.NewInfiniteGasMeter()).
-		WithEventManager(sdk.NewEventManager())
+		WithEventManager(sdk.NewEventManager()).
+		WithLogger(log.NewNopLogger())
 
 	storeKey := legacytypes.NewKVStoreKey(StoreKey)
 	constAddr := sdk.AccAddress([]byte("constitution________"))
@@ -191,5 +193,97 @@ func TestCustomProposalsConstitutionCheck(t *testing.T) {
 			t.Errorf("Expected failure for %T when Wasm check fails", msg)
 		}
 		wasm.failExecute = false
+	}
+}
+
+func TestMsgServerGasLimitBypass(t *testing.T) {
+	wasm := &mockWasmKeeper{failExecute: false}
+	keeper, ctx := setupKeeper(t, wasm)
+
+	govAuthority := sdk.AccAddress([]byte("gov_________________")).String()
+	server := NewMsgServerImpl(keeper, govAuthority)
+
+	// Valid gas limit update (bypasses constitution)
+	msg := &MsgUpdateGasLimit{
+		Authority: govAuthority,
+		GasLimit:  500000,
+	}
+	_, err := server.UpdateGasLimit(sdk.WrapSDKContext(ctx), msg)
+	if err != nil {
+		t.Fatalf("Expected successful UpdateGasLimit, got: %v", err)
+	}
+
+	// Out-of-bounds gas limit should fail
+	msgBad := &MsgUpdateGasLimit{
+		Authority: govAuthority,
+		GasLimit:  50000, // below min_gas_limit
+	}
+	_, err = server.UpdateGasLimit(sdk.WrapSDKContext(ctx), msgBad)
+	if err == nil {
+		t.Error("Expected error for gas limit below minimum bounds")
+	}
+}
+
+func TestMsgServerUnauthorized(t *testing.T) {
+	wasm := &mockWasmKeeper{failExecute: false}
+	keeper, ctx := setupKeeper(t, wasm)
+
+	govAuthority := sdk.AccAddress([]byte("gov_________________")).String()
+	server := NewMsgServerImpl(keeper, govAuthority)
+
+	// Unauthorized validator slot update
+	msg := &MsgUpdateValidatorSlot{
+		Authority:     sdk.AccAddress([]byte("bad_________________")).String(),
+		MaxValidators: 50,
+	}
+	_, err := server.UpdateValidatorSlot(sdk.WrapSDKContext(ctx), msg)
+	if err == nil {
+		t.Error("Expected unauthorized error for non-gov authority")
+	}
+}
+
+func TestGenesisRoundTrip(t *testing.T) {
+	wasm := &mockWasmKeeper{failExecute: false}
+	keeper, ctx := setupKeeper(t, wasm)
+
+	// Set custom params
+	keeper.SetParams(ctx, Params{
+		MinGasLimit: 200000,
+		MaxGasLimit: 5000000,
+	})
+
+	am := NewAppModule(keeper)
+	jsonBz := am.ExportGenesis(ctx, nil)
+
+	// Clear state
+	keeper.SetParams(ctx, Params{})
+
+	// Re-import
+	am.InitGenesis(ctx, nil, jsonBz)
+
+	p := keeper.GetParams(ctx)
+	if p.MinGasLimit != 200000 {
+		t.Errorf("Expected MinGasLimit 200000, got %d", p.MinGasLimit)
+	}
+	if p.MaxGasLimit != 5000000 {
+		t.Errorf("Expected MaxGasLimit 5000000, got %d", p.MaxGasLimit)
+	}
+}
+
+func TestValidateGenesisInvalid(t *testing.T) {
+	basic := AppModuleBasic{}
+
+	// min > max should fail
+	invalidJSON := []byte(`{"params":{"min_gas_limit":5000000,"max_gas_limit":100000}}`)
+	err := basic.ValidateGenesis(nil, nil, invalidJSON)
+	if err == nil {
+		t.Error("Expected error for min_gas_limit > max_gas_limit")
+	}
+
+	// zero min should fail
+	zeroJSON := []byte(`{"params":{"min_gas_limit":0,"max_gas_limit":100000}}`)
+	err = basic.ValidateGenesis(nil, nil, zeroJSON)
+	if err == nil {
+		t.Error("Expected error for min_gas_limit = 0")
 	}
 }
