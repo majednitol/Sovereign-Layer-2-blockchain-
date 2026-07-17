@@ -1,0 +1,18 @@
+{
+  "messages": [
+    {
+      "@type": "/sovereign.milestone.v1.MsgCreateMilestone",
+      "creator": "cosmos10d07y265gmmuvt4z0w9aw880jnsr700j6zn9kn",
+      "id": "test-milestone-1",
+      "feed_id": "BTC_USD",
+      "target_price": 62500,
+      "duration_blocks": 1000,
+      "vesting_pool_address": "cosmos17955zu57r288jeja39nc67x6qx9rda3xh7wyzw",
+      "payout_amount": 1000000
+    }
+  ],
+  "metadata": "AQ==",
+  "deposit": "10000000ucsov",
+  "title": "Create Test Milestone",
+  "summary": "This proposal creates a test milestone for BTC_USD feed"
+}

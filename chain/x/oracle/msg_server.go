@@ -23,9 +23,26 @@ func init() {
 		Package: strPtr("sovereign.oracle.v1"),
 		Syntax:  strPtr("proto3"),
 		MessageType: []*descriptorpb.DescriptorProto{
-			{Name: strPtr("MsgCommitOracleHash")},
+			{
+				Name: strPtr("MsgCommitOracleHash"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("operator"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("feed_id"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("round_id"), Number: proto.Int32(3), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_UINT64.Enum()},
+					{Name: strPtr("hash"), Number: proto.Int32(4), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_BYTES.Enum()},
+				},
+			},
 			{Name: strPtr("MsgCommitOracleHashResponse")},
-			{Name: strPtr("MsgRevealOracleReport")},
+			{
+				Name: strPtr("MsgRevealOracleReport"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("operator"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("feed_id"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("round_id"), Number: proto.Int32(3), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_UINT64.Enum()},
+					{Name: strPtr("value"), Number: proto.Int32(4), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_UINT64.Enum()},
+					{Name: strPtr("nonce"), Number: proto.Int32(5), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+				},
+			},
 			{Name: strPtr("MsgRevealOracleReportResponse")},
 		},
 		Service: []*descriptorpb.ServiceDescriptorProto{

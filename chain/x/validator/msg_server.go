@@ -24,11 +24,27 @@ func init() {
 		Package: strPtr("sovereign.validator.v1"),
 		Syntax:  strPtr("proto3"),
 		MessageType: []*descriptorpb.DescriptorProto{
-			{Name: strPtr("MsgFillValidatorSlot")},
+			{
+				Name: strPtr("MsgFillValidatorSlot"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("validator_address"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+				},
+			},
 			{Name: strPtr("MsgFillValidatorSlotResponse")},
-			{Name: strPtr("MsgEjectValidator")},
+			{
+				Name: strPtr("MsgEjectValidator"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("validator_address"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+				},
+			},
 			{Name: strPtr("MsgEjectValidatorResponse")},
-			{Name: strPtr("MsgUpdatePartitionScheme")},
+			{
+				Name: strPtr("MsgUpdatePartitionScheme"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("authority"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("new_scheme"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+				},
+			},
 			{Name: strPtr("MsgUpdatePartitionSchemeResponse")},
 		},
 		Service: []*descriptorpb.ServiceDescriptorProto{

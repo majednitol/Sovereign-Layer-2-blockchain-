@@ -44,7 +44,7 @@ type EVMState struct {
 
 type BridgeParams struct {
 	MaxUnlockPerBlock     uint64 `json:"max_unlock_per_block"`
-	SupplyCap             uint64 `json:"supply_cap"`
+	SupplyCap             string `json:"supply_cap"`
 	CircuitBreakerAddress string `json:"circuit_breaker_address"`
 	GnosisSafeAddress     string `json:"gnosis_safe_address"`
 }
@@ -207,7 +207,7 @@ func TestPhase10_5_BridgeRateLimitAndCircuitBreaker(t *testing.T) {
 	if bridgeParams.MaxUnlockPerBlock == 0 {
 		t.Error("FAIL: bridge max_unlock_per_block rate limit parameter is not set (0)")
 	}
-	if bridgeParams.SupplyCap == 0 {
+	if bridgeParams.SupplyCap == "" || bridgeParams.SupplyCap == "0" {
 		t.Error("FAIL: bridge supply_cap parameter is not set (0)")
 	}
 	if bridgeParams.CircuitBreakerAddress == "" || bridgeParams.GnosisSafeAddress == "" {

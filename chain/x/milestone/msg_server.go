@@ -23,7 +23,18 @@ func init() {
 		Package: strPtr("sovereign.milestone.v1"),
 		Syntax:  strPtr("proto3"),
 		MessageType: []*descriptorpb.DescriptorProto{
-			{Name: strPtr("MsgCreateMilestone")},
+			{
+				Name: strPtr("MsgCreateMilestone"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("creator"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("id"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("feed_id"), Number: proto.Int32(3), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("target_price"), Number: proto.Int32(4), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_UINT64.Enum()},
+					{Name: strPtr("duration_blocks"), Number: proto.Int32(5), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_INT64.Enum()},
+					{Name: strPtr("vesting_pool_address"), Number: proto.Int32(6), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("payout_amount"), Number: proto.Int32(7), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_UINT64.Enum()},
+				},
+			},
 			{Name: strPtr("MsgCreateMilestoneResponse")},
 		},
 		Service: []*descriptorpb.ServiceDescriptorProto{

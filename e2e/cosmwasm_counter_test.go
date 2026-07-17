@@ -53,7 +53,7 @@ func TestCosmWasmCounter(t *testing.T) {
 		"chaind", "tx", "wasm", "store", "/tmp/cw_counter.wasm",
 		"--from", "validator",
 		"--chain-id", "sovereign-1",
-		"--gas-prices", "0aesov",
+		"--fees", "1000000aesov",
 		"--gas", "auto",
 		"--gas-adjustment", "1.3",
 		"--keyring-backend", "test",
@@ -62,6 +62,12 @@ func TestCosmWasmCounter(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("Failed to store Wasm contract: %v", err)
+	}
+	var storeTxResp struct {
+		Code int `json:"code"`
+	}
+	if err := json.Unmarshal([]byte(storeRes), &storeTxResp); err == nil && storeTxResp.Code != 0 {
+		t.Fatalf("Store Tx failed with code %d: %s", storeTxResp.Code, storeRes)
 	}
 
 	t.Logf("Store Tx response: %s", storeRes)
@@ -99,7 +105,7 @@ func TestCosmWasmCounter(t *testing.T) {
 		"--chain-id", "sovereign-1",
 		"--label", "counter_instance",
 		"--no-admin",
-		"--gas-prices", "0aesov",
+		"--fees", "1000000aesov",
 		"--gas", "auto",
 		"--gas-adjustment", "1.3",
 		"--keyring-backend", "test",
@@ -108,6 +114,12 @@ func TestCosmWasmCounter(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("Failed to instantiate contract: %v", err)
+	}
+	var instTxResp struct {
+		Code int `json:"code"`
+	}
+	if err := json.Unmarshal([]byte(instRes), &instTxResp); err == nil && instTxResp.Code != 0 {
+		t.Fatalf("Instantiate Tx failed with code %d: %s", instTxResp.Code, instRes)
 	}
 
 	t.Logf("Instantiate Tx response: %s", instRes)
@@ -183,7 +195,7 @@ func TestCosmWasmCounter(t *testing.T) {
 		"chaind", "tx", "wasm", "execute", contractAddr, `{"increment":{}}`,
 		"--from", "validator",
 		"--chain-id", "sovereign-1",
-		"--gas-prices", "0aesov",
+		"--fees", "1000000aesov",
 		"--gas", "auto",
 		"--gas-adjustment", "1.3",
 		"--keyring-backend", "test",
@@ -213,7 +225,7 @@ func TestCosmWasmCounter(t *testing.T) {
 		"chaind", "tx", "wasm", "execute", contractAddr, `{"decrement":{}}`,
 		"--from", "validator",
 		"--chain-id", "sovereign-1",
-		"--gas-prices", "0aesov",
+		"--fees", "1000000aesov",
 		"--gas", "auto",
 		"--gas-adjustment", "1.3",
 		"--keyring-backend", "test",
@@ -243,7 +255,7 @@ func TestCosmWasmCounter(t *testing.T) {
 		"chaind", "tx", "wasm", "execute", contractAddr, `{"set_label":{"label":"UpdatedCounterLabel"}}`,
 		"--from", "validator",
 		"--chain-id", "sovereign-1",
-		"--gas-prices", "0aesov",
+		"--fees", "1000000aesov",
 		"--gas", "auto",
 		"--gas-adjustment", "1.3",
 		"--keyring-backend", "test",
@@ -273,7 +285,7 @@ func TestCosmWasmCounter(t *testing.T) {
 		"chaind", "tx", "wasm", "execute", contractAddr, `{"pause":{}}`,
 		"--from", "validator",
 		"--chain-id", "sovereign-1",
-		"--gas-prices", "0aesov",
+		"--fees", "1000000aesov",
 		"--gas", "auto",
 		"--gas-adjustment", "1.3",
 		"--keyring-backend", "test",
@@ -300,7 +312,7 @@ func TestCosmWasmCounter(t *testing.T) {
 		"chaind", "tx", "wasm", "execute", contractAddr, `{"increment":{}}`,
 		"--from", "validator",
 		"--chain-id", "sovereign-1",
-		"--gas-prices", "0aesov",
+		"--fees", "1000000aesov",
 		"--gas", "auto",
 		"--gas-adjustment", "1.3",
 		"--keyring-backend", "test",
@@ -321,7 +333,7 @@ func TestCosmWasmCounter(t *testing.T) {
 		"chaind", "tx", "wasm", "execute", contractAddr, `{"unpause":{}}`,
 		"--from", "validator",
 		"--chain-id", "sovereign-1",
-		"--gas-prices", "0aesov",
+		"--fees", "1000000aesov",
 		"--gas", "auto",
 		"--gas-adjustment", "1.3",
 		"--keyring-backend", "test",
@@ -348,7 +360,7 @@ func TestCosmWasmCounter(t *testing.T) {
 		"chaind", "tx", "wasm", "execute", contractAddr, `{"increment":{}}`,
 		"--from", "validator",
 		"--chain-id", "sovereign-1",
-		"--gas-prices", "0aesov",
+		"--fees", "1000000aesov",
 		"--gas", "auto",
 		"--gas-adjustment", "1.3",
 		"--keyring-backend", "test",

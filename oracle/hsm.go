@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/ThalesGroup/crypto11"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 )
 
 type KeyManager interface {
@@ -17,30 +18,27 @@ type KeyManager interface {
 }
 
 // MockHSMKeyManager is for LOCAL DEVELOPMENT AND TESTING ONLY.
-// It generates a random ephemeral Ed25519 keypair in memory.
+// It generates a random ephemeral Secp256k1 keypair in memory.
 // On mainnet, NewHSMKeyManager will refuse to return this.
 type MockHSMKeyManager struct {
-	privKey ed25519.PrivateKey
-	pubKey  ed25519.PublicKey
+	privKey *secp256k1.PrivKey
 }
 
 func NewMockHSMKeyManager() (*MockHSMKeyManager, error) {
-	pub, priv, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
+	seed := make([]byte, 32)
+	copy(seed, []byte("oracle_operator_seed_for_mock_hsm"))
+	priv := secp256k1.GenPrivKeyFromSecret(seed)
 	return &MockHSMKeyManager{
 		privKey: priv,
-		pubKey:  pub,
 	}, nil
 }
 
 func (m *MockHSMKeyManager) Sign(payload []byte) ([]byte, error) {
-	return ed25519.Sign(m.privKey, payload), nil
+	return m.privKey.Sign(payload)
 }
 
 func (m *MockHSMKeyManager) GetPublicKey() []byte {
-	return m.pubKey
+	return m.privKey.PubKey().Bytes()
 }
 
 type HSMKeyManager struct {

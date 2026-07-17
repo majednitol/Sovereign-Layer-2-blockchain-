@@ -8,7 +8,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdkclient "github.com/cosmos/cosmos-sdk/client/grpc/cmtservice"
-	cryptoed25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	cryptosecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
@@ -125,6 +126,19 @@ func (c *ChainClient) getAndIncrementSequence() uint64 {
 }
 
 func (c *ChainClient) sendTx(ctx context.Context, msg sdk.Msg) error {
+	c.mu.Lock()
+	if !c.seqInit {
+		c.mu.Unlock()
+		pubKeyBytes := c.keyManager.GetPublicKey()
+		cosmosPubKey := &cryptosecp256k1.PubKey{Key: pubKeyBytes}
+		accAddr := sdk.AccAddress(cosmosPubKey.Address().Bytes()).String()
+		if err := c.initSequence(ctx, accAddr); err != nil {
+			return fmt.Errorf("failed to auto-initialize sequence for %s: %w", accAddr, err)
+		}
+	} else {
+		c.mu.Unlock()
+	}
+
 	conn, err := grpc.DialContext(ctx, c.endpoint, grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("failed to dial gRPC: %w", err)
@@ -142,7 +156,11 @@ func (c *ChainClient) sendTx(ctx context.Context, msg sdk.Msg) error {
 		Messages: []*codectypes.Any{anyMsg},
 	}
 
-	protoCodec := codec.NewProtoCodec(codectypes.NewInterfaceRegistry())
+	interfaceRegistry := codectypes.NewInterfaceRegistry()
+	cryptocodec.RegisterInterfaces(interfaceRegistry)
+	interfaceRegistry.RegisterImplementations((*sdk.Msg)(nil), &oracle.MsgCommitOracleHash{}, &oracle.MsgRevealOracleReport{})
+
+	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 	bodyBytes, err := protoCodec.Marshal(txBody)
 	if err != nil {
 		return fmt.Errorf("failed to marshal tx body: %w", err)
@@ -150,7 +168,7 @@ func (c *ChainClient) sendTx(ctx context.Context, msg sdk.Msg) error {
 
 	// Build proper AuthInfo with signer info and fee
 	pubKeyBytes := c.keyManager.GetPublicKey()
-	cosmosPubKey := &cryptoed25519.PubKey{Key: pubKeyBytes}
+	cosmosPubKey := &cryptosecp256k1.PubKey{Key: pubKeyBytes}
 	anyPubKey, err := codectypes.NewAnyWithValue(cosmosPubKey)
 	if err != nil {
 		return fmt.Errorf("failed to pack public key: %w", err)
@@ -173,7 +191,7 @@ func (c *ChainClient) sendTx(ctx context.Context, msg sdk.Msg) error {
 			},
 		},
 		Fee: &txtypes.Fee{
-			Amount:   sdk.NewCoins(sdk.NewInt64Coin("ucsov", 5000)),
+			Amount:   sdk.NewCoins(sdk.NewInt64Coin("aesov", 1000000000000000)),
 			GasLimit: 200000,
 		},
 	}
@@ -241,10 +259,10 @@ func (c *ChainClient) sendTx(ctx context.Context, msg sdk.Msg) error {
 // GetOperatorAddress dynamically derives the validator operator address from the HSM key.
 func (c *ChainClient) GetOperatorAddress() (string, error) {
 	pubKeyBytes := c.keyManager.GetPublicKey()
-	if len(pubKeyBytes) != 32 {
-		return "", fmt.Errorf("invalid public key length: got %d, expected 32", len(pubKeyBytes))
+	if len(pubKeyBytes) != 33 {
+		return "", fmt.Errorf("invalid public key length: got %d, expected 33", len(pubKeyBytes))
 	}
-	cosmosPubKey := &cryptoed25519.PubKey{Key: pubKeyBytes}
+	cosmosPubKey := &cryptosecp256k1.PubKey{Key: pubKeyBytes}
 	addr := sdk.ValAddress(cosmosPubKey.Address().Bytes())
 	return addr.String(), nil
 }

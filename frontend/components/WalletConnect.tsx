@@ -20,6 +20,14 @@ export default function WalletConnect({
 
   // Initialize wallets from localStorage on mount
   useEffect(() => {
+    // Graceful check for WalletConnect projectId from configuration
+    const wcProjectId = walletsConfig.walletConnect?.projectId;
+    if (!wcProjectId || wcProjectId.includes("OWNER_ACTION_REQUIRED") || wcProjectId.trim() === "") {
+      console.warn(
+        "WalletConnect Project ID is not configured. Gracefully falling back to direct browser extension providers (Keplr, MetaMask)."
+      );
+    }
+
     const storedL1 = localStorage.getItem("l1_address");
     const storedL2 = localStorage.getItem("l2_address");
     if (storedL1) {

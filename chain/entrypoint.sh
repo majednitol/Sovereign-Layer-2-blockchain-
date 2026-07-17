@@ -22,9 +22,7 @@ if [ ! -f "${CHAIN_HOME}/config/config.toml" ]; then
     fi
   fi
 
-  echo "Adding validator credentials to test keyring..."
-  # Add validator key to test keyring
-  chaind keys add validator --keyring-backend test --home "${CHAIN_HOME}"
+  echo "cluster model baby earn ride lecture remember train little wagon steel athlete potato enroll dose brick math lecture manual ice canoe debate resist flame" | chaind keys add validator --recover --keyring-backend test --home "${CHAIN_HOME}"
   VAL_ADDR=$(chaind keys show validator -a --keyring-backend test --home "${CHAIN_HOME}")
   echo "Validator address: ${VAL_ADDR}"
 
@@ -46,6 +44,9 @@ if [ ! -f "${CHAIN_HOME}/config/config.toml" ]; then
   echo "Funding validator, faucet and relayer accounts in genesis..."
   # Fund validator in genesis (500,000,000 CSOV = 500,000,000,000,000 ucsov, and 1,000,000 ESOV for EVM)
   chaind genesis add-genesis-account "${VAL_ADDR}" 1000000000000000000000000aesov,500000000000000ucsov --home "${CHAIN_HOME}"
+
+  # Fund mock oracle operator
+  chaind genesis add-genesis-account cosmos17955zu57r288jeja39nc67x6qx9rda3xh7wyzw 1000000000000000000000000aesov,500000000000000ucsov --home "${CHAIN_HOME}"
 
   # Fund faucet in genesis (1,000,000,000 WSOV = 1,000,000,000,000,000 uwsov, 1,000,000,000 CSOV = 1,000,000,000,000,000 ucsov for gas, and 1,000,000 ESOV for EVM)
   chaind genesis add-genesis-account "${FAUCET_ADDR}" 1000000000000000000000000aesov,1000000000000000ucsov,1000000000000000uwsov --home "${CHAIN_HOME}"

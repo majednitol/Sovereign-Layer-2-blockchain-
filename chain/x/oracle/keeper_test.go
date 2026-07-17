@@ -242,24 +242,16 @@ func BenchmarkGetRevealedValuesLargeDataset(b *testing.B) {
 	// Populate 1,000 reveals for other feeds/rounds
 	for i := 0; i < 1000; i++ {
 		operator := fmt.Sprintf("cosmosvaloper1x%d", i)
-		err := keeper.RevealReport(ctx, operator, "OTHER_FEED", roundID, uint64(i), "nonce")
-		if err == nil {
-			// since Commit is required, let's mock it
-			commitKey := append(CommitKeyPrefix, []byte(fmt.Sprintf("%s:%s:%d", operator, "OTHER_FEED", roundID))...)
-			store := ctx.KVStore(keeper.storeKey)
-			hash := ComputeCommitHash(operator, "OTHER_FEED", roundID, uint64(i), "nonce")
-			store.Set(commitKey, hash)
-			_ = keeper.RevealReport(ctx, operator, "OTHER_FEED", roundID, uint64(i), "nonce")
-		}
+		hash := ComputeCommitHash(operator, "OTHER_FEED", roundID, uint64(i), "nonce")
+		_ = keeper.CommitHash(ctx, operator, "OTHER_FEED", roundID, hash)
+		_ = keeper.RevealReport(ctx, operator, "OTHER_FEED", roundID, uint64(i), "nonce")
 	}
 
 	// Populate a few reveals for our target feed and round
 	for i := 0; i < 5; i++ {
 		operator := fmt.Sprintf("targetop%d", i)
-		commitKey := append(CommitKeyPrefix, []byte(fmt.Sprintf("%s:%s:%d", operator, feedID, roundID))...)
-		store := ctx.KVStore(keeper.storeKey)
 		hash := ComputeCommitHash(operator, feedID, roundID, 50000, "nonce")
-		store.Set(commitKey, hash)
+		_ = keeper.CommitHash(ctx, operator, feedID, roundID, hash)
 		_ = keeper.RevealReport(ctx, operator, feedID, roundID, 50000, "nonce")
 	}
 
@@ -290,5 +282,33 @@ func TestEndBlockerBasic(t *testing.T) {
 	ctx = ctx.WithBlockHeight(35)
 	keeper.EndBlocker(ctx)
 	keeper.EndBlocker(ctx)
+}
+
+func TestEndBlockerLargeCommitSet(t *testing.T) {
+	keeper, ctx := setupKeeper(t)
+	keeper.SetParams(ctx, Params{
+		CommitWindow:             10,
+		RevealWindow:             10,
+		MinOperatorCommits:       1,
+		StalenessThresholdBlocks: 100,
+	})
+
+	ctx = ctx.WithBlockHeight(10)
+	t.Log("Starting 1000 commits...")
+	for i := 0; i < 1000; i++ {
+		operator := fmt.Sprintf("cosmosvaloper1x%d", i)
+		feedID := "BTC_USD"
+		roundID := uint64(1)
+		hash := ComputeCommitHash(operator, feedID, roundID, 50000, "nonce")
+		err := keeper.CommitHash(ctx, operator, feedID, roundID, hash)
+		if err != nil {
+			t.Fatalf("CommitHash failed at %d: %v", i, err)
+		}
+	}
+	t.Log("Finished 1000 commits. Calling EndBlocker...")
+
+	ctx = ctx.WithBlockHeight(35)
+	keeper.EndBlocker(ctx)
+	t.Log("Finished EndBlocker.")
 }
 

@@ -322,7 +322,7 @@ func TestPhase5GapsAdvisoryLockRetryLoop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	const AdvisoryLockID = 41892305
+	const AdvisoryLockID = 41892399
 
 	// Session 1: Acquire lock
 	conn1, err := writeDB.Acquire(ctx)

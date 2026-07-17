@@ -19,11 +19,23 @@ func init() {
 
 	strPtr := func(s string) *string { return &s }
 	fdProto := &descriptorpb.FileDescriptorProto{
-		Name:    strPtr("chain/x/settlement/tx.proto"),
-		Package: strPtr("sovereign.settlement.v1"),
-		Syntax:  strPtr("proto3"),
+		Name:       strPtr("chain/x/settlement/tx.proto"),
+		Package:    strPtr("sovereign.settlement.v1"),
+		Syntax:     strPtr("proto3"),
+		Dependency: []string{"cosmos/base/v1beta1/coin.proto"},
 		MessageType: []*descriptorpb.DescriptorProto{
-			{Name: strPtr("MsgSettlement")},
+			{
+				Name: strPtr("MsgSettlement"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("submitter"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("witness_id"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("timestamp"), Number: proto.Int32(3), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_INT64.Enum()},
+					{Name: strPtr("payload_hash"), Number: proto.Int32(4), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_BYTES.Enum()},
+					{Name: strPtr("signature"), Number: proto.Int32(5), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_BYTES.Enum()},
+					{Name: strPtr("transfer_amt"), Number: proto.Int32(6), Label: descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(), TypeName: strPtr(".cosmos.base.v1beta1.Coin")},
+					{Name: strPtr("transfer_dest"), Number: proto.Int32(7), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+				},
+			},
 			{Name: strPtr("MsgSettlementResponse")},
 		},
 		Service: []*descriptorpb.ServiceDescriptorProto{
@@ -40,7 +52,7 @@ func init() {
 		},
 	}
 
-	fd, err := protodesc.NewFile(fdProto, nil)
+	fd, err := protodesc.NewFile(fdProto, protoregistry.GlobalFiles)
 	if err != nil {
 		panic(fmt.Sprintf("failed to compile dynamic file descriptor: %v", err))
 	}

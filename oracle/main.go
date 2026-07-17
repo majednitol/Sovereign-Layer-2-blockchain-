@@ -267,7 +267,11 @@ func main() {
 	defer cancel()
 
 	// Initialize account sequence from chain before starting workers
-	accAddr := sdk.AccAddress(sdk.ValAddress(operator).Bytes()).String()
+	valAddr, err := sdk.ValAddressFromBech32(operator)
+	if err != nil {
+		log.Fatalf("[Oracle] FATAL: Invalid operator Bech32 address: %v", err)
+	}
+	accAddr := sdk.AccAddress(valAddr.Bytes()).String()
 	if err := client.initSequence(ctx, accAddr); err != nil {
 		log.Printf("[Oracle] WARNING: Failed to initialize account sequence: %v. Will retry on first tx.\n", err)
 	}

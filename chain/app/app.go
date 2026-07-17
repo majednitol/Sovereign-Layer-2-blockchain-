@@ -87,6 +87,7 @@ import (
 	evmante "github.com/cosmos/evm/ante"
 	antetypes "github.com/cosmos/evm/ante/types"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	gproto "google.golang.org/protobuf/proto"
 
 	// Cosmos EVM — mempool
 	evmmempool "github.com/cosmos/evm/mempool"
@@ -262,6 +263,48 @@ func NewApp(
 		CustomGetSigners: map[protoreflect.FullName]signing.GetSignersFunc{
 			evmtypes.MsgEthereumTxCustomGetSigner.MsgType:     evmtypes.MsgEthereumTxCustomGetSigner.Fn,
 			erc20types.MsgConvertERC20CustomGetSigner.MsgType: erc20types.MsgConvertERC20CustomGetSigner.Fn,
+			"sovereign.oracle.v1.MsgCommitOracleHash": func(msg gproto.Message) ([][]byte, error) {
+				refMsg := msg.ProtoReflect()
+				descriptor := refMsg.Descriptor()
+				fieldDesc := descriptor.Fields().ByName("operator")
+				if fieldDesc == nil {
+					return nil, fmt.Errorf("field 'operator' not found in message %s", descriptor.FullName())
+				}
+				operatorVal := refMsg.Get(fieldDesc).String()
+				addr, err := sdk.ValAddressFromBech32(operatorVal)
+				if err != nil {
+					return nil, err
+				}
+				return [][]byte{addr.Bytes()}, nil
+			},
+			"sovereign.oracle.v1.MsgRevealOracleReport": func(msg gproto.Message) ([][]byte, error) {
+				refMsg := msg.ProtoReflect()
+				descriptor := refMsg.Descriptor()
+				fieldDesc := descriptor.Fields().ByName("operator")
+				if fieldDesc == nil {
+					return nil, fmt.Errorf("field 'operator' not found in message %s", descriptor.FullName())
+				}
+				operatorVal := refMsg.Get(fieldDesc).String()
+				addr, err := sdk.ValAddressFromBech32(operatorVal)
+				if err != nil {
+					return nil, err
+				}
+				return [][]byte{addr.Bytes()}, nil
+			},
+			"sovereign.milestone.v1.MsgCreateMilestone": func(msg gproto.Message) ([][]byte, error) {
+				refMsg := msg.ProtoReflect()
+				descriptor := refMsg.Descriptor()
+				fieldDesc := descriptor.Fields().ByName("creator")
+				if fieldDesc == nil {
+					return nil, fmt.Errorf("field 'creator' not found in message %s", descriptor.FullName())
+				}
+				creatorVal := refMsg.Get(fieldDesc).String()
+				addr, err := sdk.AccAddressFromBech32(creatorVal)
+				if err != nil {
+					return nil, err
+				}
+				return [][]byte{addr.Bytes()}, nil
+			},
 		},
 	}
 	interfaceRegistry, err := types.NewInterfaceRegistryWithOptions(types.InterfaceRegistryOptions{
@@ -583,9 +626,10 @@ func NewApp(
 		app.MsgServiceRouter(),
 		govConfig,
 		authAddr,
-		nil,
+		govkeeper.NewDefaultCalculateVoteResultsAndVotingPower(app.StakingKeeper),
 	)
 	app.GovKeeper = govKeeper
+	app.GovExtKeeper.SetGovKeeper(govKeeper)
 
 	// --- Module Manager ---
 	transferModule := transfer.NewAppModule(app.TransferKeeper)

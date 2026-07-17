@@ -394,10 +394,10 @@ func (k Keeper) EndBlocker(ctx sdk.Context) {
 	iterator := store.Iterator(start, end)
 	defer iterator.Close()
 
-	var indexKeysToDelete [][]byte
+	var keysToDelete [][]byte
 	for ; iterator.Valid(); iterator.Next() {
 		indexKey := iterator.Key()
-		indexKeysToDelete = append(indexKeysToDelete, indexKey)
+		keysToDelete = append(keysToDelete, indexKey)
 
 		// Parse operator, feedID, roundID from indexKey
 		// format: ExpiryKeyPrefix (1) + expiryHeight (8) + suffix
@@ -428,16 +428,18 @@ func (k Keeper) EndBlocker(ctx sdk.Context) {
 			}
 		}
 
-		// Delete the commit and commit height keys
+		// Collect the commit and commit height keys to delete later
 		suffixBytes := CombineKeySuffix(operator, feedID, roundID)
 		commitKey := append(CommitKeyPrefix, suffixBytes...)
-		store.Delete(commitKey)
+		keysToDelete = append(keysToDelete, commitKey)
 		commitHeightKey := append(CommitHeightKeyPrefix, suffixBytes...)
-		store.Delete(commitHeightKey)
+		keysToDelete = append(keysToDelete, commitHeightKey)
 	}
 
-	// Delete the expired index keys
-	for _, key := range indexKeysToDelete {
+	// Close iterator before mutating the store to avoid database deadlocks
+	iterator.Close()
+
+	for _, key := range keysToDelete {
 		store.Delete(key)
 	}
 }

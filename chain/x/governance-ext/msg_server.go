@@ -28,19 +28,69 @@ func init() {
 		Package: strPtr("sovereign.govext.v1"),
 		Syntax:  strPtr("proto3"),
 		MessageType: []*descriptorpb.DescriptorProto{
-			{Name: strPtr("MsgMigrateContracts")},
+			{
+				Name: strPtr("MsgMigrateContracts"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("authority"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("contract_address"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("new_code_id"), Number: proto.Int32(3), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_UINT64.Enum()},
+					{Name: strPtr("execution_delay_secs"), Number: proto.Int32(4), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_INT64.Enum()},
+				},
+			},
 			{Name: strPtr("MsgMigrateContractsResponse")},
-			{Name: strPtr("MsgUpdateGasLimit")},
+			{
+				Name: strPtr("MsgUpdateGasLimit"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("authority"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("gas_limit"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_INT64.Enum()},
+				},
+			},
 			{Name: strPtr("MsgUpdateGasLimitResponse")},
-			{Name: strPtr("MsgUpdateValidatorSlot")},
+			{
+				Name: strPtr("MsgUpdateValidatorSlot"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("authority"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("max_validators"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_UINT32.Enum()},
+				},
+			},
 			{Name: strPtr("MsgUpdateValidatorSlotResponse")},
-			{Name: strPtr("MsgUpdateMilestone")},
+			{
+				Name: strPtr("MsgUpdateMilestone"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("authority"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("milestone_id"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("target_price"), Number: proto.Int32(3), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_UINT64.Enum()},
+				},
+			},
 			{Name: strPtr("MsgUpdateMilestoneResponse")},
-			{Name: strPtr("MsgUpdateOracleOperator")},
+			{
+				Name: strPtr("MsgUpdateOracleOperator"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("authority"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("operator_address"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("active"), Number: proto.Int32(3), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_BOOL.Enum()},
+				},
+			},
 			{Name: strPtr("MsgUpdateOracleOperatorResponse")},
-			{Name: strPtr("MsgUpdateWitnessRegistry")},
+			{
+				Name: strPtr("MsgUpdateWitnessRegistry"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("authority"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("witness_address"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("active"), Number: proto.Int32(3), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_BOOL.Enum()},
+					{Name: strPtr("pub_key"), Number: proto.Int32(4), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_BYTES.Enum()},
+				},
+			},
 			{Name: strPtr("MsgUpdateWitnessRegistryResponse")},
-			{Name: strPtr("MsgUpdateBridgeRelayerSet")},
+			{
+				Name: strPtr("MsgUpdateBridgeRelayerSet"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("authority"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("relayer_address"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("active"), Number: proto.Int32(3), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_BOOL.Enum()},
+					{Name: strPtr("pub_key"), Number: proto.Int32(4), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_BYTES.Enum()},
+				},
+			},
 			{Name: strPtr("MsgUpdateBridgeRelayerSetResponse")},
 		},
 		Service: []*descriptorpb.ServiceDescriptorProto{

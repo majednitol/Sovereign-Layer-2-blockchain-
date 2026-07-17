@@ -195,10 +195,19 @@
         "send_enabled": []
       },
       "send_enabled": [],
-      "supply": []
+      "supply": [
+        {
+          "amount": "2000000000000000000000000",
+          "denom": "aesov"
+        },
+        {
+          "amount": "2600000000000000",
+          "denom": "ucsov"
+        }
+      ]
     },
     "bridge": {
-      "cosmos_minted": 0,
+      "cosmos_minted": "0",
       "params": {
         "circuit_breaker_address": "cosmos1devcbaddressplaceholderxxxxx",
         "gnosis_safe_address": "cosmos1devgsaddressplaceholderxxxxx",
@@ -208,11 +217,19 @@
         "max_unlock_per_block": 100000000000,
         "quorum_threshold": 3,
         "standard_finality_depth": 15,
-        "supply_cap": 1000000000000
+        "supply_cap": "1000000000000"
       },
       "relayers": []
     },
-    "certification": null,
+    "certification": {
+      "params": {
+        "max_consecutive_rejections": 5,
+        "missed_extension_limit": 10
+      },
+      "degraded_mode": false,
+      "consecutive_rejection_count": 0,
+      "attested_validators": []
+    },
     "distribution": {
       "delegator_starting_infos": [],
       "delegator_withdraw_infos": [],
@@ -309,7 +326,7 @@
           }
         ],
         "expedited_threshold": "0.667000000000000000",
-        "expedited_voting_period": "86400s",
+        "expedited_voting_period": "5s",
         "max_deposit_period": "172800s",
         "min_deposit": [
           {
@@ -324,7 +341,7 @@
         "quorum": "0.334000000000000000",
         "threshold": "0.500000000000000000",
         "veto_threshold": "0.334000000000000000",
-        "voting_period": "172800s"
+        "voting_period": "10s"
       },
       "proposals": [],
       "starting_proposal_id": "1",
@@ -332,7 +349,12 @@
       "votes": [],
       "voting_params": null
     },
-    "govext": null,
+    "govext": {
+      "params": {
+        "min_gas_limit": 100000,
+        "max_gas_limit": 2000000
+      }
+    },
     "ibc": {
       "channel_genesis": {
         "ack_sequences": [],
@@ -375,9 +397,30 @@
         }
       }
     },
-    "milestone": null,
-    "oracle": null,
-    "settlement": null,
+    "milestone": {
+      "params": {
+        "max_active_milestones": 500
+      },
+      "milestones": []
+    },
+    "oracle": {
+      "params": {
+        "commit_window": 10,
+        "reveal_window": 10,
+        "min_operator_commits": 1,
+        "staleness_threshold_blocks": 100
+      },
+      "operators": [
+        "cosmosvaloper17955zu57r288jeja39nc67x6qx9rda3xj263wa"
+      ]
+    },
+    "settlement": {
+      "params": {
+        "timestamp_tolerance_seconds": 30
+      },
+      "witnesses": [],
+      "processed_nonces": []
+    },
     "slashing": {
       "missed_blocks": [],
       "params": {
@@ -416,7 +459,12 @@
       "total_escrowed": []
     },
     "upgrade": {},
-    "validator": null,
+    "validator": {
+      "max_validators": 30,
+      "partition_scheme": "equal-slots-30",
+      "active_validators": [],
+      "queued_ejections": []
+    },
     "wasm": {
       "codes": [
         {
@@ -568,7 +616,7 @@
       ],
       "params": {
         "code_upload_access": {
-          "permission": "Nobody"
+          "permission": "Everybody"
         },
         "instantiate_default_permission": "Everybody"
       },

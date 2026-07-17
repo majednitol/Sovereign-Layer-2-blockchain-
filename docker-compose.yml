@@ -183,6 +183,9 @@ services:
       - READ_DB_URL=postgres://api_reader:sovereign_read_pwd@pgbouncer-read:6432/sovereign_read
       - NATS_URL=nats://nats-cluster:4222
       - COMETBFT_RPC_URL=http://chain-node:26657
+      - INGESTION_NKEY_SEED=SUAFFNTD6H6ST7VGTZDXYQDC5BPNGYRTEFY4TZM32TJEMBTFN5TJO4WNXU
+      - PROJECTION_NKEY_SEED=SUAINVHHXAR4PZTQC4VEME4P3HB2CQ3QNQY4WK3YNULE2IJZLNOLNDGBUE
+      - STREAM_NKEY_SEED=SUAO6IIZLMQHQYVKKHJIEXIC5T6XNKM2PUVF4EGZW23UALD7WTFFE7R2LQ
     ports:
       - "9091:9090"
       - "8081:8081"
@@ -341,7 +344,7 @@ services:
     volumes:
       - ./infra/vault/config:/vault/config
       - ./infra/vault/data:/vault/data
-    command: server -config=/vault/config/vault.hcl
+    command: vault server -config=/vault/config/vault.hcl
     cap_add:
       - IPC_LOCK
     networks:

@@ -22,7 +22,20 @@ func init() {
 		Package: strPtr("sovereign.certification.v1"),
 		Syntax:  strPtr("proto3"),
 		MessageType: []*descriptorpb.DescriptorProto{
-			{Name: strPtr("MsgUpdateCertificationParams")},
+			{
+				Name: strPtr("Params"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("max_consecutive_rejections"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_INT64.Enum()},
+					{Name: strPtr("missed_extension_limit"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_INT64.Enum()},
+				},
+			},
+			{
+				Name: strPtr("MsgUpdateCertificationParams"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{Name: strPtr("authority"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					{Name: strPtr("params"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(), TypeName: strPtr(".sovereign.certification.v1.Params")},
+				},
+			},
 			{Name: strPtr("MsgUpdateCertificationParamsResponse")},
 		},
 		Service: []*descriptorpb.ServiceDescriptorProto{
