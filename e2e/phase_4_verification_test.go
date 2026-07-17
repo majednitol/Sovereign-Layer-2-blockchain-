@@ -96,11 +96,11 @@ func TestPhase4SupplyCapModelAndInvariants(t *testing.T) {
 
 	// Set custom parameters: SupplyCap = 1000 WSOV (1,000,000,000 uwsov)
 	params := k.GetParams(ctx)
-	params.SupplyCap = 1000000000
+	params.SupplyCap = "1000000000"
 	k.SetParams(ctx, params)
 
 	// Force state mutation to exceed supply cap to test invariant breach detection
-	k.SetCosmosMinted(ctx, 1000000001) // 1 over supply cap
+	k.SetCosmosMinted(ctx, math.NewInt(1000000001)) // 1 over supply cap
 	msg, breached = invRoute(ctx)
 	if !breached {
 		t.Fatal("Expected supply invariant to detect breach when cosmos_minted exceeds supply cap")
@@ -108,7 +108,7 @@ func TestPhase4SupplyCapModelAndInvariants(t *testing.T) {
 	t.Logf("[PASS] Supply invariant successfully flagged breach: %s", msg)
 
 	// Reset to valid state
-	k.SetCosmosMinted(ctx, 500000000)
+	k.SetCosmosMinted(ctx, math.NewInt(500000000))
 }
 
 // TestPhase4CosmosBridgeModule verifies MsgBridgeIn/MsgBridgeOut and out-of-order execution via nonces bitmap registry.
@@ -149,7 +149,7 @@ func TestPhase4CosmosBridgeModule(t *testing.T) {
 
 	params := k.GetParams(ctx)
 	params.QuorumThreshold = 2
-	params.SupplyCap = 2000000000 // 2,000,000,000 uwsov
+	params.SupplyCap = "2000000000" // 2,000,000,000 uwsov
 	k.SetParams(ctx, params)
 
 	receiver := sdk.AccAddress([]byte("receiver_address_p4")).String()
@@ -214,8 +214,8 @@ func TestPhase4CosmosBridgeModule(t *testing.T) {
 	}
 
 	// Verify tracking updated
-	if k.GetCosmosMinted(ctx) != 60000000 {
-		t.Errorf("Expected cosmos minted tracked to be 60000000, got %d", k.GetCosmosMinted(ctx))
+	if !k.GetCosmosMinted(ctx).Equal(math.NewInt(60000000)) {
+		t.Errorf("Expected cosmos minted tracked to be 60000000, got %s", k.GetCosmosMinted(ctx).String())
 	}
 	t.Log("[PASS] Checked Out-of-Order execution, MsgBridgeIn, and MsgBridgeOut execution successfully.")
 }
@@ -278,10 +278,9 @@ func TestPhase4RelayerWatchersAndAggregator(t *testing.T) {
 
 	// 2. Signature Aggregator Timeout & Stuck Alerts
 	// Quorum = 3, Timeout = 5s, MaxRetries = 2
-	agg := relayer.NewSigAggregator(db, bus, 3, 5, 2)
+	agg := relayer.NewSigAggregator(db, bus, 3, 5, 2, big.NewInt(1337), "0x1234567890123456789012345678901234567890")
 	stuckNonceHex := "nonce_stuck_hex"
-
-	_, _ = agg.IngestVote(relayer.VoteMsg{NonceHex: stuckNonceHex, RelayerAddress: "rel_1", Signature: []byte("sig_1")})
+	_ = db.SetNonceState(stuckNonceHex, "burned")
 
 	// Timeout retry 1
 	agg.HandleTimeout(stuckNonceHex)
@@ -469,7 +468,7 @@ func TestPhase4MsgServerRouting(t *testing.T) {
 
 	params := k.GetParams(ctx)
 	params.QuorumThreshold = 2
-	params.SupplyCap = 2000000000 // 2,000,000,000 uwsov
+	params.SupplyCap = "2000000000" // 2,000,000,000 uwsov
 	k.SetParams(ctx, params)
 
 	receiver := sdk.AccAddress([]byte("receiver_address_p4")).String()

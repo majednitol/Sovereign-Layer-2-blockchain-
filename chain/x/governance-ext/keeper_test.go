@@ -1,6 +1,7 @@
 package gov_ext
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -57,6 +58,25 @@ func (m *mockWasmKeeper) Execute(ctx sdk.Context, contractAddr sdk.AccAddress, c
 		return nil, errors.New("wasm execution failed")
 	}
 	return nil, nil
+}
+
+func (m *mockWasmKeeper) QuerySmart(ctx sdk.Context, contractAddr sdk.AccAddress, req []byte) ([]byte, error) {
+	m.executed = true
+	if m.failExecute {
+		return nil, errors.New("wasm query failed: contract is not available")
+	}
+	res := struct {
+		IsValid bool   `json:"is_valid"`
+		Reason  string `json:"reason"`
+	}{
+		IsValid: true,
+		Reason:  "",
+	}
+	bz, err := json.Marshal(res)
+	if err != nil {
+		return nil, err
+	}
+	return bz, nil
 }
 
 type dummyMsg struct {

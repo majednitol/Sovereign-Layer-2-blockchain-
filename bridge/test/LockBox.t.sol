@@ -57,7 +57,7 @@ contract LockBoxTest is Test {
         bytes32 messageHash = keccak256(
             abi.encodePacked(
                 "\x19Ethereum Signed Message:\n32",
-                keccak256(abi.encodePacked(targetUser, amount, nonce))
+                keccak256(abi.encodePacked(block.chainid, address(lockBox), targetUser, amount, nonce))
             )
         );
 

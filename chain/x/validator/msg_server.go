@@ -6,7 +6,62 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"google.golang.org/grpc"
+
+	"github.com/cosmos/gogoproto/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
+
+func init() {
+	proto.RegisterType((*MsgFillValidatorSlotResponse)(nil), "sovereign.validator.v1.MsgFillValidatorSlotResponse")
+	proto.RegisterType((*MsgEjectValidatorResponse)(nil), "sovereign.validator.v1.MsgEjectValidatorResponse")
+	proto.RegisterType((*MsgUpdatePartitionSchemeResponse)(nil), "sovereign.validator.v1.MsgUpdatePartitionSchemeResponse")
+
+	strPtr := func(s string) *string { return &s }
+	fdProto := &descriptorpb.FileDescriptorProto{
+		Name:    strPtr("chain/x/validator/tx.proto"),
+		Package: strPtr("sovereign.validator.v1"),
+		Syntax:  strPtr("proto3"),
+		MessageType: []*descriptorpb.DescriptorProto{
+			{Name: strPtr("MsgFillValidatorSlot")},
+			{Name: strPtr("MsgFillValidatorSlotResponse")},
+			{Name: strPtr("MsgEjectValidator")},
+			{Name: strPtr("MsgEjectValidatorResponse")},
+			{Name: strPtr("MsgUpdatePartitionScheme")},
+			{Name: strPtr("MsgUpdatePartitionSchemeResponse")},
+		},
+		Service: []*descriptorpb.ServiceDescriptorProto{
+			{
+				Name: strPtr("Msg"),
+				Method: []*descriptorpb.MethodDescriptorProto{
+					{
+						Name:       strPtr("FillValidatorSlot"),
+						InputType:  strPtr(".sovereign.validator.v1.MsgFillValidatorSlot"),
+						OutputType: strPtr(".sovereign.validator.v1.MsgFillValidatorSlotResponse"),
+					},
+					{
+						Name:       strPtr("EjectValidator"),
+						InputType:  strPtr(".sovereign.validator.v1.MsgEjectValidator"),
+						OutputType: strPtr(".sovereign.validator.v1.MsgEjectValidatorResponse"),
+					},
+					{
+						Name:       strPtr("UpdatePartitionScheme"),
+						InputType:  strPtr(".sovereign.validator.v1.MsgUpdatePartitionScheme"),
+						OutputType: strPtr(".sovereign.validator.v1.MsgUpdatePartitionSchemeResponse"),
+					},
+				},
+			},
+		},
+	}
+
+	fd, err := protodesc.NewFile(fdProto, nil)
+	if err != nil {
+		panic(fmt.Sprintf("failed to compile dynamic file descriptor: %v", err))
+	}
+
+	_ = protoregistry.GlobalFiles.RegisterFile(fd)
+}
 
 type MsgServer struct {
 	keeper       Keeper
@@ -72,7 +127,7 @@ func (s *MsgServer) EjectValidator(goCtx context.Context, msg *MsgEjectValidator
 	if err == nil {
 		consAddr, err := val.GetConsAddr()
 		if err == nil {
-			_ = s.keeper.slashingKeeper.Tombstone(ctx, consAddr)
+			_ = s.keeper.slashingKeeper.Jail(ctx, consAddr)
 		}
 	}
 

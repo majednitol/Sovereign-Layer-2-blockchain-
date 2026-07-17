@@ -2,7 +2,12 @@ package certification
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/gogoproto/proto"
 )
+
+func init() {
+	proto.RegisterType((*MsgUpdateCertificationParams)(nil), "sovereign.certification.v1.MsgUpdateCertificationParams")
+}
 
 const (
 	ModuleName = "certification"

@@ -25,6 +25,14 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(ConstitutionResponse)]
     GetConstitution {},
+    #[returns(CheckProposalResponse)]
+    CheckProposal { proposal_type: String, summary: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CheckProposalResponse {
+    pub is_valid: bool,
+    pub reason: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

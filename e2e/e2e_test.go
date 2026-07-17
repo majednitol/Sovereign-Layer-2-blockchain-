@@ -244,6 +244,20 @@ type mockWasmKeeper struct {
 	constitutionValid bool
 }
 
+func (m mockWasmKeeper) QuerySmart(ctx sdk.Context, contractAddr sdk.AccAddress, req []byte) ([]byte, error) {
+	if m.constitutionValid {
+		resp := struct {
+			IsValid bool   `json:"is_valid"`
+			Reason  string `json:"reason"`
+		}{
+			IsValid: true,
+			Reason:  "mock constitution check passed",
+		}
+		return json.Marshal(resp)
+	}
+	return nil, fmt.Errorf("proposal is not constitutional")
+}
+
 func (m mockWasmKeeper) Execute(ctx sdk.Context, contractAddr sdk.AccAddress, caller sdk.AccAddress, msg []byte, coins sdk.Coins) ([]byte, error) {
 	if m.constitutionValid {
 		return []byte(`{"status":"approved"}`), nil
@@ -554,6 +568,7 @@ func TestPrimaryE2EScenario(t *testing.T) {
 		RemainingBlocks:    100,
 		State:              milestone.StatePending,
 		VestingPoolAddress: vestingPool,
+		PayoutAmount:       10000000,
 	})
 
 	s.MilesKeeper.SetParams(s.Ctx, milestone.Params{MaxActiveMilestones: 500})
@@ -809,6 +824,7 @@ func TestOracleStalenessChaos(t *testing.T) {
 		RemainingBlocks:    50,
 		State:              milestone.StatePending,
 		VestingPoolAddress: vestingPool,
+		PayoutAmount:       10000000,
 	})
 
 	// Set price feed at block 10

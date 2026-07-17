@@ -126,6 +126,12 @@ func runFeedWorker(ctx context.Context, operator string, feedID string, sources 
 		nonce := hex.EncodeToString(nonceBytes)
 		hash := oracle.ComputeCommitHash(operator, feedID, roundID, value, nonce)
 
+		// Get block height before commit
+		commitHeight, err := client.GetLatestBlockHeight(ctx)
+		if err != nil {
+			commitHeight = 0 // Fallback
+		}
+
 		// 2. Commit Stage
 		err = retryWithBackoff(ctx, feedID, "commit", func() error {
 			return client.BroadcastCommit(ctx, operator, feedID, roundID, hash)
@@ -135,8 +141,26 @@ func runFeedWorker(ctx context.Context, operator string, feedID string, sources 
 			return
 		}
 
-		// 3. Wait for reveal window (simulated delay)
-		time.Sleep(500 * time.Millisecond)
+		// 3. Wait for reveal window: Wait for block height to increment (at least +1 block)
+		if commitHeight > 0 {
+			fmt.Printf("[Oracle] [%s] Waiting for new block after commit at height %d...\n", feedID, commitHeight)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+				currentHeight, err := client.GetLatestBlockHeight(ctx)
+				if err == nil && currentHeight > commitHeight {
+					fmt.Printf("[Oracle] [%s] Block height progressed to %d. Commencing reveal.\n", feedID, currentHeight)
+					break
+				}
+				time.Sleep(100 * time.Millisecond) // Lightweight polling
+			}
+		} else {
+			// Fallback sleep if height query failed
+			time.Sleep(1 * time.Second)
+		}
 
 		// 4. Reveal Stage
 		err = retryWithBackoff(ctx, feedID, "reveal", func() error {
@@ -154,7 +178,27 @@ func runFeedWorker(ctx context.Context, operator string, feedID string, sources 
 			return
 		}
 
-		time.Sleep(2 * time.Second)
+		// Wait for next block before starting next round to prevent transaction spamming in the same block
+		if commitHeight > 0 {
+			revealHeight, err := client.GetLatestBlockHeight(ctx)
+			if err == nil {
+				fmt.Printf("[Oracle] [%s] Waiting for next block after reveal at height %d...\n", feedID, revealHeight)
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
+					currentHeight, err := client.GetLatestBlockHeight(ctx)
+					if err == nil && currentHeight > revealHeight {
+						break
+					}
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
+		} else {
+			time.Sleep(2 * time.Second)
+		}
 	}
 }
 

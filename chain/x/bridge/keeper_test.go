@@ -163,7 +163,7 @@ func TestProcessBridgeInAndOut(t *testing.T) {
 
 	params := keeper.GetParams(ctx)
 	params.QuorumThreshold = 2
-	params.SupplyCap = 1000000
+	params.SupplyCap = "1000000"
 	keeper.SetParams(ctx, params)
 
 	receiver := sdk.AccAddress([]byte("receiver_addr")).String()
@@ -182,14 +182,14 @@ func TestProcessBridgeInAndOut(t *testing.T) {
 	}
 
 	msg := MsgBridgeIn{
-		Submitter:  sdk.AccAddress([]byte("submitter_addr")).String(),
+		Submitter:  receiver,
 		Receiver:   receiver,
 		Amount:     amount,
 		Nonce:      nonce,
-		Signatures: signatures[:2], // 2 signatures satisfies quorum threshold (2)
+		Signatures: signatures[:2], // 2 signatures meets threshold (2)
 	}
 
-	// 1. Success case: BridgeIn
+	// 1. Success case: BridgeIn (Deposit / Mint)
 	err := keeper.ProcessBridgeIn(ctx, msg)
 	if err != nil {
 		t.Fatalf("ProcessBridgeIn failed: %v", err)
@@ -201,8 +201,8 @@ func TestProcessBridgeInAndOut(t *testing.T) {
 	}
 
 	// Check supply cap invariant updated
-	if keeper.GetCosmosMinted(ctx) != 50000 {
-		t.Errorf("Expected cosmos minted 50000, got %d", keeper.GetCosmosMinted(ctx))
+	if !keeper.GetCosmosMinted(ctx).Equal(math.NewInt(50000)) {
+		t.Errorf("Expected cosmos minted 50000, got %s", keeper.GetCosmosMinted(ctx).String())
 	}
 
 	// 2. Replay case: fails
@@ -253,7 +253,7 @@ func TestProcessBridgeInAndOut(t *testing.T) {
 	if bank.balances[receiver].AmountOf("uwsov").Int64() != 30000 {
 		t.Errorf("Expected balance 30000 after burn, got %d", bank.balances[receiver].AmountOf("uwsov").Int64())
 	}
-	if keeper.GetCosmosMinted(ctx) != 30000 {
-		t.Errorf("Expected cosmos minted 30000 after burn, got %d", keeper.GetCosmosMinted(ctx))
+	if !keeper.GetCosmosMinted(ctx).Equal(math.NewInt(30000)) {
+		t.Errorf("Expected cosmos minted 30000 after burn, got %s", keeper.GetCosmosMinted(ctx).String())
 	}
 }

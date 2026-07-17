@@ -309,6 +309,7 @@ func NewApp(
 		milestone.StoreKey,
 		settlement.StoreKey,
 		bridge.StoreKey,
+		gext.StoreKey,
 	)
 
 	// Object store keys (transient per-block data, reset on every Commit)
@@ -558,10 +559,11 @@ func NewApp(
 	}
 
 	// Wire CosmWasm Constitution contract address to x/governance-ext
+	permissionedWasm := wasmkeeper.NewDefaultPermissionKeeper(app.WasmKeeper)
 	app.GovExtKeeper = gext.NewKeeper(
-		keys[govtypes.StoreKey],
+		keys[gext.StoreKey],
 		appCodec,
-		wasmkeeper.NewDefaultPermissionKeeper(app.WasmKeeper),
+		govExtWasmWrapper{pk: permissionedWasm, k: &app.WasmKeeper},
 		ConstitutionContractAddr,
 		app.ValidatorKeeper,
 		app.MilestoneKeeper,
@@ -716,9 +718,9 @@ func NewApp(
 		govtypes.ModuleName,
 		consensusparamtypes.ModuleName,
 		ibcexported.ModuleName,
-		// EVM genesis order: vm → feemarket → erc20
-		evmtypes.ModuleName,
+		// EVM genesis order: feemarket → vm → erc20
 		feemarkettypes.ModuleName,
+		evmtypes.ModuleName,
 		erc20types.ModuleName,
 		ibctransfertypes.ModuleName,
 		genutiltypes.ModuleName,
@@ -1017,3 +1019,16 @@ func (app *App) RegisterNodeService(clientCtx client.Context, cfg config.Config)
 
 // GenesisState represents the initial state of each module.
 type GenesisState map[string]json.RawMessage
+
+type govExtWasmWrapper struct {
+	pk *wasmkeeper.PermissionedKeeper
+	k  *wasmkeeper.Keeper
+}
+
+func (w govExtWasmWrapper) Execute(ctx sdk.Context, contractAddr sdk.AccAddress, caller sdk.AccAddress, msg []byte, coins sdk.Coins) ([]byte, error) {
+	return w.pk.Execute(ctx, contractAddr, caller, msg, coins)
+}
+
+func (w govExtWasmWrapper) QuerySmart(ctx sdk.Context, contractAddr sdk.AccAddress, req []byte) ([]byte, error) {
+	return w.k.QuerySmart(ctx, contractAddr, req)
+}

@@ -6,7 +6,46 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"google.golang.org/grpc"
+
+	"github.com/cosmos/gogoproto/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
+
+func init() {
+	proto.RegisterType((*MsgUpdateCertificationParamsResponse)(nil), "sovereign.certification.v1.MsgUpdateCertificationParamsResponse")
+
+	strPtr := func(s string) *string { return &s }
+	fdProto := &descriptorpb.FileDescriptorProto{
+		Name:    strPtr("chain/x/certification/tx.proto"),
+		Package: strPtr("sovereign.certification.v1"),
+		Syntax:  strPtr("proto3"),
+		MessageType: []*descriptorpb.DescriptorProto{
+			{Name: strPtr("MsgUpdateCertificationParams")},
+			{Name: strPtr("MsgUpdateCertificationParamsResponse")},
+		},
+		Service: []*descriptorpb.ServiceDescriptorProto{
+			{
+				Name: strPtr("Msg"),
+				Method: []*descriptorpb.MethodDescriptorProto{
+					{
+						Name:       strPtr("UpdateCertificationParams"),
+						InputType:  strPtr(".sovereign.certification.v1.MsgUpdateCertificationParams"),
+						OutputType: strPtr(".sovereign.certification.v1.MsgUpdateCertificationParamsResponse"),
+					},
+				},
+			},
+		},
+	}
+
+	fd, err := protodesc.NewFile(fdProto, nil)
+	if err != nil {
+		panic(fmt.Sprintf("failed to compile dynamic file descriptor: %v", err))
+	}
+
+	_ = protoregistry.GlobalFiles.RegisterFile(fd)
+}
 
 // MsgServer implements the certification message service handler.
 type CertMsgServer struct {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"cosmossdk.io/math"
 	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -48,7 +49,7 @@ func (k Keeper) GetParams(ctx sdk.Context) Params {
 			MaxUnlockPerBlock:      100000000000,
 			CircuitBreakerAddress:  "", // MUST be set via genesis
 			GnosisSafeAddress:      "", // MUST be set via genesis
-			SupplyCap:              0,  // MUST be set via genesis — 0 blocks all deposits
+			SupplyCap:              "0", // MUST be set via genesis — "0" blocks all deposits
 			LockBoxAddress:         "", // MUST be set via genesis
 		}
 	}
@@ -91,20 +92,29 @@ func (k Keeper) DeleteRelayer(ctx sdk.Context, address string) {
 	store.Delete(append(RelayerKeyPrefix, []byte(address)...))
 }
 
-func (k Keeper) GetCosmosMinted(ctx sdk.Context) uint64 {
+func (k Keeper) GetCosmosMinted(ctx sdk.Context) math.Int {
 	store := ctx.KVStore(k.storeKey)
 	bz := store.Get([]byte("cosmos_minted"))
 	if bz == nil {
-		return 0
+		return math.ZeroInt()
 	}
-	var val uint64
-	_ = json.Unmarshal(bz, &val)
+	var s string
+	if err := json.Unmarshal(bz, &s); err != nil {
+		panic(fmt.Sprintf("failed to unmarshal cosmos_minted: %v", err))
+	}
+	val, ok := math.NewIntFromString(s)
+	if !ok {
+		panic(fmt.Sprintf("failed to parse cosmos_minted: %s", s))
+	}
 	return val
 }
 
-func (k Keeper) SetCosmosMinted(ctx sdk.Context, val uint64) {
+func (k Keeper) SetCosmosMinted(ctx sdk.Context, val math.Int) {
 	store := ctx.KVStore(k.storeKey)
-	bz, _ := json.Marshal(val)
+	bz, err := json.Marshal(val.String())
+	if err != nil {
+		panic(err)
+	}
 	store.Set([]byte("cosmos_minted"), bz)
 }
 
@@ -207,10 +217,15 @@ func (k Keeper) ProcessBridgeIn(ctx sdk.Context, msg MsgBridgeIn) error {
 	// 3. Verify supply cap atomic invariant
 	sovCoins := msg.Amount.AmountOf("uwsov")
 	cosmosMinted := k.GetCosmosMinted(ctx)
-	newMinted := cosmosMinted + uint64(sovCoins.Int64())
+	newMinted := cosmosMinted.Add(sovCoins)
 
-	if newMinted > params.SupplyCap {
-		return fmt.Errorf("bridge deposit of %s exceeds supply cap (%d)", msg.Amount.String(), params.SupplyCap)
+	supplyCap, ok := math.NewIntFromString(params.SupplyCap)
+	if !ok {
+		return fmt.Errorf("invalid supply cap configured in params: %s", params.SupplyCap)
+	}
+
+	if newMinted.GT(supplyCap) {
+		return fmt.Errorf("bridge deposit of %s exceeds supply cap (%s)", msg.Amount.String(), supplyCap.String())
 	}
 
 	// 4. Update state and mint tokens
@@ -252,8 +267,8 @@ func (k Keeper) ProcessBridgeOut(ctx sdk.Context, msg MsgBridgeOut) error {
 
 	sovCoins := msg.Amount.AmountOf("uwsov")
 	cosmosMinted := k.GetCosmosMinted(ctx)
-	if cosmosMinted < uint64(sovCoins.Int64()) {
-		return fmt.Errorf("insufficient bridge circulation: current %d, burning %d", cosmosMinted, sovCoins.Int64())
+	if cosmosMinted.LT(sovCoins) {
+		return fmt.Errorf("insufficient bridge circulation: current %s, burning %s", cosmosMinted.String(), sovCoins.String())
 	}
 
 	if k.bankKeeper != nil {
@@ -267,7 +282,7 @@ func (k Keeper) ProcessBridgeOut(ctx sdk.Context, msg MsgBridgeOut) error {
 		}
 	}
 
-	k.SetCosmosMinted(ctx, cosmosMinted-uint64(sovCoins.Int64()))
+	k.SetCosmosMinted(ctx, cosmosMinted.Sub(sovCoins))
 
 	ctx.EventManager().EmitEvent(sdk.NewEvent(
 		"MsgBridgeOut",
@@ -287,8 +302,12 @@ func (k Keeper) RegisterInvariants(ir sdk.InvariantRegistry) {
 func (k Keeper) SupplyInvariant(ctx sdk.Context) (string, bool) {
 	cosmosMinted := k.GetCosmosMinted(ctx)
 	params := k.GetParams(ctx)
-	if cosmosMinted > params.SupplyCap {
-		return fmt.Sprintf("bridge supply cap breached: minted %d, cap %d", cosmosMinted, params.SupplyCap), true
+	supplyCap, ok := math.NewIntFromString(params.SupplyCap)
+	if !ok {
+		return fmt.Sprintf("invalid supply cap configured: %s", params.SupplyCap), true
+	}
+	if cosmosMinted.GT(supplyCap) {
+		return fmt.Sprintf("bridge supply cap breached: minted %s, cap %s", cosmosMinted.String(), supplyCap.String()), true
 	}
 	return "bridge supply cap invariant holds", false
 }

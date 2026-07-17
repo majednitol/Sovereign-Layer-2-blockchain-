@@ -342,3 +342,47 @@ func (r *RelayerDB) GetBurnEvent(nonceHex string) (*BurnEvent, error) {
 	}, nil
 }
 
+func (r *RelayerDB) GetPendingBurns() ([]BurnEvent, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.useMem {
+		var list []BurnEvent
+		for nonceHex, event := range r.memBurns {
+			state := r.memNonces[nonceHex]
+			if state == "observed" {
+				list = append(list, event)
+			}
+		}
+		return list, nil
+	}
+
+	rows, err := r.db.Query(`
+		SELECT b.nonce, b.sender, b.bsc_recipient, b.amount, b.block_height
+		FROM burn_events b
+		JOIN nonces n ON b.nonce = n.nonce
+		WHERE n.state = 'observed'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []BurnEvent
+	for rows.Next() {
+		var nonceHex, sender, bscRecipient string
+		var amount, height uint64
+		if err := rows.Scan(&nonceHex, &sender, &bscRecipient, &amount, &height); err != nil {
+			return nil, err
+		}
+		nonce, _ := hex.DecodeString(nonceHex)
+		list = append(list, BurnEvent{
+			Sender:       sender,
+			BscRecipient: bscRecipient,
+			Amount:       amount,
+			Nonce:        nonce,
+			BlockHeight:  height,
+		})
+	}
+	return list, nil
+}
+

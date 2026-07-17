@@ -338,9 +338,10 @@ services:
     container_name: vault
     ports:
       - "8200:8200"
-    environment:
-      VAULT_DEV_ROOT_TOKEN_ID: "root"
-      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    volumes:
+      - ./infra/vault/config:/vault/config
+      - ./infra/vault/data:/vault/data
+    command: server -config=/vault/config/vault.hcl
     cap_add:
       - IPC_LOCK
     networks:

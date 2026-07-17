@@ -112,12 +112,9 @@ func main() {
 	flag.StringVar(&cfg.MetricsPort, "metrics-port", "9300", "Prometheus metrics port")
 	flag.Parse()
 
-	// Handle private key fallback for devnet/test
+	// Enforce private key presence
 	if cfg.PrivateKeyHex == "" {
-		// Auto-generate key for devnet runs so it doesn't crash on empty env
-		priv := secp256k1GenKeyHex()
-		cfg.PrivateKeyHex = priv
-		log.Printf("[Daemon] Private key not provided, generated random fallback: %s\n", priv)
+		log.Fatalf("[Daemon] FATAL: Private key not provided. Please set a valid private key hex using --private-key flag or config.")
 	}
 
 	log.Println("Starting Sovereign Relayer Daemon...")
@@ -153,6 +150,24 @@ func main() {
 	}
 	defer bus.Close()
 
+	// 2b. Query BSC Chain ID
+	var bscChainID *big.Int
+	bscClient, err := ethclient.Dial(cfg.BscRPC)
+	if err != nil {
+		log.Printf("[Daemon] WARNING: Failed to dial BSC RPC (%s): %v. Using fallback chain ID 1337 for testing.\n", cfg.BscRPC, err)
+		bscChainID = big.NewInt(1337)
+	} else {
+		var chainErr error
+		bscChainID, chainErr = bscClient.ChainID(context.Background())
+		if chainErr != nil {
+			log.Printf("[Daemon] WARNING: Failed to query BSC Chain ID: %v. Using fallback chain ID 1337 for testing.\n", chainErr)
+			bscChainID = big.NewInt(1337)
+		} else {
+			log.Printf("[Daemon] Connected to BSC, Chain ID: %s\n", bscChainID.String())
+		}
+		bscClient.Close()
+	}
+
 	// 3. Initialize Signer
 	signer, err := relayer.NewLocalSigner(cfg.PrivateKeyHex)
 	if err != nil {
@@ -165,7 +180,7 @@ func main() {
 	cosmosWatcher := relayer.NewCosmosWatcher(db, bus)
 	
 	// Quorum = 2, Timeout = 5s, MaxRetries = 3
-	sigAggregator := relayer.NewSigAggregator(db, bus, 2, 5, 3)
+	sigAggregator := relayer.NewSigAggregator(db, bus, 2, 5, 3, bscChainID, cfg.LockBoxAddress)
 
 	// Sorted relayers list (in production populated from governance-ext params or hardcoded for tests)
 	relayersList := []string{cfg.OperatorAddr, "cosmos1another_relayer_2", "cosmos1another_relayer_3"}
@@ -230,13 +245,16 @@ func main() {
 			log.Printf("[DB] Failed to save burn event: %v\n", err)
 		}
 
-		// Sign burn hash (which is prefix-hashed on BSC LockBox)
+		// Sign burn hash (which is prefix-hashed on BSC LockBox, domain-bound with chainID and contractAddress)
 		bscRecipient := common.HexToAddress(burn.BscRecipient)
 		amountBig := new(big.Int).SetUint64(burn.Amount)
 		nonceBig := new(big.Int).SetBytes(burn.Nonce)
+		lockBoxAddr := common.HexToAddress(cfg.LockBoxAddress)
 
 		// Enforce Solidity Keccak256 matching packing format
-		packed := append(bscRecipient.Bytes(), common.LeftPadBytes(amountBig.Bytes(), 32)...)
+		packed := append(common.LeftPadBytes(bscChainID.Bytes(), 32), lockBoxAddr.Bytes()...)
+		packed = append(packed, bscRecipient.Bytes()...)
+		packed = append(packed, common.LeftPadBytes(amountBig.Bytes(), 32)...)
 		packed = append(packed, common.LeftPadBytes(nonceBig.Bytes(), 32)...)
 		hash := crypto.Keccak256(packed)
 
@@ -323,15 +341,23 @@ func executeTxSubmission(ctx context.Context, cfg Config, nonce []byte, db *rela
 				return
 			}
 
-			// Perform actual gRPC tx broadcast to Cosmos or BSC contract unlock
-			isCosmosLockIn := checkLockInOrigin(nonceHex)
-			if isCosmosLockIn {
-				// Load lock event payload
-				lock, err := db.GetLockEvent(nonceHex)
-				if err != nil || lock == nil {
-					log.Printf("[Submitter] Failed to load lock event payload: %v\n", err)
+			// Load lock event payload
+			lock, err := db.GetLockEvent(nonceHex)
+			var isCosmosLockIn bool
+			if err == nil && lock != nil {
+				isCosmosLockIn = true
+			} else {
+				burn, err := db.GetBurnEvent(nonceHex)
+				if err == nil && burn != nil {
+					isCosmosLockIn = false
+				} else {
+					log.Printf("[Submitter] Nonce %s has no matching lock or burn event in database\n", nonceHex)
 					return
 				}
+			}
+
+			// Perform gRPC tx broadcast to Cosmos or BSC contract unlock
+			if isCosmosLockIn {
 				// Broadcast MsgBridgeIn to Cosmos
 				err = broadcastCosmosMsgBridgeIn(ctx, cfg, nonce, sigs, relayers[0], lock.CosmosRecipient, lock.Amount)
 			} else {
@@ -364,11 +390,7 @@ func executeTxSubmission(ctx context.Context, cfg Config, nonce []byte, db *rela
 	}
 }
 
-// checkLockInOrigin returns true if the nonce was created on BSC (LockIn to Cosmos)
-func checkLockInOrigin(nonceHex string) bool {
-	// Simple identifier heuristic for simulation
-	return !strings.HasPrefix(nonceHex, "ab")
-}
+
 
 func broadcastCosmosMsgBridgeIn(ctx context.Context, cfg Config, nonce []byte, sigs [][]byte, submitter string, receiver string, amountVal uint64) error {
 	log.Printf("[Cosmos Broadcaster] Submitting MsgBridgeIn to %s\n", cfg.CosmosGRPC)
@@ -563,11 +585,17 @@ func startCosmosChainWatcher(ctx context.Context, rpcURL string, watcher *relaye
 		lastSeen = 1 // default fallback
 	}
 
+	// Process any missed/pending burns from database on startup/reconnect
+	_ = watcher.ProcessPendingBurns()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
+			// Periodically process pending burns
+			_ = watcher.ProcessPendingBurns()
+
 			status, err := client.Status(ctx)
 			if err != nil {
 				time.Sleep(3 * time.Second)
@@ -662,8 +690,4 @@ func decodeLockedEventLog(topics []common.Hash, data []byte) (*relayer.LockEvent
 	return nil, fmt.Errorf("failed to parse string")
 }
 
-// Helpers for secp256k1 keys mapping to Ethereum curves
-func secp256k1GenKeyHex() string {
-	key, _ := crypto.GenerateKey()
-	return hex.EncodeToString(crypto.FromECDSA(key))
-}
+

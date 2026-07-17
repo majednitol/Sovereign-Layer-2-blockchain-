@@ -3,9 +3,50 @@ package settlement
 import (
 	"context"
 
+	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"google.golang.org/grpc"
+
+	"github.com/cosmos/gogoproto/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
+
+func init() {
+	proto.RegisterType((*MsgSettlementResponse)(nil), "sovereign.settlement.v1.MsgSettlementResponse")
+
+	strPtr := func(s string) *string { return &s }
+	fdProto := &descriptorpb.FileDescriptorProto{
+		Name:    strPtr("chain/x/settlement/tx.proto"),
+		Package: strPtr("sovereign.settlement.v1"),
+		Syntax:  strPtr("proto3"),
+		MessageType: []*descriptorpb.DescriptorProto{
+			{Name: strPtr("MsgSettlement")},
+			{Name: strPtr("MsgSettlementResponse")},
+		},
+		Service: []*descriptorpb.ServiceDescriptorProto{
+			{
+				Name: strPtr("Msg"),
+				Method: []*descriptorpb.MethodDescriptorProto{
+					{
+						Name:       strPtr("Settlement"),
+						InputType:  strPtr(".sovereign.settlement.v1.MsgSettlement"),
+						OutputType: strPtr(".sovereign.settlement.v1.MsgSettlementResponse"),
+					},
+				},
+			},
+		},
+	}
+
+	fd, err := protodesc.NewFile(fdProto, nil)
+	if err != nil {
+		panic(fmt.Sprintf("failed to compile dynamic file descriptor: %v", err))
+	}
+
+	_ = protoregistry.GlobalFiles.RegisterFile(fd)
+}
 
 type MsgServer struct {
 	keeper Keeper

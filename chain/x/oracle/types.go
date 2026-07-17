@@ -5,7 +5,13 @@ import (
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/gogoproto/proto"
 )
+
+func init() {
+	proto.RegisterType((*MsgCommitOracleHash)(nil), "sovereign.oracle.v1.MsgCommitOracleHash")
+	proto.RegisterType((*MsgRevealOracleReport)(nil), "sovereign.oracle.v1.MsgRevealOracleReport")
+}
 
 const (
 	ModuleName = "oracle"

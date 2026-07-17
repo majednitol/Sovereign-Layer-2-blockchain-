@@ -26,7 +26,12 @@ type AppModuleBasic struct{}
 
 func (AppModuleBasic) Name() string { return ModuleName }
 func (AppModuleBasic) RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {}
-func (AppModuleBasic) RegisterInterfaces(registry cdctypes.InterfaceRegistry) {}
+func (AppModuleBasic) RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
+	registry.RegisterImplementations((*sdk.Msg)(nil),
+		&MsgCommitOracleHash{},
+		&MsgRevealOracleReport{},
+	)
+}
 
 func (AppModuleBasic) DefaultGenesis(cdc codec.JSONCodec) json.RawMessage {
 	defaultState := GenesisState{

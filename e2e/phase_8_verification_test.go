@@ -222,7 +222,7 @@ func TestPhase8SupplyInvariant(t *testing.T) {
 	bank := mockBridgeBankKeeper{}
 	k := bridge.NewKeeper(storeKey, nil, bank)
 	k.SetParams(ctx, bridge.Params{
-		SupplyCap: 1000,
+		SupplyCap: "1000",
 	})
 
 	// 1. Initially supply is 0 -> holds
@@ -232,14 +232,14 @@ func TestPhase8SupplyInvariant(t *testing.T) {
 	}
 
 	// 2. Set minted supply within cap -> holds
-	k.SetCosmosMinted(ctx, 999)
+	k.SetCosmosMinted(ctx, math.NewInt(999))
 	msg, breached = k.SupplyInvariant(ctx)
 	if breached {
 		t.Fatalf("Expected no breach within cap, got: %s", msg)
 	}
 
 	// 3. Set minted supply above cap -> breaches
-	k.SetCosmosMinted(ctx, 1001)
+	k.SetCosmosMinted(ctx, math.NewInt(1001))
 	msg, breached = k.SupplyInvariant(ctx)
 	if !breached {
 		t.Fatal("Expected breach when supply exceeds cap")

@@ -114,7 +114,7 @@ func SimulateMsgBridgeOut(k Keeper) simtypes.Operation {
 			
 			// Update the cosmos_minted state to reflect the minted amount
 			cosmosMinted := k.GetCosmosMinted(ctx)
-			k.SetCosmosMinted(ctx, cosmosMinted+uint64(amount.AmountOf("uwsov").Int64()))
+			k.SetCosmosMinted(ctx, cosmosMinted.Add(amount.AmountOf("uwsov")))
 		}
 
 		msg := MsgBridgeOut{
@@ -162,8 +162,12 @@ func SimulateMsgBridgeInCapBreach(k Keeper) simtypes.Operation {
 
 		params := k.GetParams(ctx)
 		// Set amount larger than supply cap
-		capBreachingAmt := params.SupplyCap + 1000
-		amount := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(int64(capBreachingAmt))))
+		supplyCap, ok := math.NewIntFromString(params.SupplyCap)
+		if !ok {
+			supplyCap = math.NewInt(1000000)
+		}
+		capBreachingAmt := supplyCap.Add(math.NewInt(1000))
+		amount := sdk.NewCoins(sdk.NewCoin("uwsov", capBreachingAmt))
 
 		h := sha256.New()
 		h.Write([]byte(receiver.String()))

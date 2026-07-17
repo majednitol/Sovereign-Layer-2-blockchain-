@@ -102,10 +102,17 @@ func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONCodec, data json.
 	am.keeper.SetDegradedMode(ctx, state.DegradedMode)
 	am.keeper.SetConsecutiveRejectionCount(ctx, state.ConsecutiveRejectionCount)
 
-	for _, valAddrStr := range state.AttestedValidators {
-		valAddr, err := sdk.ValAddressFromBech32(valAddrStr)
-		if err == nil {
+	if len(state.AttestedValidators) == 0 && am.keeper.stakingKeeper != nil {
+		_ = am.keeper.stakingKeeper.IterateLastValidatorPowers(ctx, func(valAddr sdk.ValAddress, power int64) bool {
 			am.keeper.SetValidatorAttested(ctx, valAddr, true)
+			return false
+		})
+	} else {
+		for _, valAddrStr := range state.AttestedValidators {
+			valAddr, err := sdk.ValAddressFromBech32(valAddrStr)
+			if err == nil {
+				am.keeper.SetValidatorAttested(ctx, valAddr, true)
+			}
 		}
 	}
 

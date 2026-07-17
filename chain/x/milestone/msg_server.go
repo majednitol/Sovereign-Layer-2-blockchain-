@@ -7,7 +7,46 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"google.golang.org/grpc"
+
+	"github.com/cosmos/gogoproto/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
+
+func init() {
+	proto.RegisterType((*MsgCreateMilestoneResponse)(nil), "sovereign.milestone.v1.MsgCreateMilestoneResponse")
+
+	strPtr := func(s string) *string { return &s }
+	fdProto := &descriptorpb.FileDescriptorProto{
+		Name:    strPtr("chain/x/milestone/tx.proto"),
+		Package: strPtr("sovereign.milestone.v1"),
+		Syntax:  strPtr("proto3"),
+		MessageType: []*descriptorpb.DescriptorProto{
+			{Name: strPtr("MsgCreateMilestone")},
+			{Name: strPtr("MsgCreateMilestoneResponse")},
+		},
+		Service: []*descriptorpb.ServiceDescriptorProto{
+			{
+				Name: strPtr("Msg"),
+				Method: []*descriptorpb.MethodDescriptorProto{
+					{
+						Name:       strPtr("CreateMilestone"),
+						InputType:  strPtr(".sovereign.milestone.v1.MsgCreateMilestone"),
+						OutputType: strPtr(".sovereign.milestone.v1.MsgCreateMilestoneResponse"),
+					},
+				},
+			},
+		},
+	}
+
+	fd, err := protodesc.NewFile(fdProto, nil)
+	if err != nil {
+		panic(fmt.Sprintf("failed to compile dynamic file descriptor: %v", err))
+	}
+
+	_ = protoregistry.GlobalFiles.RegisterFile(fd)
+}
 
 // MsgServer implements the milestone message service handler.
 type MilestoneMsgServer struct {

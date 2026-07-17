@@ -82,6 +82,7 @@ ENV/
 .env
 .env.*
 !.env.example
+.vault-keys.json
 
 *.pem
 *.key

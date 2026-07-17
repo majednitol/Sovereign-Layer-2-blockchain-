@@ -128,6 +128,13 @@ func (k Keeper) ProcessSettlement(ctx sdk.Context, msg MsgSettlement) error {
 	// 2. Validate timestamp tolerance
 	params := k.GetParams(ctx)
 	blockTime := ctx.BlockTime().Unix()
+
+	// H-02: Reject future-dated settlements beyond maximum future offset (5 minutes)
+	const MaxFutureTimestampOffset = 300 // 5 minutes
+	if msg.Timestamp > blockTime+MaxFutureTimestampOffset {
+		return fmt.Errorf("settlement timestamp %d is too far in the future (max offset: %ds)", msg.Timestamp, MaxFutureTimestampOffset)
+	}
+
 	diff := msg.Timestamp - blockTime
 	if diff < 0 {
 		diff = -diff

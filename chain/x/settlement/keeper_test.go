@@ -125,6 +125,14 @@ func TestWitnessSettlement(t *testing.T) {
 		t.Error("Expected timestamp deviation error")
 	}
 
+	// Case 2b: Timestamp too far in future (> 5 minutes / 300s) -> fails
+	invalidMsg = msg
+	invalidMsg.Timestamp = 1350 // blockTime is 1000, 350s > 300s max offset
+	err = keeper.ProcessSettlement(ctx, invalidMsg)
+	if err == nil {
+		t.Error("Expected error for future timestamp beyond max offset")
+	}
+
 	// Case 3: Domain separator chain-ID mismatch (using different chain-ID) -> fails
 	wrongSeparator := ComputeDomainSeparator("different-chain-2", payloadHash)
 	wrongSignature := ed25519.Sign(privKey, wrongSeparator)

@@ -64,6 +64,24 @@ func (c *ChainClient) BroadcastReveal(ctx context.Context, operator string, feed
 	return c.sendTx(ctx, msg)
 }
 
+func (c *ChainClient) GetLatestBlockHeight(ctx context.Context) (int64, error) {
+	conn, err := grpc.DialContext(ctx, c.endpoint, grpc.WithInsecure())
+	if err != nil {
+		return 0, fmt.Errorf("failed to dial gRPC for block height query: %w", err)
+	}
+	defer conn.Close()
+
+	client := sdkclient.NewServiceClient(conn)
+	resp, err := client.GetLatestBlock(ctx, &sdkclient.GetLatestBlockRequest{})
+	if err != nil {
+		return 0, fmt.Errorf("failed to query latest block: %w", err)
+	}
+	if resp.Block == nil {
+		return 0, fmt.Errorf("invalid latest block response structure")
+	}
+	return resp.Block.Header.Height, nil
+}
+
 // initSequence fetches the current account number and sequence from the chain.
 func (c *ChainClient) initSequence(ctx context.Context, address string) error {
 	c.mu.Lock()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	log "cosmossdk.io/log/v2"
 	"cosmossdk.io/math"
 	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -25,6 +26,15 @@ type Keeper struct {
 	cdc          codec.BinaryCodec
 	oracleKeeper OracleKeeper
 	bankKeeper   BankKeeper
+}
+
+func (k Keeper) Logger(ctx sdk.Context) log.Logger {
+	// Return a nop logger if the context's logger is nil (common in manual test context setups)
+	logger := ctx.Logger()
+	if logger == nil {
+		return log.NewNopLogger()
+	}
+	return logger
 }
 
 func NewKeeper(
@@ -288,7 +298,7 @@ func (k Keeper) triggerVestingPayout(ctx sdk.Context, m Milestone) {
 
 	poolAddr, err := sdk.AccAddressFromBech32(m.VestingPoolAddress)
 	if err != nil {
-		ctx.Logger().Error("milestone payout failed: invalid vesting pool address",
+		k.Logger(ctx).Error("milestone payout failed: invalid vesting pool address",
 			"milestone_id", m.ID,
 			"address", m.VestingPoolAddress,
 			"error", err,
@@ -302,13 +312,13 @@ func (k Keeper) triggerVestingPayout(ctx sdk.Context, m Milestone) {
 	}
 
 	if k.bankKeeper == nil {
-		ctx.Logger().Error("milestone payout failed: bank keeper is nil", "milestone_id", m.ID)
+		k.Logger(ctx).Error("milestone payout failed: bank keeper is nil", "milestone_id", m.ID)
 		return
 	}
 
 	payoutAmt := m.PayoutAmount
 	if payoutAmt == 0 {
-		ctx.Logger().Error("milestone payout failed: zero payout amount", "milestone_id", m.ID)
+		k.Logger(ctx).Error("milestone payout failed: zero payout amount", "milestone_id", m.ID)
 		ctx.EventManager().EmitEvent(sdk.NewEvent(
 			"milestone_payout_failed",
 			sdk.NewAttribute("milestone_id", m.ID),
@@ -322,7 +332,7 @@ func (k Keeper) triggerVestingPayout(ctx sdk.Context, m Milestone) {
 
 	// M2 FIX: Handle SendCoins error instead of discarding it
 	if err := k.bankKeeper.SendCoins(ctx, escrowAddr, poolAddr, amount); err != nil {
-		ctx.Logger().Error("milestone payout failed: SendCoins error",
+		k.Logger(ctx).Error("milestone payout failed: SendCoins error",
 			"milestone_id", m.ID,
 			"from", escrowAddr.String(),
 			"to", poolAddr.String(),

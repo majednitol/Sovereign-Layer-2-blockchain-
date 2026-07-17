@@ -97,9 +97,9 @@ contract LockBox {
             )
         );
 
-        totalLocked += amount;
-
         require(token.transferFrom(msg.sender, address(this), amount), "token transfer failed");
+
+        totalLocked += amount;
 
         emit Locked(msg.sender, amount, cosmosRecipient, nonce);
     }
@@ -134,7 +134,7 @@ contract LockBox {
         bytes32 messageHash = keccak256(
             abi.encodePacked(
                 "\x19Ethereum Signed Message:\n32",
-                keccak256(abi.encodePacked(user, amount, nonce))
+                keccak256(abi.encodePacked(block.chainid, address(this), user, amount, nonce))
             )
         );
 
@@ -195,6 +195,7 @@ contract LockBox {
     }
 
     // Helper method to recover ECDSA signer address
+    // C-05: Require non-zero recovered address to prevent ecrecover zero address vulnerability
     function recoverSigner(bytes32 messageHash, bytes memory sig) public pure returns (address) {
         if (sig.length != 65) {
             return address(0);
@@ -207,7 +208,9 @@ contract LockBox {
             s := mload(add(sig, 64))
             v := byte(0, mload(add(sig, 96)))
         }
-        return ecrecover(messageHash, v, r, s);
+        address recovered = ecrecover(messageHash, v, r, s);
+        require(recovered != address(0), "recovered address cannot be zero");
+        return recovered;
     }
 
     // Invariant getter: totalLocked == totalReleasedToUsers + totalPendingUnlock

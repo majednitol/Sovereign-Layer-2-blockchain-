@@ -607,16 +607,6 @@ func getNatsNkeyOption(role string) (nats.Option, error) {
 	}
 	
 	if seed == "" {
-		if role == "ingestion" {
-			seed = "SUAFFNTD6H6ST7VGTZDXYQDC5BPNGYRTEFY4TZM32TJEMBTFN5TJO4WNXU"
-		} else if role == "projection" {
-			seed = "SUAINVHHXAR4PZTQC4VEME4P3HB2CQ3QNQY4WK3YNULE2IJZLNOLNDGBUE"
-		} else if role == "stream" {
-			seed = "SUAO6IIZLMQHQYVKKHJIEXIC5T6XNKM2PUVF4EGZW23UALD7WTFFE7R2LQ"
-		}
-	}
-
-	if seed == "" {
 		return nil, fmt.Errorf("NKey seed not found for role %s", role)
 	}
 

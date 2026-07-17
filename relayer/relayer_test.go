@@ -1,9 +1,18 @@
 package relayer
 
 import (
+	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
+	"math/big"
 	"testing"
 	"time"
+
+	"cosmossdk.io/math"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/sovereign-l1/chain/x/bridge"
 )
 
 type mockEventBus struct {
@@ -16,6 +25,10 @@ func (m *mockEventBus) Publish(subject string, data []byte) error {
 }
 
 func (m *mockEventBus) Subscribe(subject string, handler func(msg []byte)) error {
+	return nil
+}
+
+func (m *mockEventBus) Close() error {
 	return nil
 }
 
@@ -85,16 +98,19 @@ func TestCosmosWatcherBurnEvents(t *testing.T) {
 
 	watcher := NewCosmosWatcher(db, bus)
 
-	nonce := []byte("nonce_cosmos_burn_event")
-	err := watcher.IngestBurnEvent(BurnEvent{
-		Sender:       "cosmos1sender",
-		BscRecipient: "0xuser1",
-		Amount:       500,
+	// Simulate event
+	nonce, _ := hex.DecodeString("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
+	event := BurnEvent{
 		Nonce:        nonce,
+		Sender:       "cosmos1sender",
+		BscRecipient: "0x1111111111111111111111111111111111111111",
+		Amount:       50000,
 		BlockHeight:  100,
-	})
+	}
+
+	err := watcher.IngestBurnEvent(event)
 	if err != nil {
-		t.Fatalf("Failed to ingest burn event: %v", err)
+		t.Fatalf("IngestBurnEvent failed: %v", err)
 	}
 
 	nonceHex := fmt.Sprintf("%x", nonce)
@@ -113,29 +129,69 @@ func TestSignatureAggregatorQuorumAndAlerts(t *testing.T) {
 	bus := &mockEventBus{published: make(map[string][]byte)}
 
 	// Quorum = 3, MaxRetries = 2
-	agg := NewSigAggregator(db, bus, 3, 10, 2)
-	nonceHex := "abc123noncehex"
+	agg := NewSigAggregator(db, bus, 3, 10, 2, big.NewInt(1337), "0x1234567890123456789012345678901234567890")
+
+	// Generate 3 real relayer keys
+	privs := make([]*ecdsa.PrivateKey, 3)
+	addrs := make([]string, 3)
+	for i := 0; i < 3; i++ {
+		priv, _ := crypto.GenerateKey()
+		privs[i] = priv
+		compressed := crypto.CompressPubkey(&priv.PublicKey)
+		cosmosPubKey := &secp256k1.PubKey{Key: compressed}
+		addrs[i] = sdk.AccAddress(cosmosPubKey.Address()).String()
+	}
+
+	nonce, _ := hex.DecodeString("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
+	nonceHex := hex.EncodeToString(nonce)
+
+	db.SaveLockEvent(LockEvent{
+		Nonce:           nonce,
+		User:            "0x1234567890123456789012345678901234567890",
+		Amount:          50000,
+		CosmosRecipient: "cosmos1rec1",
+		BlockNumber:     10,
+	})
+
+	amountCoins := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(50000)))
+	messageHash := bridge.ComputeBridgeMessageHash("cosmos1rec1", amountCoins, nonce)
+
+	sigs := make([][]byte, 3)
+	for i := 0; i < 3; i++ {
+		sig, _ := crypto.Sign(messageHash, privs[i])
+		sig[64] += 27
+		sigs[i] = sig
+	}
 
 	// Add first vote
-	q, _ := agg.IngestVote(VoteMsg{NonceHex: nonceHex, RelayerAddress: "rel1", Signature: []byte("sig1")})
+	q, err := agg.IngestVote(VoteMsg{NonceHex: nonceHex, RelayerAddress: addrs[0], Signature: sigs[0]})
+	if err != nil {
+		t.Fatalf("IngestVote failed: %v", err)
+	}
 	if q {
 		t.Fatal("Quorum should not be met with 1 vote")
 	}
 
 	// Add duplicate vote (cheating)
-	q, _ = agg.IngestVote(VoteMsg{NonceHex: nonceHex, RelayerAddress: "rel1", Signature: []byte("sig1")})
+	q, _ = agg.IngestVote(VoteMsg{NonceHex: nonceHex, RelayerAddress: addrs[0], Signature: sigs[0]})
 	if q {
 		t.Fatal("Quorum should not be met with duplicate vote")
 	}
 
 	// Add second unique vote
-	q, _ = agg.IngestVote(VoteMsg{NonceHex: nonceHex, RelayerAddress: "rel2", Signature: []byte("sig2")})
+	q, err = agg.IngestVote(VoteMsg{NonceHex: nonceHex, RelayerAddress: addrs[1], Signature: sigs[1]})
+	if err != nil {
+		t.Fatalf("IngestVote failed: %v", err)
+	}
 	if q {
 		t.Fatal("Quorum should not be met with 2 votes")
 	}
 
 	// Add third unique vote -> quorum met!
-	q, _ = agg.IngestVote(VoteMsg{NonceHex: nonceHex, RelayerAddress: "rel3", Signature: []byte("sig3")})
+	q, err = agg.IngestVote(VoteMsg{NonceHex: nonceHex, RelayerAddress: addrs[2], Signature: sigs[2]})
+	if err != nil {
+		t.Fatalf("IngestVote failed: %v", err)
+	}
 	if !q {
 		t.Fatal("Quorum should be met with 3 unique votes")
 	}
@@ -147,8 +203,22 @@ func TestSignatureAggregatorQuorumAndAlerts(t *testing.T) {
 	}
 
 	// Stuck alert test
-	stuckNonce := "stucknoncehex"
-	_, _ = agg.IngestVote(VoteMsg{NonceHex: stuckNonce, RelayerAddress: "rel1", Signature: []byte("sig1")})
+	stuckNonceBytes, _ := hex.DecodeString("ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100")
+	stuckNonce := hex.EncodeToString(stuckNonceBytes)
+
+	db.SaveLockEvent(LockEvent{
+		Nonce:           stuckNonceBytes,
+		User:            "0x1234567890123456789012345678901234567890",
+		Amount:          50000,
+		CosmosRecipient: "cosmos1rec1",
+		BlockNumber:     10,
+	})
+
+	stuckHash := bridge.ComputeBridgeMessageHash("cosmos1rec1", amountCoins, stuckNonceBytes)
+	stuckSig, _ := crypto.Sign(stuckHash, privs[0])
+	stuckSig[64] += 27
+
+	_, _ = agg.IngestVote(VoteMsg{NonceHex: stuckNonce, RelayerAddress: addrs[0], Signature: stuckSig})
 
 	// Trigger timeout 1
 	agg.HandleTimeout(stuckNonce)

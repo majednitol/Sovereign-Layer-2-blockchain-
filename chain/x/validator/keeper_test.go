@@ -94,11 +94,17 @@ func (m mockStakingKeeper) GetValidator(ctx context.Context, valAddr sdk.ValAddr
 
 type mockSlashingKeeper struct {
 	tombstoneCalls []sdk.ConsAddress
+	jailCalls      []sdk.ConsAddress
 	initCalls      []sdk.ConsAddress
 }
 
 func (m *mockSlashingKeeper) Tombstone(ctx context.Context, valAddr sdk.ConsAddress) error {
 	m.tombstoneCalls = append(m.tombstoneCalls, valAddr)
+	return nil
+}
+
+func (m *mockSlashingKeeper) Jail(ctx context.Context, consAddr sdk.ConsAddress) error {
+	m.jailCalls = append(m.jailCalls, consAddr)
 	return nil
 }
 
@@ -227,8 +233,8 @@ func TestValidatorKeeperEndBlocker(t *testing.T) {
 	if len(slashing.initCalls) != 2 {
 		t.Errorf("Expected 2 InitializeValidatorSigningInfo calls, got %d", len(slashing.initCalls))
 	}
-	if len(slashing.tombstoneCalls) != 1 {
-		t.Errorf("Expected 1 Tombstone call, got %d", len(slashing.tombstoneCalls))
+	if len(slashing.jailCalls) != 1 {
+		t.Errorf("Expected 1 Jail call, got %d", len(slashing.jailCalls))
 	}
 }
 

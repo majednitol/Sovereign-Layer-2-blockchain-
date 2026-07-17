@@ -5,7 +5,12 @@ import (
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/gogoproto/proto"
 )
+
+func init() {
+	proto.RegisterType((*MsgSettlement)(nil), "sovereign.settlement.v1.MsgSettlement")
+}
 
 const (
 	ModuleName = "settlement"

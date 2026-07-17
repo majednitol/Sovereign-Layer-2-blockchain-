@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"crypto/ed25519"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -178,6 +179,21 @@ func (m *phase2MockBankKeeper) SendCoinsFromAccountToModule(ctx context.Context,
 type phase2MockWasmKeeper struct {
 	ShouldFail bool
 	Executed   bool
+}
+
+func (m *phase2MockWasmKeeper) QuerySmart(ctx sdk.Context, contractAddr sdk.AccAddress, req []byte) ([]byte, error) {
+	m.Executed = true
+	if m.ShouldFail {
+		return nil, errors.New("wasm query failed")
+	}
+	resp := struct {
+		IsValid bool   `json:"is_valid"`
+		Reason  string `json:"reason"`
+	}{
+		IsValid: true,
+		Reason:  "mock constitution check passed",
+	}
+	return json.Marshal(resp)
 }
 
 func (m *phase2MockWasmKeeper) Execute(ctx sdk.Context, contractAddr sdk.AccAddress, caller sdk.AccAddress, msg []byte, coins sdk.Coins) ([]byte, error) {
@@ -392,6 +408,7 @@ func TestPhase2MilestoneStateMachine(t *testing.T) {
 		RemainingBlocks:    10,
 		State:              milestone.StatePending,
 		VestingPoolAddress: poolAddr,
+		PayoutAmount:       10000000,
 	}
 	k.SetMilestone(ctx, m)
 
@@ -663,7 +680,7 @@ func TestPhase2BridgeSignatureAndSupplyCap(t *testing.T) {
 
 	params := k.GetParams(ctx)
 	params.QuorumThreshold = 2
-	params.SupplyCap = 1000000
+	params.SupplyCap = "1000000"
 	k.SetParams(ctx, params)
 
 	receiver := sdk.AccAddress([]byte("receiver_addr_______")).String()
@@ -696,8 +713,8 @@ func TestPhase2BridgeSignatureAndSupplyCap(t *testing.T) {
 	}
 
 	// Verify minted supply is correct
-	if k.GetCosmosMinted(ctx) != 50000 {
-		t.Errorf("Expected cosmos minted to be 50000, got %d", k.GetCosmosMinted(ctx))
+	if !k.GetCosmosMinted(ctx).Equal(math.NewInt(50000)) {
+		t.Errorf("Expected cosmos minted to be 50000, got %s", k.GetCosmosMinted(ctx).String())
 	}
 
 	// 2. Replay case: nonce replay protection prevents double processing

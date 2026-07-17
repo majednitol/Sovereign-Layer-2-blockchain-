@@ -6,7 +6,94 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"google.golang.org/grpc"
+
+	"github.com/cosmos/gogoproto/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
+
+func init() {
+	proto.RegisterType((*MsgMigrateContractsResponse)(nil), "sovereign.govext.v1.MsgMigrateContractsResponse")
+	proto.RegisterType((*MsgUpdateGasLimitResponse)(nil), "sovereign.govext.v1.MsgUpdateGasLimitResponse")
+	proto.RegisterType((*MsgUpdateValidatorSlotResponse)(nil), "sovereign.govext.v1.MsgUpdateValidatorSlotResponse")
+	proto.RegisterType((*MsgUpdateMilestoneResponse)(nil), "sovereign.govext.v1.MsgUpdateMilestoneResponse")
+	proto.RegisterType((*MsgUpdateOracleOperatorResponse)(nil), "sovereign.govext.v1.MsgUpdateOracleOperatorResponse")
+	proto.RegisterType((*MsgUpdateWitnessRegistryResponse)(nil), "sovereign.govext.v1.MsgUpdateWitnessRegistryResponse")
+	proto.RegisterType((*MsgUpdateBridgeRelayerSetResponse)(nil), "sovereign.govext.v1.MsgUpdateBridgeRelayerSetResponse")
+
+	strPtr := func(s string) *string { return &s }
+	fdProto := &descriptorpb.FileDescriptorProto{
+		Name:    strPtr("chain/x/governance-ext/tx.proto"),
+		Package: strPtr("sovereign.govext.v1"),
+		Syntax:  strPtr("proto3"),
+		MessageType: []*descriptorpb.DescriptorProto{
+			{Name: strPtr("MsgMigrateContracts")},
+			{Name: strPtr("MsgMigrateContractsResponse")},
+			{Name: strPtr("MsgUpdateGasLimit")},
+			{Name: strPtr("MsgUpdateGasLimitResponse")},
+			{Name: strPtr("MsgUpdateValidatorSlot")},
+			{Name: strPtr("MsgUpdateValidatorSlotResponse")},
+			{Name: strPtr("MsgUpdateMilestone")},
+			{Name: strPtr("MsgUpdateMilestoneResponse")},
+			{Name: strPtr("MsgUpdateOracleOperator")},
+			{Name: strPtr("MsgUpdateOracleOperatorResponse")},
+			{Name: strPtr("MsgUpdateWitnessRegistry")},
+			{Name: strPtr("MsgUpdateWitnessRegistryResponse")},
+			{Name: strPtr("MsgUpdateBridgeRelayerSet")},
+			{Name: strPtr("MsgUpdateBridgeRelayerSetResponse")},
+		},
+		Service: []*descriptorpb.ServiceDescriptorProto{
+			{
+				Name: strPtr("Msg"),
+				Method: []*descriptorpb.MethodDescriptorProto{
+					{
+						Name:       strPtr("MigrateContracts"),
+						InputType:  strPtr(".sovereign.govext.v1.MsgMigrateContracts"),
+						OutputType: strPtr(".sovereign.govext.v1.MsgMigrateContractsResponse"),
+					},
+					{
+						Name:       strPtr("UpdateGasLimit"),
+						InputType:  strPtr(".sovereign.govext.v1.MsgUpdateGasLimit"),
+						OutputType: strPtr(".sovereign.govext.v1.MsgUpdateGasLimitResponse"),
+					},
+					{
+						Name:       strPtr("UpdateValidatorSlot"),
+						InputType:  strPtr(".sovereign.govext.v1.MsgUpdateValidatorSlot"),
+						OutputType: strPtr(".sovereign.govext.v1.MsgUpdateValidatorSlotResponse"),
+					},
+					{
+						Name:       strPtr("UpdateMilestone"),
+						InputType:  strPtr(".sovereign.govext.v1.MsgUpdateMilestone"),
+						OutputType: strPtr(".sovereign.govext.v1.MsgUpdateMilestoneResponse"),
+					},
+					{
+						Name:       strPtr("UpdateOracleOperator"),
+						InputType:  strPtr(".sovereign.govext.v1.MsgUpdateOracleOperator"),
+						OutputType: strPtr(".sovereign.govext.v1.MsgUpdateOracleOperatorResponse"),
+					},
+					{
+						Name:       strPtr("UpdateWitnessRegistry"),
+						InputType:  strPtr(".sovereign.govext.v1.MsgUpdateWitnessRegistry"),
+						OutputType: strPtr(".sovereign.govext.v1.MsgUpdateWitnessRegistryResponse"),
+					},
+					{
+						Name:       strPtr("UpdateBridgeRelayerSet"),
+						InputType:  strPtr(".sovereign.govext.v1.MsgUpdateBridgeRelayerSet"),
+						OutputType: strPtr(".sovereign.govext.v1.MsgUpdateBridgeRelayerSetResponse"),
+					},
+				},
+			},
+		},
+	}
+
+	fd, err := protodesc.NewFile(fdProto, nil)
+	if err != nil {
+		panic(fmt.Sprintf("failed to compile dynamic file descriptor: %v", err))
+	}
+
+	_ = protoregistry.GlobalFiles.RegisterFile(fd)
+}
 
 type MsgServer struct {
 	keeper       Keeper

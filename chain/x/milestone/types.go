@@ -4,7 +4,12 @@ import (
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/gogoproto/proto"
 )
+
+func init() {
+	proto.RegisterType((*MsgCreateMilestone)(nil), "sovereign.milestone.v1.MsgCreateMilestone")
+}
 
 const (
 	ModuleName = "milestone"

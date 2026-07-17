@@ -4,11 +4,22 @@ import (
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/gogoproto/proto"
 )
+
+func init() {
+	proto.RegisterType((*MsgMigrateContracts)(nil), "sovereign.govext.v1.MsgMigrateContracts")
+	proto.RegisterType((*MsgUpdateGasLimit)(nil), "sovereign.govext.v1.MsgUpdateGasLimit")
+	proto.RegisterType((*MsgUpdateValidatorSlot)(nil), "sovereign.govext.v1.MsgUpdateValidatorSlot")
+	proto.RegisterType((*MsgUpdateMilestone)(nil), "sovereign.govext.v1.MsgUpdateMilestone")
+	proto.RegisterType((*MsgUpdateOracleOperator)(nil), "sovereign.govext.v1.MsgUpdateOracleOperator")
+	proto.RegisterType((*MsgUpdateWitnessRegistry)(nil), "sovereign.govext.v1.MsgUpdateWitnessRegistry")
+	proto.RegisterType((*MsgUpdateBridgeRelayerSet)(nil), "sovereign.govext.v1.MsgUpdateBridgeRelayerSet")
+}
 
 const (
 	ModuleName = "govext"
-	StoreKey   = "govext"
+	StoreKey   = "gext"
 	RouterKey  = "govext"
 )
 

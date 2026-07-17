@@ -126,6 +126,10 @@ func (m mockWasmKeeperSim) Execute(ctx sdk.Context, contractAddr sdk.AccAddress,
 	return []byte(`{"status":"approved"}`), nil
 }
 
+func (m mockWasmKeeperSim) QuerySmart(ctx sdk.Context, contractAddr sdk.AccAddress, req []byte) ([]byte, error) {
+	return []byte(`{"is_valid":true,"reason":""}`), nil
+}
+
 type mockBankKeeperSim struct{}
 
 func (m mockBankKeeperSim) SendCoins(ctx context.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error {
@@ -231,7 +235,7 @@ func TestAppSimulation(t *testing.T) {
 		MaxUnlockPerBlock:      100000000000,
 		CircuitBreakerAddress:  "cosmos1cb_addr",
 		GnosisSafeAddress:      "cosmos1gs_addr",
-		SupplyCap:              1000000000000,
+		SupplyCap:              "1000000000000",
 		LockBoxAddress:         "0x1234567890123456789012345678901234567890",
 	})
 

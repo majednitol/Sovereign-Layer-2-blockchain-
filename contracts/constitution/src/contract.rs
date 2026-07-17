@@ -3,7 +3,7 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
 };
-use crate::msg::{ConstitutionResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ConstitutionResponse, ExecuteMsg, InstantiateMsg, QueryMsg, CheckProposalResponse};
 use crate::state::{Config, CONFIG};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -106,6 +106,25 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 is_paused: config.is_paused,
                 governance_address: config.governance_address.into_string(),
                 cold_multisig_address: config.cold_multisig_address.into_string(),
+            })
+        }
+        QueryMsg::CheckProposal { proposal_type: _, summary } => {
+            let config = CONFIG.load(deps.storage)?;
+            if config.is_paused {
+                return to_json_binary(&CheckProposalResponse {
+                    is_valid: false,
+                    reason: "Contract is paused".to_string(),
+                });
+            }
+            if summary.contains("VIOLATION") {
+                return to_json_binary(&CheckProposalResponse {
+                    is_valid: false,
+                    reason: "Proposal violates constitution".to_string(),
+                });
+            }
+            to_json_binary(&CheckProposalResponse {
+                is_valid: true,
+                reason: "".to_string(),
             })
         }
     }

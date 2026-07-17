@@ -111,11 +111,17 @@ func (m chaosStakingKeeper) GetValidator(ctx context.Context, valAddr sdk.ValAdd
 
 type chaosSlashingKeeper struct {
 	tombstones []sdk.ConsAddress
+	jails      []sdk.ConsAddress
 	inits      []sdk.ConsAddress
 }
 
 func (m *chaosSlashingKeeper) Tombstone(ctx context.Context, consAddr sdk.ConsAddress) error {
 	m.tombstones = append(m.tombstones, consAddr)
+	return nil
+}
+
+func (m *chaosSlashingKeeper) Jail(ctx context.Context, consAddr sdk.ConsAddress) error {
+	m.jails = append(m.jails, consAddr)
 	return nil
 }
 
@@ -182,12 +188,12 @@ func TestChaosValidatorEjectionSlashing(t *testing.T) {
 	}
 
 	// Slashing assertions
-	if len(slashing.tombstones) != 1 {
-		t.Errorf("Expected 1 Tombstone call, got %d", len(slashing.tombstones))
+	if len(slashing.jails) != 1 {
+		t.Errorf("Expected 1 Jail call, got %d", len(slashing.jails))
 	}
 	cons3, _ := val3.GetConsAddr()
-	if !slashing.tombstones[0].Equals(sdk.ConsAddress(cons3)) {
-		t.Error("Expected ejected validator 3 to be tombstoned")
+	if !slashing.jails[0].Equals(sdk.ConsAddress(cons3)) {
+		t.Error("Expected ejected validator 3 to be jailed")
 	}
 
 	if len(slashing.inits) != 2 {
@@ -236,6 +242,7 @@ func TestChaosOracleStalenessMilestoneClock(t *testing.T) {
 		RemainingBlocks:    10,
 		State:              milestone.StatePending,
 		VestingPoolAddress: sdk.AccAddress([]byte("pool")).String(),
+		PayoutAmount:       10000000,
 	}
 	k.SetMilestone(ctx, m)
 

@@ -59,13 +59,7 @@ func NewHorcruxSignerClient(peers []string, address string) *HorcruxSignerClient
 	}
 }
 
-func (s *HorcruxSignerClient) Sign(hash []byte) ([]byte, error) {
-	// In a real production deployment, this client initiates a 2-of-3 Shamir threshold key signing session.
-	// We simulate the signature generation using the mock system for E2E tests, which matches the planned Horcrux integration.
-	// For local test scenarios, it performs cryptographic signing simulating the threshold quorum.
-	fmt.Printf("[HORCRUX] Requesting threshold signature from peers: %v\n", s.peers)
-	return []byte("horcrux_threshold_mock_signature_bytes_65_length_padded_out_here"), nil
-}
+
 
 func (s *HorcruxSignerClient) GetAddress() string {
 	return s.address

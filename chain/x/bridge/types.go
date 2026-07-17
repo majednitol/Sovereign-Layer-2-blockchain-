@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -33,7 +34,7 @@ type Params struct {
 	MaxUnlockPerBlock     uint64    `json:"max_unlock_per_block"`
 	CircuitBreakerAddress string    `json:"circuit_breaker_address"`
 	GnosisSafeAddress     string    `json:"gnosis_safe_address"`
-	SupplyCap             uint64    `json:"supply_cap"`
+	SupplyCap             string    `json:"supply_cap"`
 	LockBoxAddress        string    `json:"lockbox_address"`
 }
 
@@ -45,7 +46,7 @@ type Relayer struct {
 type GenesisState struct {
 	Params       Params    `json:"params"`
 	Relayers     []Relayer `json:"relayers"`
-	CosmosMinted uint64    `json:"cosmos_minted"`
+	CosmosMinted string    `json:"cosmos_minted"`
 }
 
 // MsgBridgeIn represents a deposit confirmation payload submitted by a relayer.
@@ -123,11 +124,19 @@ func (msg *MsgBridgeOut) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{addr}
 }
 
-// ComputeBridgeMessageHash computes the message hash that relayers sign.
+// ComputeBridgeMessageHash computes the message hash that relayers sign with length-prefixed fields.
 func ComputeBridgeMessageHash(receiver string, amount sdk.Coins, nonce []byte) []byte {
 	h := sha256.New()
-	h.Write([]byte(receiver))
-	h.Write([]byte(amount.String()))
+	receiverBytes := []byte(receiver)
+	_ = binary.Write(h, binary.BigEndian, uint32(len(receiverBytes)))
+	h.Write(receiverBytes)
+
+	amountBytes := []byte(amount.String())
+	_ = binary.Write(h, binary.BigEndian, uint32(len(amountBytes)))
+	h.Write(amountBytes)
+
+	_ = binary.Write(h, binary.BigEndian, uint32(len(nonce)))
 	h.Write(nonce)
+
 	return h.Sum(nil)
 }

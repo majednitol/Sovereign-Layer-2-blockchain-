@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	"strings"
+
 	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -14,6 +15,7 @@ import (
 
 type WasmKeeper interface {
 	Execute(ctx sdk.Context, contractAddr sdk.AccAddress, caller sdk.AccAddress, msg []byte, coins sdk.Coins) ([]byte, error)
+	QuerySmart(ctx sdk.Context, contractAddr sdk.AccAddress, req []byte) ([]byte, error)
 }
 
 type ValidatorKeeper interface {
@@ -122,7 +124,7 @@ func (k Keeper) ExecuteProposal(ctx sdk.Context, proposal sdk.Msg) error {
 		bypass = true
 	}
 
-	// 2. Perform Constitution check via Wasm contract call if not bypassed
+	// 2. Perform Constitution check via Wasm contract query if not bypassed
 	if !bypass && k.wasmKeeper != nil && len(k.constitutionAddr) > 0 {
 		// Call Constitution check with serialized proposal payload
 		summaryBytes, err := json.Marshal(proposal)
@@ -145,10 +147,27 @@ func (k Keeper) ExecuteProposal(ctx sdk.Context, proposal sdk.Msg) error {
 			return fmt.Errorf("failed to marshal constitution check payload: %w", err)
 		}
 
-		callerAddr := authtypes.NewModuleAddress(ModuleName)
-		_, err = k.wasmKeeper.Execute(ctx, k.constitutionAddr, callerAddr, checkMsg, nil)
-		if err != nil {
-			return fmt.Errorf("constitution compliance check failed: %w", err)
+		resBytes, queryErr := k.wasmKeeper.QuerySmart(ctx, k.constitutionAddr, checkMsg)
+		if queryErr != nil {
+			// H-03: Circuit-breaker fallback if contract query fails due to pause or unavailability
+			errMsg := queryErr.Error()
+			if strings.Contains(errMsg, "paused") || strings.Contains(errMsg, "unavailable") {
+				ctx.Logger().Warn("constitution contract query failed (paused/unavailable); proceeding in degraded mode", "error", queryErr)
+			} else {
+				return fmt.Errorf("constitution compliance check failed: %w", queryErr)
+			}
+		} else {
+			type checkProposalResponse struct {
+				IsValid bool   `json:"is_valid"`
+				Reason  string `json:"reason"`
+			}
+			var res checkProposalResponse
+			if err := json.Unmarshal(resBytes, &res); err != nil {
+				return fmt.Errorf("failed to unmarshal constitution query response: %w", err)
+			}
+			if !res.IsValid {
+				return fmt.Errorf("constitution compliance check failed: %s", res.Reason)
+			}
 		}
 	}
 

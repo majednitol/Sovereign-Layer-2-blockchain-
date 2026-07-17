@@ -140,7 +140,7 @@ func (k Keeper) IsValidatorAttested(ctx sdk.Context, valAddr sdk.ValAddress) boo
 	key := append(AttestationKeyPrefix, valAddr.Bytes()...)
 	bz := store.Get(key)
 	if bz == nil {
-		return true // Default to true if not set
+		return false // Default to false if not set (C-08 Fix)
 	}
 	return bz[0] == 0x01
 }
@@ -205,7 +205,7 @@ func (k Keeper) GetRequiredSigningThreshold(ctx sdk.Context, height int64) int64
 	W := int64(10000)
 	var K int64 = 5000 // 50%
 	if k.IsDegradedMode(ctx) {
-		K = 3000 // 30%
+		K = 3400 // 34% (BFT safety bound threshold)
 	}
 
 	if height < 100 {

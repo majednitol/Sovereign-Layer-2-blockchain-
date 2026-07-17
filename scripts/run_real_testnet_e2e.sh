@@ -9,7 +9,7 @@ WORKSPACE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 echo "======================================================================"
 # Export environment variables for the test
-export BSC_TESTNET_PRIVATE_KEY="${BSC_TESTNET_PRIVATE_KEY:-0xb25d0aab150080869d39a2532840cbb04321527d92703dc7120bfdd179282695}"
+export BSC_TESTNET_PRIVATE_KEY="${BSC_TESTNET_PRIVATE_KEY:?Must set BSC_TESTNET_PRIVATE_KEY}"
 export BSC_ERC20_ADDRESS="${BSC_ERC20_ADDRESS:-0xE26314197A03034962DfEe0AE688E3Dc57F493CA}"
 export BSC_TESTNET_RPC_URL="${BSC_TESTNET_RPC_URL:-https://bsc-testnet-rpc.publicnode.com}"
 export DOCKER_BUILDKIT=1

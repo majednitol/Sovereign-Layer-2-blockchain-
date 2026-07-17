@@ -358,6 +358,20 @@ func NewMockWasmKeeperP3() *mockWasmKeeperPhase3 {
 	}
 }
 
+func (m *mockWasmKeeperPhase3) QuerySmart(ctx sdk.Context, contractAddr sdk.AccAddress, req []byte) ([]byte, error) {
+	if m.constitutionPaused {
+		return nil, fmt.Errorf("contract is paused")
+	}
+	resp := struct {
+		IsValid bool   `json:"is_valid"`
+		Reason  string `json:"reason"`
+	}{
+		IsValid: true,
+		Reason:  "mock constitution check passed",
+	}
+	return json.Marshal(resp)
+}
+
 func (m *mockWasmKeeperPhase3) Execute(ctx sdk.Context, contractAddr sdk.AccAddress, caller sdk.AccAddress, msg []byte, coins sdk.Coins) ([]byte, error) {
 	var parsed map[string]interface{}
 	if err := json.Unmarshal(msg, &parsed); err != nil {
@@ -740,6 +754,7 @@ func TestComprehensivePhase2MilestoneClockPauseAndPayout(t *testing.T) {
 		RemainingBlocks:    50,
 		State:              milestone.StatePending,
 		VestingPoolAddress: vestingPool,
+		PayoutAmount:       10000000,
 	})
 
 	s.Ctx = s.Ctx.WithBlockHeight(100)
@@ -1116,7 +1131,7 @@ func TestComprehensivePhase4OutOfOrderDeposits(t *testing.T) {
 
 	params := s.BridgeKeeper.GetParams(s.Ctx)
 	params.QuorumThreshold = 2
-	params.SupplyCap = 100000000
+	params.SupplyCap = "100000000"
 	s.BridgeKeeper.SetParams(s.Ctx, params)
 
 	receiver := sdk.AccAddress([]byte("receiver_addr")).String()
@@ -1208,7 +1223,7 @@ func TestComprehensivePhase4SupplyCapBreach(t *testing.T) {
 
 	params := s.BridgeKeeper.GetParams(s.Ctx)
 	params.QuorumThreshold = 2
-	params.SupplyCap = 5000 // Cap is 5000
+	params.SupplyCap = "5000" // Cap is 5000
 	s.BridgeKeeper.SetParams(s.Ctx, params)
 
 	receiver := sdk.AccAddress([]byte("receiver_addr")).String()

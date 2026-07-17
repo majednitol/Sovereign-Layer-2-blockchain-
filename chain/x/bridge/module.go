@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"cosmossdk.io/math"
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -36,10 +37,10 @@ func (AppModuleBasic) DefaultGenesis(cdc codec.JSONCodec) json.RawMessage {
 			LargeTransferThreshold: 5000000000,
 			QuorumThreshold:        3,
 			MaxUnlockPerBlock:      100000000000,
-			SupplyCap:              1000000000000,
+			SupplyCap:              "1000000000000",
 		},
 		Relayers:     []Relayer{},
-		CosmosMinted: 0,
+		CosmosMinted: "0",
 	}
 	bz, _ := json.Marshal(defaultState)
 	return bz
@@ -53,8 +54,9 @@ func (AppModuleBasic) ValidateGenesis(cdc codec.JSONCodec, config client.TxEncod
 		return fmt.Errorf("failed to unmarshal bridge genesis state: %w", err)
 	}
 	p := state.Params
-	if p.SupplyCap == 0 {
-		return fmt.Errorf("bridge supply_cap must be positive")
+	supplyCap, ok := math.NewIntFromString(p.SupplyCap)
+	if !ok || !supplyCap.IsPositive() {
+		return fmt.Errorf("bridge supply_cap must be positive and valid, got: %s", p.SupplyCap)
 	}
 	if p.QuorumThreshold == 0 {
 		return fmt.Errorf("bridge quorum_threshold must be positive")
@@ -108,7 +110,11 @@ func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONCodec, data json.
 	for _, r := range genesisState.Relayers {
 		am.keeper.SetRelayer(ctx, r)
 	}
-	am.keeper.SetCosmosMinted(ctx, genesisState.CosmosMinted)
+	minted, ok := math.NewIntFromString(genesisState.CosmosMinted)
+	if !ok {
+		panic(fmt.Sprintf("invalid cosmos_minted in genesis: %s", genesisState.CosmosMinted))
+	}
+	am.keeper.SetCosmosMinted(ctx, minted)
 
 	ctx.Logger().Info("bridge module initialized from genesis",
 		"supply_cap", genesisState.Params.SupplyCap,
@@ -122,7 +128,7 @@ func (am AppModule) ExportGenesis(ctx sdk.Context, cdc codec.JSONCodec) json.Raw
 	genesisState := GenesisState{
 		Params:       am.keeper.GetParams(ctx),
 		Relayers:     am.keeper.GetRelayers(ctx),
-		CosmosMinted: am.keeper.GetCosmosMinted(ctx),
+		CosmosMinted: am.keeper.GetCosmosMinted(ctx).String(),
 	}
 	bz, _ := json.Marshal(genesisState)
 	return bz

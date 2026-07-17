@@ -5,7 +5,14 @@ import (
 	"strings"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/gogoproto/proto"
 )
+
+func init() {
+	proto.RegisterType((*MsgFillValidatorSlot)(nil), "sovereign.validator.v1.MsgFillValidatorSlot")
+	proto.RegisterType((*MsgEjectValidator)(nil), "sovereign.validator.v1.MsgEjectValidator")
+	proto.RegisterType((*MsgUpdatePartitionScheme)(nil), "sovereign.validator.v1.MsgUpdatePartitionScheme")
+}
 
 const (
 	ModuleName = "validator"

@@ -27,6 +27,7 @@ type StakingKeeper interface {
 
 type SlashingKeeper interface {
 	Tombstone(ctx context.Context, valAddr sdk.ConsAddress) error
+	Jail(ctx context.Context, consAddr sdk.ConsAddress) error
 	HasValidatorSigningInfo(ctx context.Context, consAddr sdk.ConsAddress) bool
 	SetValidatorSigningInfo(ctx context.Context, address sdk.ConsAddress, info slashingtypes.ValidatorSigningInfo) error
 }
@@ -196,7 +197,7 @@ func (k Keeper) EndBlocker(ctx sdk.Context) []abci.ValidatorUpdate {
 				if err == nil {
 					consAddr, err := val.GetConsAddr()
 					if err == nil {
-						_ = k.slashingKeeper.Tombstone(ctx, consAddr)
+						_ = k.slashingKeeper.Jail(ctx, consAddr)
 					}
 					consPk, err := val.ConsPubKey()
 					if err == nil {
