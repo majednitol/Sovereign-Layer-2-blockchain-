@@ -9,6 +9,8 @@ import (
 	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	govkeeper "github.com/cosmos/cosmos-sdk/x/gov/keeper"
+	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	"github.com/sovereign-l1/chain/x/bridge"
 	"github.com/sovereign-l1/chain/x/milestone"
 )
@@ -51,6 +53,7 @@ type Keeper struct {
 	oracleKeeper     OracleKeeper
 	settlementKeeper SettlementKeeper
 	bridgeKeeper     BridgeKeeper
+	govKeeper        *govkeeper.Keeper
 }
 
 func NewKeeper(
@@ -75,6 +78,46 @@ func NewKeeper(
 		settlementKeeper: settlementKeeper,
 		bridgeKeeper:     bridgeKeeper,
 	}
+}
+
+func (k *Keeper) SetGovKeeper(govKeeper *govkeeper.Keeper) {
+	k.govKeeper = govKeeper
+}
+
+func (k Keeper) SubmitProposal(ctx sdk.Context, messages []sdk.Msg, metadata string, title string, summary string, proposer sdk.AccAddress, expedited bool) (govv1.Proposal, error) {
+	if k.govKeeper == nil {
+		return govv1.Proposal{}, fmt.Errorf("govKeeper not set")
+	}
+	return k.govKeeper.SubmitProposal(ctx, messages, metadata, title, summary, proposer, expedited)
+}
+
+func (k Keeper) AddDeposit(ctx sdk.Context, proposalID uint64, depositor sdk.AccAddress, amount sdk.Coins) (bool, error) {
+	if k.govKeeper == nil {
+		return false, fmt.Errorf("govKeeper not set")
+	}
+	return k.govKeeper.AddDeposit(ctx, proposalID, depositor, amount)
+}
+
+func (k Keeper) AddVote(ctx sdk.Context, proposalID uint64, voter sdk.AccAddress, options govv1.WeightedVoteOptions, metadata string) error {
+	if k.govKeeper == nil {
+		return fmt.Errorf("govKeeper not set")
+	}
+	return k.govKeeper.AddVote(ctx, proposalID, voter, options, metadata)
+}
+
+func (k Keeper) TallyProposal(ctx sdk.Context, proposalID uint64) (passes bool, burnDeposits bool, tallyResults govv1.TallyResult, err error) {
+	if k.govKeeper == nil {
+		return false, false, govv1.TallyResult{}, fmt.Errorf("govKeeper not set")
+	}
+	proposal, err := k.govKeeper.Proposals.Get(ctx, proposalID)
+	if err != nil {
+		return false, false, govv1.TallyResult{}, err
+	}
+	return k.govKeeper.Tally(ctx, proposal)
+}
+
+func (k Keeper) HasGovKeeper() bool {
+	return k.govKeeper != nil
 }
 
 func (k Keeper) GetParams(ctx sdk.Context) Params {
