@@ -59,7 +59,7 @@
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "account_number": "0",
-          "address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+          "address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
           "pub_key": null,
           "sequence": "0"
         },
@@ -110,7 +110,7 @@
           ]
         },
         {
-          "address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+          "address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
           "coins": [
             {
               "amount": "100000000000000",
@@ -221,8 +221,8 @@
     "bridge": {
       "cosmos_minted": 0,
       "params": {
-        "circuit_breaker_address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
-        "gnosis_safe_address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+        "circuit_breaker_address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
+        "gnosis_safe_address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
         "large_finality_depth": 50,
         "large_transfer_threshold": 5000000000,
         "lockbox_address": "0xdeace2ea00000000000000000000000000000000",
@@ -484,7 +484,7 @@
           "code_id": 1,
           "code_info": {
             "code_hash": "bTqw9vYs1gju9TmsaLFqcAuWkkPv3D18xCRZ4pep8kQ=",
-            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
             "instantiate_config": {
               "permission": "Everybody"
             }
@@ -495,7 +495,7 @@
           "code_id": 2,
           "code_info": {
             "code_hash": "UKfEp4w19cq1cG5QyNmGtvMIdejVs50a5b1WS9Ocs50=",
-            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
             "instantiate_config": {
               "permission": "Everybody"
             }
@@ -506,7 +506,7 @@
           "code_id": 3,
           "code_info": {
             "code_hash": "cPFGRgaFcYBRTtqL5TYoBtKWjhqt3FVLnebF4C2eqAk=",
-            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
             "instantiate_config": {
               "permission": "Everybody"
             }
@@ -517,7 +517,7 @@
           "code_id": 4,
           "code_info": {
             "code_hash": "hygGhUOJuVIbos8gMW/iCej7uxo8Y8mMaldPDO8Xm3c=",
-            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
             "instantiate_config": {
               "permission": "Everybody"
             }
@@ -538,13 +538,13 @@
           "contract_info": {
             "code_id": 1,
             "created": {},
-            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
             "label": "Constitution"
           },
           "contract_state": [
             {
               "key": "636F6E666967",
-              "value": "eyJnb3Zlcm5hbmNlX2FkZHJlc3MiOiJjb3Ntb3Mxd3RlcWY1eXJ2ZWFqaHg3emc3NDVwOGY0NmhlMDlneGMycTlmbjgiLCJjb2xkX211bHRpc2lnX2FkZHJlc3MiOiJjb3Ntb3MxMzk4aHd0cXk3czkzNXMyNnhlenB4cDZmZGYwNjNzOTNzZDlkZmgiLCJydWxlcyI6IlNhZmUgcnVsZXMiLCJpc19wYXVzZWQiOmZhbHNlfQ=="
+              "value": "eyJnb3Zlcm5hbmNlX2FkZHJlc3MiOiJjb3Ntb3Mxd3RlcWY1eXJ2ZWFqaHg3emc3NDVwOGY0NmhlMDlneGMycTlmbjgiLCJjb2xkX211bHRpc2lnX2FkZHJlc3MiOiJjb3Ntb3MxMzk4aHd0cXk3czkzNXMyNnhlenB4cDZmZGYwNjNzOTN4NnRnMmciLCJydWxlcyI6IlNhZmUgcnVsZXMiLCJpc19wYXVzZWQiOmZhbHNlfQ=="
             }
           ]
         },
@@ -561,13 +561,13 @@
           "contract_info": {
             "code_id": 2,
             "created": {},
-            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
             "label": "Treasury"
           },
           "contract_state": [
             {
               "key": "636F6E666967",
-              "value": "eyJnb3Zlcm5hbmNlX2FkZHJlc3MiOiJjb3Ntb3Mxd3RlcWY1eXJ2ZWFqaHg3emc3NDVwOGY0NmhlMDlneGMycTlmbjgiLCJjb2xkX211bHRpc2lnX2FkZHJlc3MiOiJjb3Ntb3MxMzk4aHd0cXk3czkzNXMyNnhlenB4cDZmZGYwNjNzOTNzZDlkZmgiLCJpc19wYXVzZWQiOmZhbHNlLCJyZWVudHJhbmN5X2xvY2siOmZhbHNlfQ=="
+              "value": "eyJnb3Zlcm5hbmNlX2FkZHJlc3MiOiJjb3Ntb3Mxd3RlcWY1eXJ2ZWFqaHg3emc3NDVwOGY0NmhlMDlneGMycTlmbjgiLCJjb2xkX211bHRpc2lnX2FkZHJlc3MiOiJjb3Ntb3MxMzk4aHd0cXk3czkzNXMyNnhlenB4cDZmZGYwNjNzOTN4NnRnMmciLCJpc19wYXVzZWQiOmZhbHNlLCJyZWVudHJhbmN5X2xvY2siOmZhbHNlfQ=="
             }
           ]
         },
@@ -584,13 +584,13 @@
           "contract_info": {
             "code_id": 3,
             "created": {},
-            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
             "label": "Reserve Fund"
           },
           "contract_state": [
             {
               "key": "636F6E666967",
-              "value": "eyJnb3Zlcm5hbmNlX2FkZHJlc3MiOiJjb3Ntb3Mxd3RlcWY1eXJ2ZWFqaHg3emc3NDVwOGY0NmhlMDlneGMycTlmbjgiLCJjb2xkX211bHRpc2lnX2FkZHJlc3MiOiJjb3Ntb3MxMzk4aHd0cXk3czkzNXMyNnhlenB4cDZmZGYwNjNzOTNzZDlkZmgiLCJtaW5fYmFsYW5jZV90aHJlc2hvbGQiOiIxMDAwMDAwMDAwMDAiLCJpc19wYXVzZWQiOmZhbHNlLCJyZWVudHJhbmN5X2xvY2siOmZhbHNlfQ=="
+              "value": "eyJnb3Zlcm5hbmNlX2FkZHJlc3MiOiJjb3Ntb3Mxd3RlcWY1eXJ2ZWFqaHg3emc3NDVwOGY0NmhlMDlneGMycTlmbjgiLCJjb2xkX211bHRpc2lnX2FkZHJlc3MiOiJjb3Ntb3MxMzk4aHd0cXk3czkzNXMyNnhlenB4cDZmZGYwNjNzOTN4NnRnMmciLCJtaW5fYmFsYW5jZV90aHJlc2hvbGQiOiIxMDAwMDAwMDAwMDAiLCJpc19wYXVzZWQiOmZhbHNlLCJyZWVudHJhbmN5X2xvY2siOmZhbHNlfQ=="
             }
           ]
         },
@@ -607,7 +607,7 @@
           "contract_info": {
             "code_id": 4,
             "created": {},
-            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
             "label": "Governance"
           },
           "contract_state": [

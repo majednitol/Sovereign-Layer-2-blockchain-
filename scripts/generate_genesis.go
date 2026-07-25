@@ -22,20 +22,21 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"time"
 	"strings"
-	"encoding/hex"
-	"encoding/base64"
+	"time"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/sovereign-l1/chain/app"
 )
 
@@ -91,10 +92,10 @@ const (
 
 	// RewardsBucketAddress is the account that holds the 100M TOKEN block-reward reserve.
 	// Dedicated address controlled by the team; currently set to cold multisig placeholder.
-	RewardsBucketAddress = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh"
+	RewardsBucketAddress = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g"
 
 	// GenesisDeployer is the address recorded as the creator of all wasm codes and contracts.
-	GenesisDeployer = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh"
+	GenesisDeployer = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g"
 
 	// DevOracleOperator is the cosmos1 account address funded in entrypoint.sh for oracle duties.
 	DevOracleOperator = "cosmos17955zu57r288jeja39nc67x6qx9rda3xh7wyzw"
@@ -364,7 +365,7 @@ func buildAppState(env string) map[string]interface{} {
 		},
 	}
 
-	constitutionConfigVal := `{"governance_address":"cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8","cold_multisig_address":"cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh","rules":"Safe rules","is_paused":false}`
+	constitutionConfigVal := `{"governance_address":"cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8","cold_multisig_address":"cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g","rules":"Safe rules","is_paused":false}`
 	constitutionContract := wasmtypes.Contract{
 		ContractAddress: "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
 		ContractInfo: wasmtypes.ContractInfo{
@@ -389,7 +390,7 @@ func buildAppState(env string) map[string]interface{} {
 		},
 	}
 
-	treasuryConfigVal := `{"governance_address":"cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8","cold_multisig_address":"cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh","is_paused":false,"reentrancy_lock":false}`
+	treasuryConfigVal := `{"governance_address":"cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8","cold_multisig_address":"cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g","is_paused":false,"reentrancy_lock":false}`
 	treasuryContract := wasmtypes.Contract{
 		ContractAddress: "cosmos1w8kmv94zcf8yysgw9dp8yzq6ffe2e8m0uj8dm0",
 		ContractInfo: wasmtypes.ContractInfo{
@@ -414,7 +415,7 @@ func buildAppState(env string) map[string]interface{} {
 		},
 	}
 
-	reserveConfigVal := `{"governance_address":"cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8","cold_multisig_address":"cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh","min_balance_threshold":"100000000000","is_paused":false,"reentrancy_lock":false}`
+	reserveConfigVal := `{"governance_address":"cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8","cold_multisig_address":"cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g","min_balance_threshold":"100000000000","is_paused":false,"reentrancy_lock":false}`
 	reserveContract := wasmtypes.Contract{
 		ContractAddress: "cosmos1dag3w9ydhzmwpvd6asrt8elexa8s27ph7895jc",
 		ContractInfo: wasmtypes.ContractInfo{
@@ -716,10 +717,10 @@ func buildAppState(env string) map[string]interface{} {
 			accounts = accs
 		}
 		for _, addr := range allContractAddrs {
-			accounts = append(accounts, createGenesisAccount(addr))
+			accounts = appendUniqueAccount(accounts, addr)
 		}
 		// FIX 2: RewardsBucket account must exist in auth
-		accounts = append(accounts, createGenesisAccount(RewardsBucketAddress))
+		accounts = appendUniqueAccount(accounts, RewardsBucketAddress)
 		auth["accounts"] = accounts
 	}
 
@@ -730,7 +731,7 @@ func buildAppState(env string) map[string]interface{} {
 		}
 
 		// Treasury: holds the main protocol reserve in ucsov.
-		balances = append(balances, map[string]interface{}{
+		balances = appendUniqueBalance(balances, map[string]interface{}{
 			"address": contractAddrs.Treasury,
 			"coins": []map[string]interface{}{
 				{"denom": TokenDenom, "amount": fmt.Sprintf("%d", TreasuryAllocation)},
@@ -738,7 +739,7 @@ func buildAppState(env string) map[string]interface{} {
 		})
 
 		// Reserve Fund: holds the safety reserve in ucsov.
-		balances = append(balances, map[string]interface{}{
+		balances = appendUniqueBalance(balances, map[string]interface{}{
 			"address": contractAddrs.ReserveFund,
 			"coins": []map[string]interface{}{
 				{"denom": TokenDenom, "amount": fmt.Sprintf("%d", ReserveFundAllocation)},
@@ -746,7 +747,7 @@ func buildAppState(env string) map[string]interface{} {
 		})
 
 		// FIX 2: RewardsBucket — 100M TOKEN block-reward reserve.
-		balances = append(balances, map[string]interface{}{
+		balances = appendUniqueBalance(balances, map[string]interface{}{
 			"address": RewardsBucketAddress,
 			"coins": []map[string]interface{}{
 				{"denom": TokenDenom, "amount": fmt.Sprintf("%d", RewardsBucket)},
@@ -772,23 +773,19 @@ func buildAppState(env string) map[string]interface{} {
 	} else {
 		// FIX 4: Use valid bech32 addresses for dev/staging
 		if gnosisSafe == "" {
-			gnosisSafe = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh"
+			gnosisSafe = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g"
 		}
 		if lockbox == "" {
 			lockbox = "0xdeace2ea00000000000000000000000000000000"
 		}
 		if circuitBreaker == "" {
-			circuitBreaker = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh"
+			circuitBreaker = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g"
 		}
 	}
 
-	// Validate formats (FIX 4: enforce valid bech32 length >= 39)
-	if !strings.HasPrefix(gnosisSafe, "cosmos1") || len(gnosisSafe) < 39 {
-		panic(fmt.Sprintf("invalid gnosis_safe_address %q: must be a valid bech32 cosmos1 address", gnosisSafe))
-	}
-	if !strings.HasPrefix(circuitBreaker, "cosmos1") || len(circuitBreaker) < 39 {
-		panic(fmt.Sprintf("invalid circuit_breaker_address %q: must be a valid bech32 cosmos1 address", circuitBreaker))
-	}
+	// Validate formats (Issues #11 & #12: enforce valid Bech32 using sdk.AccAddressFromBech32)
+	validateBech32Address(gnosisSafe, "gnosis_safe_address")
+	validateBech32Address(circuitBreaker, "circuit_breaker_address")
 	if !strings.HasPrefix(lockbox, "0x") || len(lockbox) != 42 {
 		panic(fmt.Sprintf("invalid lockbox_address: %q (must be 20-byte hex address with 0x prefix)", lockbox))
 	}
@@ -831,8 +828,8 @@ func buildAppState(env string) map[string]interface{} {
 			if accs, ok := auth["accounts"].([]interface{}); ok {
 				accounts = accs
 			}
-			accounts = append(accounts, createGenesisAccount("cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr"))
-			accounts = append(accounts, createGenesisAccount("cosmos1dwkz0xnx4akzv8vnzjapcuqlxtd5c2789w4umh"))
+			accounts = appendUniqueAccount(accounts, "cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr")
+			accounts = appendUniqueAccount(accounts, "cosmos1dwkz0xnx4akzv8vnzjapcuqlxtd5c2789w4umh")
 			auth["accounts"] = accounts
 		}
 
@@ -842,8 +839,8 @@ func buildAppState(env string) map[string]interface{} {
 			if bals, ok := bank["balances"].([]interface{}); ok {
 				balances = bals
 			}
-			balances = append(balances, createGenesisBalance("cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr"))
-			balances = append(balances, createGenesisBalance("cosmos1dwkz0xnx4akzv8vnzjapcuqlxtd5c2789w4umh"))
+			balances = appendUniqueBalance(balances, createGenesisBalance("cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr"))
+			balances = appendUniqueBalance(balances, createGenesisBalance("cosmos1dwkz0xnx4akzv8vnzjapcuqlxtd5c2789w4umh"))
 			bank["balances"] = balances
 		}
 	} else if env == "prod" {
@@ -891,7 +888,14 @@ func buildAppState(env string) map[string]interface{} {
 	return appState
 }
 
+func validateBech32Address(addr string, label string) {
+	if _, err := sdk.AccAddressFromBech32(addr); err != nil {
+		panic(fmt.Sprintf("invalid %s address %q: %v", label, addr, err))
+	}
+}
+
 func createGenesisAccount(address string) map[string]interface{} {
+	validateBech32Address(address, "account")
 	return map[string]interface{}{
 		"@type":          "/cosmos.auth.v1beta1.BaseAccount",
 		"address":        address,
@@ -901,7 +905,19 @@ func createGenesisAccount(address string) map[string]interface{} {
 	}
 }
 
+func appendUniqueAccount(accounts []interface{}, address string) []interface{} {
+	for _, acc := range accounts {
+		if accMap, ok := acc.(map[string]interface{}); ok {
+			if addr, ok := accMap["address"].(string); ok && addr == address {
+				return accounts
+			}
+		}
+	}
+	return append(accounts, createGenesisAccount(address))
+}
+
 func createGenesisBalance(address string) map[string]interface{} {
+	validateBech32Address(address, "balance")
 	return map[string]interface{}{
 		"address": address,
 		"coins": []map[string]interface{}{
@@ -909,6 +925,21 @@ func createGenesisBalance(address string) map[string]interface{} {
 			{"denom": "ucsov", "amount": "1000000000000000"},
 		},
 	}
+}
+
+func appendUniqueBalance(balances []interface{}, balance map[string]interface{}) []interface{} {
+	targetAddr, _ := balance["address"].(string)
+	if targetAddr != "" {
+		validateBech32Address(targetAddr, "balance")
+	}
+	for _, b := range balances {
+		if bMap, ok := b.(map[string]interface{}); ok {
+			if addr, ok := bMap["address"].(string); ok && addr == targetAddr {
+				return balances
+			}
+		}
+	}
+	return append(balances, balance)
 }
 
 // ---------------------------------------------------------------------------
@@ -976,11 +1007,11 @@ func main() {
 	fmt.Println()
 
 	if verifyOnly {
-		if err := VerifyGenesisWasmChecksums(env); err != nil {
+		if err := VerifyGenesisWasmChecksums(outPath); err != nil {
 			fmt.Fprintf(os.Stderr, "VerifyGenesisWasmChecksums failed: %v\n", err)
 			os.Exit(1)
 		}
-		if fileFailures := VerifyGenesisFileInvariants(outPath, env); len(fileFailures) > 0 {
+		if fileFailures := VerifyGenesisFileInvariants(outPath, env, chainID); len(fileFailures) > 0 {
 			fmt.Fprintln(os.Stderr, "=== GENESIS FILE INVARIANT FAILURES ===")
 			for _, f := range fileFailures {
 				fmt.Fprintln(os.Stderr, f)
@@ -1005,11 +1036,11 @@ func main() {
 	}
 
 	fmt.Printf("[OK] Genesis written to %s\n", outPath)
-	if err := VerifyGenesisWasmChecksums(env); err != nil {
+	if err := VerifyGenesisWasmChecksums(outPath); err != nil {
 		fmt.Fprintf(os.Stderr, "VerifyGenesisWasmChecksums failed on generated genesis: %v\n", err)
 		os.Exit(1)
 	}
-	if fileFailures := VerifyGenesisFileInvariants(outPath, env); len(fileFailures) > 0 {
+	if fileFailures := VerifyGenesisFileInvariants(outPath, env, chainID); len(fileFailures) > 0 {
 		fmt.Fprintln(os.Stderr, "=== GENESIS FILE INVARIANT FAILURES ON GENERATED FILE ===")
 		for _, f := range fileFailures {
 			fmt.Fprintln(os.Stderr, f)
@@ -1026,14 +1057,7 @@ func main() {
 	fmt.Printf("     EVM Denom   : %s\n", EVMDenom)
 }
 
-func VerifyGenesisWasmChecksums(env string) error {
-	var genesisPath string
-	if env == "dev" {
-		genesisPath = "chain/genesis.dev.json"
-	} else {
-		genesisPath = "chain/genesis.prod.json"
-	}
-
+func VerifyGenesisWasmChecksums(genesisPath string) error {
 	genesisData, err := os.ReadFile(genesisPath)
 	if os.IsNotExist(err) {
 		fmt.Printf("[INFO] Genesis file %s does not exist, skipping checksum verification.\n", genesisPath)
@@ -1092,6 +1116,8 @@ func VerifyGenesisWasmChecksums(env string) error {
 		4: "governance.wasm",
 	}
 
+	verifiedCodeIDs := make(map[uint64]bool)
+
 	for _, code := range wasmState.Codes {
 		filename, ok := codeIDMap[code.CodeID]
 		if !ok {
@@ -1116,13 +1142,20 @@ func VerifyGenesisWasmChecksums(env string) error {
 		if actualHash != expectedHash {
 			return fmt.Errorf("checksum mismatch for %s (CodeID: %d): expected %s, got %s", filename, code.CodeID, expectedHash, actualHash)
 		}
+		verifiedCodeIDs[code.CodeID] = true
 		fmt.Printf("[PASS] Verified genesis hash for %s matches artifacts/checksums.txt (%s)\n", filename, actualHash)
+	}
+
+	for requiredID, filename := range codeIDMap {
+		if !verifiedCodeIDs[requiredID] {
+			return fmt.Errorf("required CodeID %d (%s) missing or not verified in genesis wasm state", requiredID, filename)
+		}
 	}
 
 	return nil
 }
 
-func VerifyGenesisFileInvariants(filePath string, env string) []string {
+func VerifyGenesisFileInvariants(filePath string, env string, expectedChainID string) []string {
 	var failures []string
 
 	genesisData, err := os.ReadFile(filePath)
@@ -1141,13 +1174,16 @@ func VerifyGenesisFileInvariants(filePath string, env string) []string {
 	}
 
 	// 1. Verify chain-id matches
-	if genesisDoc.ChainID != "sovereign-1" {
-		failures = append(failures, fmt.Sprintf("FAIL: expected chain_id 'sovereign-1', got %q", genesisDoc.ChainID))
+	if expectedChainID == "" {
+		expectedChainID = "sovereign-1"
+	}
+	if genesisDoc.ChainID != expectedChainID {
+		failures = append(failures, fmt.Sprintf("FAIL: expected chain_id %q, got %q", expectedChainID, genesisDoc.ChainID))
 	} else {
 		fmt.Printf("[PASS] File invariant: chain_id = %s\n", genesisDoc.ChainID)
 	}
 
-	// 2. Verify bank supply for uwsov is absent or exactly 0
+	// 2. Verify bank supply for ucsov equals CosmosAllocation (700M TOKEN) & uwsov supply is 0
 	var bankState struct {
 		Supply []struct {
 			Denom  string `json:"denom"`
@@ -1163,13 +1199,27 @@ func VerifyGenesisFileInvariants(filePath string, env string) []string {
 	}
 	if bankRaw, ok := genesisDoc.AppState["bank"]; ok {
 		if err := json.Unmarshal(bankRaw, &bankState); err == nil {
+			var ucsovSupplyFound bool
+			expectedSupplyStr := fmt.Sprintf("%d", CosmosAllocation)
 			for _, coin := range bankState.Supply {
+				if coin.Denom == TokenDenom {
+					if coin.Amount != expectedSupplyStr {
+						failures = append(failures, fmt.Sprintf("FAIL: bank supply for %s must be %s, got %s", TokenDenom, expectedSupplyStr, coin.Amount))
+					} else {
+						ucsovSupplyFound = true
+						fmt.Printf("[PASS] File invariant: bank supply for %s = %s\n", TokenDenom, coin.Amount)
+					}
+				}
 				if coin.Denom == "uwsov" {
 					if coin.Amount != "0" && coin.Amount != "" {
 						failures = append(failures, fmt.Sprintf("FAIL: bank supply for uwsov must be 0, got %s", coin.Amount))
 					}
 				}
 			}
+			if !ucsovSupplyFound {
+				failures = append(failures, fmt.Sprintf("FAIL: bank supply for %s missing from genesis", TokenDenom))
+			}
+
 			// 3. Verify no account has uwsov > 0 balance at genesis
 			for _, balance := range bankState.Balances {
 				for _, coin := range balance.Coins {
@@ -1238,6 +1288,78 @@ func VerifyGenesisFileInvariants(filePath string, env string) []string {
 			}
 		} else {
 			failures = append(failures, fmt.Sprintf("FAIL: failed to parse bridge state in %s: %v", filePath, err))
+		}
+	}
+
+	// 5. Verify evm params
+	if evmRaw, ok := genesisDoc.AppState["evm"]; ok {
+		var evmState struct {
+			Params struct {
+				EvmDenom string `json:"evm_denom"`
+			} `json:"params"`
+		}
+		if err := json.Unmarshal(evmRaw, &evmState); err == nil {
+			if evmState.Params.EvmDenom != EVMDenom {
+				failures = append(failures, fmt.Sprintf("FAIL: evm evm_denom must be %q, got %q", EVMDenom, evmState.Params.EvmDenom))
+			} else {
+				fmt.Printf("[PASS] File invariant: evm evm_denom = %s\n", EVMDenom)
+			}
+		} else {
+			failures = append(failures, fmt.Sprintf("FAIL: failed to parse evm state in %s: %v", filePath, err))
+		}
+	}
+
+	// 6. Verify feemarket params
+	if fmRaw, ok := genesisDoc.AppState["feemarket"]; ok {
+		var fmState struct {
+			Params struct {
+				NoBaseFee            bool   `json:"no_base_fee"`
+				ElasticityMultiplier uint32 `json:"elasticity_multiplier"`
+			} `json:"params"`
+		}
+		if err := json.Unmarshal(fmRaw, &fmState); err == nil {
+			if fmState.Params.NoBaseFee != false {
+				failures = append(failures, "FAIL: feemarket no_base_fee must be false")
+			}
+			if fmState.Params.ElasticityMultiplier != 2 {
+				failures = append(failures, fmt.Sprintf("FAIL: feemarket elasticity_multiplier must be 2, got %d", fmState.Params.ElasticityMultiplier))
+			}
+			fmt.Printf("[PASS] File invariant: feemarket params (no_base_fee=false, elasticity_multiplier=2)\n")
+		} else {
+			failures = append(failures, fmt.Sprintf("FAIL: failed to parse feemarket state in %s: %v", filePath, err))
+		}
+	}
+
+	// 7. Verify erc20 params & native token pair
+	if erc20Raw, ok := genesisDoc.AppState["erc20"]; ok {
+		var erc20State struct {
+			Params struct {
+				EnableErc20 bool `json:"enable_erc20"`
+			} `json:"params"`
+			TokenPairs []struct {
+				Erc20Address string `json:"erc20_address"`
+				Denom        string `json:"denom"`
+				Enabled      bool   `json:"enabled"`
+			} `json:"token_pairs"`
+		}
+		if err := json.Unmarshal(erc20Raw, &erc20State); err == nil {
+			if !erc20State.Params.EnableErc20 {
+				failures = append(failures, "FAIL: erc20 enable_erc20 must be true")
+			}
+			var pairFound bool
+			for _, pair := range erc20State.TokenPairs {
+				if pair.Denom == TokenDenom && pair.Erc20Address == "0x0000000000000000000000000000000000000001" && pair.Enabled {
+					pairFound = true
+					break
+				}
+			}
+			if !pairFound {
+				failures = append(failures, fmt.Sprintf("FAIL: erc20 native token pair for %s (0x...0001) not found or disabled", TokenDenom))
+			} else {
+				fmt.Printf("[PASS] File invariant: erc20 native token pair (%s <-> 0x...0001) verified\n", TokenDenom)
+			}
+		} else {
+			failures = append(failures, fmt.Sprintf("FAIL: failed to parse erc20 state in %s: %v", filePath, err))
 		}
 	}
 
