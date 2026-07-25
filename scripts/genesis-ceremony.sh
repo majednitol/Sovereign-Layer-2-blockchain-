@@ -34,6 +34,21 @@ if [ ! -f "${GENESIS_BASE}" ]; then
 fi
 echo "PASS: Base genesis found at ${GENESIS_BASE}"
 
+# Check 1b: Production environment configuration .env.prod exists and is valid
+ENV_PROD="${WORKSPACE_DIR}/.env.prod"
+if [ ! -f "${ENV_PROD}" ]; then
+  echo "FAIL: Production environment configuration .env.prod not found."
+  PREFLIGHT_FAILURES=$((PREFLIGHT_FAILURES + 1))
+else
+  if grep -qi "placeholder" "${ENV_PROD}" || grep -qi "OWNER_ACTION_REQUIRED" "${ENV_PROD}"; then
+    echo "FAIL: .env.prod contains placeholder values. All addresses must be configured with production values."
+    PREFLIGHT_FAILURES=$((PREFLIGHT_FAILURES + 1))
+  else
+    echo "PASS: Production environment configuration .env.prod found and validated."
+  fi
+fi
+
+
 # Check 2: No OWNER_ACTION_REQUIRED placeholders remaining in prod or staging genesis
 for GENESIS_FILE in "${GENESIS_BASE}" "$(dirname "${GENESIS_BASE}")/genesis.json"; do
   if [ -f "${GENESIS_FILE}" ]; then

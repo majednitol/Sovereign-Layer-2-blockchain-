@@ -185,7 +185,7 @@
         "gnosis_safe_address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
         "large_finality_depth": 50,
         "large_transfer_threshold": 5000000000,
-        "lockbox_address": "0x1122334455667788990011223344556677889900",
+        "lockbox_address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
         "max_unlock_per_block": 100000000000,
         "quorum_threshold": 3,
         "standard_finality_depth": 15,

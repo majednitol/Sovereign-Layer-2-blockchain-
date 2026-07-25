@@ -44,62 +44,58 @@ import (
 // Supply constants (must match economic model in doc/governance/genesis_parameters.md)
 // ---------------------------------------------------------------------------
 
-const (
-	// TokenDenom is the base Cosmos denomination (6 decimal places)
-	TokenDenom = "ucsov"
-	// EVMDenom is the EVM denomination (18 decimal places, 1 ESOV = 1e12 aesov)
-	EVMDenom = "aesov"
-	// EVMChainID is the registered EVM chain ID per ADR-009
-	EVMChainID = uint64(7777)
+// Dynamic configuration variables loaded from .env or process environment
+var (
+	// Token & Chain Identity
+	TokenDenom string
+	EVMDenom   string
+	EVMChainID uint64
 
-	// TotalSupply is S = 1,000,000,000 TOKEN expressed in ucsov (×10^6)
-	TotalSupply = int64(1_000_000_000) * int64(1_000_000)
-	// BscEscrowBalance is C = 300,000,000 TOKEN locked in BSC LockBox at genesis
-	BscEscrowBalance = int64(300_000_000) * int64(1_000_000)
-	// CosmosAllocation is S - C tokens allocated on the Cosmos side
-	CosmosAllocation = TotalSupply - BscEscrowBalance
+	// Economic Model & Supply Allocations
+	TotalSupply            int64
+	BscEscrowBalance       int64
+	CosmosAllocation       int64
+	RewardsBucket          int64
+	TreasuryAllocation     int64
+	ReserveFundAllocation  int64
+	OperationalFloat       int64
+	PerBlockEmissionUtoken int64
+	MinLifetimeBlocks      int64
 
-	// RewardsBucket is 100,000,000 TOKEN denominated in ucsov
-	RewardsBucket = int64(100_000_000) * int64(1_000_000)
-	// PerBlockEmissionUtoken is the per-block emission expressed in ucsov (1.5 TOKEN = 1,500,000 ucsov)
-	PerBlockEmissionUtoken = int64(1_500_000)
-	// MinLifetimeBlocks is 5 years at 5s block time
-	MinLifetimeBlocks = int64(31_536_000)
+	// Validator Topology
+	ValidatorSlots        int
+	EqualizedPowerPerSlot int64
 
-	// ValidatorSlots is the fixed active validator cardinality per ADR-001
-	ValidatorSlots = 30
-	// EqualizedPowerPerSlot is the fixed consensus power per active validator slot
-	EqualizedPowerPerSlot = int64(1_000_000)
+	// Governance & Staking Tunings
+	GovMinDeposit            string
+	GovExpeditedMinDeposit   string
+	GovMaxDepositPeriod      string
+	GovVotingPeriod          string
+	GovExpeditedVotingPeriod string
+	StakingUnbondingTime     string
 
-	// ---------------------------------------------------------------------------
-	// Genesis Contract Funding Allocations
-	// TreasuryAllocation + ReserveFundAllocation + RewardsBucket must equal CosmosAllocation.
-	// CONFIRM values against doc/governance/genesis_parameters.md before mainnet.
-	// ---------------------------------------------------------------------------
+	// EVM & ERC20 System Configuration
+	EvmPrecompile1                    string
+	EvmPrecompile2                    string
+	Erc20NativePairAddress            string
+	ConsensusMaxBytes                 string
+	ConsensusMaxGas                   string
+	FeemarketBaseFeeChangeDenominator int
+	FeemarketElasticityMultiplier     uint32
+	FeemarketBaseFee                  string
+	FeemarketMinGasPrice              string
 
-	// TreasuryAllocation is the ucsov balance credited to the Treasury contract at genesis.
-	TreasuryAllocation = int64(400_000_000) * int64(1_000_000) // 400,000,000 TOKEN
-
-	// ReserveFundAllocation is the ucsov balance credited to the Reserve Fund contract at genesis.
-	ReserveFundAllocation = int64(200_000_000) * int64(1_000_000) // 200,000,000 TOKEN
-
-	// OperationalFloat is what remains after contracts and rewards are funded.
-	// Set to 0 here: full CosmosAllocation is accounted for on-chain.
-	// If the ops multisig needs a float, reduce TreasuryAllocation by that amount
-	// and add a MultisigAllocation constant — INV-6 will enforce the sum stays valid.
-	OperationalFloat = CosmosAllocation - RewardsBucket - TreasuryAllocation - ReserveFundAllocation
-	// 700,000,000 − 100,000,000 − 400,000,000 − 200,000,000 = 0 TOKEN
-
-	// RewardsBucketAddress is the account that holds the 100M TOKEN block-reward reserve.
-	// Dedicated address controlled by the team; currently set to cold multisig placeholder.
-	RewardsBucketAddress = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g"
-
-	// GenesisDeployer is the address recorded as the creator of all wasm codes and contracts.
-	GenesisDeployer = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g"
-
-	// DevOracleOperator is the cosmos1 account address funded in entrypoint.sh for oracle duties.
-	DevOracleOperator = "cosmos17955zu57r288jeja39nc67x6qx9rda3xh7wyzw"
+	// Key Account Addresses
+	RewardsBucketAddress string
+	GenesisDeployer      string
+	ColdMultisigAddress  string
+	DevOracleOperator    string
+	DevFaucetAccount1    string
+	DevFaucetAccount2    string
 )
+
+
+
 
 // contractAddrs holds the bech32 addresses of the four governance CosmWasm contracts.
 // These MUST match the ContractAddress fields in buildAppState()'s wasm genesis section
@@ -218,14 +214,15 @@ func VerifyInvariants() []string {
 
 // BuildGenesisDoc builds a minimal genesis document with all Phase 1 app_state.
 func BuildGenesisDoc(chainID string, env string, genesisTime time.Time) GenesisDoc {
+	loadGenesisConfig(env)
 	return GenesisDoc{
 		GenesisTime:   genesisTime,
 		ChainID:       chainID,
 		InitialHeight: "1",
 		ConsensusParams: ConsensusParams{
 			Block: map[string]interface{}{
-				"max_bytes": "22020096",
-				"max_gas":   "50000000",
+				"max_bytes": ConsensusMaxBytes,
+				"max_gas":   ConsensusMaxGas,
 			},
 			Evidence: map[string]interface{}{
 				"max_age_num_blocks": "100000",
@@ -365,9 +362,9 @@ func buildAppState(env string) map[string]interface{} {
 		},
 	}
 
-	constitutionConfigVal := `{"governance_address":"cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8","cold_multisig_address":"cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g","rules":"Safe rules","is_paused":false}`
+	constitutionConfigVal := fmt.Sprintf(`{"governance_address":"%s","cold_multisig_address":"%s","rules":"Safe rules","is_paused":false}`, contractAddrs.Governance, ColdMultisigAddress)
 	constitutionContract := wasmtypes.Contract{
-		ContractAddress: "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
+		ContractAddress: contractAddrs.Constitution,
 		ContractInfo: wasmtypes.ContractInfo{
 			CodeID:  1,
 			Creator: GenesisDeployer,
@@ -390,9 +387,9 @@ func buildAppState(env string) map[string]interface{} {
 		},
 	}
 
-	treasuryConfigVal := `{"governance_address":"cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8","cold_multisig_address":"cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g","is_paused":false,"reentrancy_lock":false}`
+	treasuryConfigVal := fmt.Sprintf(`{"governance_address":"%s","cold_multisig_address":"%s","is_paused":false,"reentrancy_lock":false}`, contractAddrs.Governance, ColdMultisigAddress)
 	treasuryContract := wasmtypes.Contract{
-		ContractAddress: "cosmos1w8kmv94zcf8yysgw9dp8yzq6ffe2e8m0uj8dm0",
+		ContractAddress: contractAddrs.Treasury,
 		ContractInfo: wasmtypes.ContractInfo{
 			CodeID:  2,
 			Creator: GenesisDeployer,
@@ -415,9 +412,9 @@ func buildAppState(env string) map[string]interface{} {
 		},
 	}
 
-	reserveConfigVal := `{"governance_address":"cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8","cold_multisig_address":"cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g","min_balance_threshold":"100000000000","is_paused":false,"reentrancy_lock":false}`
+	reserveConfigVal := fmt.Sprintf(`{"governance_address":"%s","cold_multisig_address":"%s","min_balance_threshold":"100000000000","is_paused":false,"reentrancy_lock":false}`, contractAddrs.Governance, ColdMultisigAddress)
 	reserveContract := wasmtypes.Contract{
-		ContractAddress: "cosmos1dag3w9ydhzmwpvd6asrt8elexa8s27ph7895jc",
+		ContractAddress: contractAddrs.ReserveFund,
 		ContractInfo: wasmtypes.ContractInfo{
 			CodeID:  3,
 			Creator: GenesisDeployer,
@@ -440,9 +437,9 @@ func buildAppState(env string) map[string]interface{} {
 		},
 	}
 
-	governanceConfigVal := `{"constitution_address":"cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g","treasury_address":"cosmos1w8kmv94zcf8yysgw9dp8yzq6ffe2e8m0uj8dm0","reserve_fund_address":"cosmos1dag3w9ydhzmwpvd6asrt8elexa8s27ph7895jc","proposers":["cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g"],"approval_threshold":1}`
+	governanceConfigVal := fmt.Sprintf(`{"constitution_address":"%s","treasury_address":"%s","reserve_fund_address":"%s","proposers":["%s"],"approval_threshold":1}`, contractAddrs.Constitution, contractAddrs.Treasury, contractAddrs.ReserveFund, contractAddrs.Constitution)
 	governanceContract := wasmtypes.Contract{
-		ContractAddress: "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
+		ContractAddress: contractAddrs.Governance,
 		ContractInfo: wasmtypes.ContractInfo{
 			CodeID:  4,
 			Creator: GenesisDeployer,
@@ -599,7 +596,7 @@ func buildAppState(env string) map[string]interface{} {
 	// --- Modify staking ---
 	if staking, ok := appState["staking"].(map[string]interface{}); ok {
 		if params, ok := staking["params"].(map[string]interface{}); ok {
-			params["unbonding_time"] = "1814400s"
+			params["unbonding_time"] = StakingUnbondingTime
 			params["max_validators"] = ValidatorSlots
 			params["max_entries"] = 7
 			params["historical_entries"] = 10000
@@ -623,15 +620,14 @@ func buildAppState(env string) map[string]interface{} {
 	if gov, ok := appState["gov"].(map[string]interface{}); ok {
 		if params, ok := gov["params"].(map[string]interface{}); ok {
 			params["min_deposit"] = []map[string]interface{}{
-				{"denom": TokenDenom, "amount": "10000000"},
+				{"denom": TokenDenom, "amount": GovMinDeposit},
 			}
-			// FIX 1: expedited_min_deposit must use TokenDenom, not SDK default "stake".
 			params["expedited_min_deposit"] = []map[string]interface{}{
-				{"denom": TokenDenom, "amount": "50000000"},
+				{"denom": TokenDenom, "amount": GovExpeditedMinDeposit},
 			}
-			params["max_deposit_period"] = "172800s"
-			params["voting_period"] = "172800s"
-			params["expedited_voting_period"] = "86400s"
+			params["max_deposit_period"] = GovMaxDepositPeriod
+			params["voting_period"] = GovVotingPeriod
+			params["expedited_voting_period"] = GovExpeditedVotingPeriod
 			params["quorum"] = "0.334000000000000000"
 			params["threshold"] = "0.500000000000000000"
 			params["veto_threshold"] = "0.334000000000000000"
@@ -644,8 +640,8 @@ func buildAppState(env string) map[string]interface{} {
 		if params, ok := evm["params"].(map[string]interface{}); ok {
 			params["evm_denom"] = EVMDenom
 			params["active_static_precompiles"] = []string{
-				"0x0000000000000000000000000000000000000801",
-				"0x0000000000000000000000000000000000000802",
+				EvmPrecompile1,
+				EvmPrecompile2,
 			}
 			params["access_control"] = map[string]interface{}{
 				"create": map[string]interface{}{
@@ -667,11 +663,11 @@ func buildAppState(env string) map[string]interface{} {
 	if feemarket, ok := appState["feemarket"].(map[string]interface{}); ok {
 		if params, ok := feemarket["params"].(map[string]interface{}); ok {
 			params["no_base_fee"] = false
-			params["base_fee_change_denominator"] = 8
-			params["elasticity_multiplier"] = 2
+			params["base_fee_change_denominator"] = FeemarketBaseFeeChangeDenominator
+			params["elasticity_multiplier"] = FeemarketElasticityMultiplier
 			params["enable_height"] = "0"
-			params["base_fee"] = "1000000000"
-			params["min_gas_price"] = "0.025000000000000000"
+			params["base_fee"] = FeemarketBaseFee
+			params["min_gas_price"] = FeemarketMinGasPrice
 			params["min_gas_multiplier"] = "0.500000000000000000"
 		}
 		feemarket["block_gas"] = "0"
@@ -684,7 +680,7 @@ func buildAppState(env string) map[string]interface{} {
 		}
 		erc20["token_pairs"] = []map[string]interface{}{
 			{
-				"erc20_address":  "0x0000000000000000000000000000000000000001",
+				"erc20_address":  Erc20NativePairAddress,
 				"denom":          TokenDenom,
 				"enabled":        true,
 				"contract_owner": "OWNER_MODULE",
@@ -771,15 +767,15 @@ func buildAppState(env string) map[string]interface{} {
 			panic("production genesis build requires BRIDGE_GNOSIS_SAFE_ADDRESS, BRIDGE_LOCKBOX_ADDRESS, and BRIDGE_CIRCUIT_BREAKER_ADDRESS environment variables to be set")
 		}
 	} else {
-		// FIX 4: Use valid bech32 addresses for dev/staging
+		// Use loaded ColdMultisigAddress for dev/staging fallbacks
 		if gnosisSafe == "" {
-			gnosisSafe = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g"
+			gnosisSafe = ColdMultisigAddress
 		}
 		if lockbox == "" {
 			lockbox = "0xdeace2ea00000000000000000000000000000000"
 		}
 		if circuitBreaker == "" {
-			circuitBreaker = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g"
+			circuitBreaker = ColdMultisigAddress
 		}
 	}
 
@@ -828,8 +824,8 @@ func buildAppState(env string) map[string]interface{} {
 			if accs, ok := auth["accounts"].([]interface{}); ok {
 				accounts = accs
 			}
-			accounts = appendUniqueAccount(accounts, "cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr")
-			accounts = appendUniqueAccount(accounts, "cosmos1dwkz0xnx4akzv8vnzjapcuqlxtd5c2789w4umh")
+			accounts = appendUniqueAccount(accounts, DevFaucetAccount1)
+			accounts = appendUniqueAccount(accounts, DevFaucetAccount2)
 			auth["accounts"] = accounts
 		}
 
@@ -839,8 +835,8 @@ func buildAppState(env string) map[string]interface{} {
 			if bals, ok := bank["balances"].([]interface{}); ok {
 				balances = bals
 			}
-			balances = appendUniqueBalance(balances, createGenesisBalance("cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr"))
-			balances = appendUniqueBalance(balances, createGenesisBalance("cosmos1dwkz0xnx4akzv8vnzjapcuqlxtd5c2789w4umh"))
+			balances = appendUniqueBalance(balances, createGenesisBalance(DevFaucetAccount1))
+			balances = appendUniqueBalance(balances, createGenesisBalance(DevFaucetAccount2))
 			bank["balances"] = balances
 		}
 	} else if env == "prod" {
@@ -850,7 +846,7 @@ func buildAppState(env string) map[string]interface{} {
 				for _, acc := range accs {
 					if accMap, ok := acc.(map[string]interface{}); ok {
 						addr, _ := accMap["address"].(string)
-						if addr == "cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr" || addr == "cosmos1dwkz0xnx4akzv8vnzjapcuqlxtd5c2789w4umh" {
+						if addr == DevFaucetAccount1 || addr == DevFaucetAccount2 {
 							panic("production genesis must not contain dev holder accounts")
 						}
 					}
@@ -886,6 +882,201 @@ func buildAppState(env string) map[string]interface{} {
 	}
 
 	return appState
+}
+
+func loadEnvFile(filename string) {
+	pathsToTry := []string{
+		filename,
+		filepath.Join("..", filename),
+	}
+	var content []byte
+	var err error
+	for _, p := range pathsToTry {
+		content, err = os.ReadFile(p)
+		if err == nil {
+			fmt.Printf("[INFO] Loaded environment configuration from %s\n", p)
+			break
+		}
+	}
+	if err != nil {
+		return
+	}
+
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		val := strings.TrimSpace(parts[1])
+		val = strings.Trim(val, `"'`)
+		if os.Getenv(key) == "" {
+			os.Setenv(key, val)
+		}
+	}
+}
+
+func loadGenesisConfig(env string) {
+	loadEnvFile(fmt.Sprintf(".env.%s", env))
+	loadEnvFile(".env")
+
+	// Token & Chain Identity
+	TokenDenom = getEnvOrDefault("TOKEN_DENOM", "ucsov")
+	EVMDenom = getEnvOrDefault("EVM_DENOM", "aesov")
+	EVMChainID = getEnvUint64OrDefault("EVM_CHAIN_ID", 7777)
+
+	// Economic Model & Supply Allocations
+	TotalSupply = getEnvInt64OrDefault("TOTAL_SUPPLY", 1_000_000_000_000_000)
+	BscEscrowBalance = getEnvInt64OrDefault("BSC_ESCROW_BALANCE", 300_000_000_000_000)
+	CosmosAllocation = TotalSupply - BscEscrowBalance
+	RewardsBucket = getEnvInt64OrDefault("REWARDS_BUCKET_ALLOCATION", 100_000_000_000_000)
+	TreasuryAllocation = getEnvInt64OrDefault("TREASURY_ALLOCATION", 400_000_000_000_000)
+	ReserveFundAllocation = getEnvInt64OrDefault("RESERVE_FUND_ALLOCATION", 200_000_000_000_000)
+	OperationalFloat = CosmosAllocation - RewardsBucket - TreasuryAllocation - ReserveFundAllocation
+	PerBlockEmissionUtoken = getEnvInt64OrDefault("PER_BLOCK_EMISSION_UTOKEN", 1_500_000)
+	MinLifetimeBlocks = getEnvInt64OrDefault("MIN_LIFETIME_BLOCKS", 31_536_000)
+
+	// Validator Topology
+	ValidatorSlots = getEnvIntOrDefault("VALIDATOR_SLOTS", 30)
+	EqualizedPowerPerSlot = getEnvInt64OrDefault("EQUALIZED_POWER_PER_SLOT", 1_000_000)
+
+	// Governance & Staking Tunings
+	GovMinDeposit = getEnvOrDefault("GOV_MIN_DEPOSIT", "10000000")
+	GovExpeditedMinDeposit = getEnvOrDefault("GOV_EXPEDITED_MIN_DEPOSIT", "50000000")
+	GovMaxDepositPeriod = getEnvOrDefault("GOV_MAX_DEPOSIT_PERIOD", "172800s")
+	GovVotingPeriod = getEnvOrDefault("GOV_VOTING_PERIOD", "172800s")
+	GovExpeditedVotingPeriod = getEnvOrDefault("GOV_EXPEDITED_VOTING_PERIOD", "86400s")
+	StakingUnbondingTime = getEnvOrDefault("STAKING_UNBONDING_TIME", "1814400s")
+
+	// EVM & ERC20 System Configuration
+	EvmPrecompile1 = getEnvOrDefault("EVM_PRECOMPILE_1", "0x0000000000000000000000000000000000000801")
+	EvmPrecompile2 = getEnvOrDefault("EVM_PRECOMPILE_2", "0x0000000000000000000000000000000000000802")
+	Erc20NativePairAddress = getEnvOrDefault("ERC20_NATIVE_PAIR_ADDRESS", "0x0000000000000000000000000000000000000001")
+	ConsensusMaxBytes = getEnvOrDefault("CONSENSUS_MAX_BYTES", "22020096")
+	ConsensusMaxGas = getEnvOrDefault("CONSENSUS_MAX_GAS", "50000000")
+	FeemarketBaseFeeChangeDenominator = getEnvIntOrDefault("FEEMARKET_BASE_FEE_CHANGE_DENOMINATOR", 8)
+	FeemarketElasticityMultiplier = uint32(getEnvIntOrDefault("FEEMARKET_ELASTICITY_MULTIPLIER", 2))
+	FeemarketBaseFee = getEnvOrDefault("FEEMARKET_BASE_FEE", "1000000000")
+	FeemarketMinGasPrice = getEnvOrDefault("FEEMARKET_MIN_GAS_PRICE", "0.025000000000000000")
+
+	// CosmWasm Governance Contract Addresses (Overrides if set)
+	if addr := os.Getenv("CONSTITUTION_CONTRACT_ADDRESS"); addr != "" {
+		contractAddrs.Constitution = addr
+	}
+	if addr := os.Getenv("TREASURY_CONTRACT_ADDRESS"); addr != "" {
+		contractAddrs.Treasury = addr
+	}
+	if addr := os.Getenv("RESERVE_FUND_CONTRACT_ADDRESS"); addr != "" {
+		contractAddrs.ReserveFund = addr
+	}
+	if addr := os.Getenv("GOVERNANCE_CONTRACT_ADDRESS"); addr != "" {
+		contractAddrs.Governance = addr
+	}
+
+	RewardsBucketAddress = os.Getenv("REWARDS_BUCKET_ADDRESS")
+	if RewardsBucketAddress == "" {
+		if env == "dev" {
+			RewardsBucketAddress = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g"
+		} else {
+			panic("production genesis build requires REWARDS_BUCKET_ADDRESS environment variable")
+		}
+	}
+	validateBech32Address(RewardsBucketAddress, "REWARDS_BUCKET_ADDRESS")
+
+	GenesisDeployer = os.Getenv("GENESIS_DEPLOYER_ADDRESS")
+	if GenesisDeployer == "" {
+		if env == "dev" {
+			GenesisDeployer = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g"
+		} else {
+			panic("production genesis build requires GENESIS_DEPLOYER_ADDRESS environment variable")
+		}
+	}
+	validateBech32Address(GenesisDeployer, "GENESIS_DEPLOYER_ADDRESS")
+
+	ColdMultisigAddress = os.Getenv("COLD_MULTISIG_ADDRESS")
+	if ColdMultisigAddress == "" {
+		if env == "dev" {
+			ColdMultisigAddress = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g"
+		} else {
+			panic("production genesis build requires COLD_MULTISIG_ADDRESS environment variable")
+		}
+	}
+	validateBech32Address(ColdMultisigAddress, "COLD_MULTISIG_ADDRESS")
+
+	if env == "dev" {
+		DevOracleOperator = os.Getenv("DEV_ORACLE_OPERATOR")
+		if DevOracleOperator == "" {
+			DevOracleOperator = "cosmos17955zu57r288jeja39nc67x6qx9rda3xh7wyzw"
+		}
+		validateBech32Address(DevOracleOperator, "DEV_ORACLE_OPERATOR")
+
+		DevFaucetAccount1 = os.Getenv("DEV_FAUCET_ACCOUNT_1")
+		if DevFaucetAccount1 == "" {
+			DevFaucetAccount1 = "cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr"
+		}
+		validateBech32Address(DevFaucetAccount1, "DEV_FAUCET_ACCOUNT_1")
+
+		DevFaucetAccount2 = os.Getenv("DEV_FAUCET_ACCOUNT_2")
+		if DevFaucetAccount2 == "" {
+			DevFaucetAccount2 = "cosmos1dwkz0xnx4akzv8vnzjapcuqlxtd5c2789w4umh"
+		}
+		validateBech32Address(DevFaucetAccount2, "DEV_FAUCET_ACCOUNT_2")
+	}
+
+	if env == "prod" {
+		for label, addr := range map[string]string{
+			"REWARDS_BUCKET_ADDRESS":   RewardsBucketAddress,
+			"GENESIS_DEPLOYER_ADDRESS": GenesisDeployer,
+			"COLD_MULTISIG_ADDRESS":    ColdMultisigAddress,
+		} {
+			lower := strings.ToLower(addr)
+			if strings.Contains(lower, "placeholder") || strings.Contains(lower, "xxxx") || strings.Contains(lower, "0000000000") {
+				panic(fmt.Sprintf("production genesis config error: %s (%q) contains placeholder value", label, addr))
+			}
+		}
+	}
+}
+
+func getEnvOrDefault(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
+}
+
+func getEnvIntOrDefault(key string, defaultVal int) int {
+	if val := os.Getenv(key); val != "" {
+		var res int
+		if _, err := fmt.Sscanf(val, "%d", &res); err == nil {
+			return res
+		}
+	}
+	return defaultVal
+}
+
+func getEnvInt64OrDefault(key string, defaultVal int64) int64 {
+	if val := os.Getenv(key); val != "" {
+		var res int64
+		if _, err := fmt.Sscanf(val, "%d", &res); err == nil {
+			return res
+		}
+	}
+	return defaultVal
+}
+
+func getEnvUint64OrDefault(key string, defaultVal uint64) uint64 {
+	if val := os.Getenv(key); val != "" {
+		var res uint64
+		if _, err := fmt.Sscanf(val, "%d", &res); err == nil {
+			return res
+		}
+	}
+	return defaultVal
 }
 
 func validateBech32Address(addr string, label string) {
@@ -961,6 +1152,8 @@ func main() {
 	flag.StringVar(&env, "env", "dev", "Environment: dev or prod")
 	flag.StringVar(&genesisTimeStr, "genesis-time", "", "Genesis time (RFC3339). If empty, defaults to a fixed time (2026-07-09T00:00:00Z) for determinism.")
 	flag.Parse()
+
+	loadGenesisConfig(env)
 
 	if env != "dev" && env != "prod" {
 		fmt.Fprintf(os.Stderr, "Error: env must be either 'dev' or 'prod'\n")
@@ -1321,10 +1514,10 @@ func VerifyGenesisFileInvariants(filePath string, env string, expectedChainID st
 			if fmState.Params.NoBaseFee != false {
 				failures = append(failures, "FAIL: feemarket no_base_fee must be false")
 			}
-			if fmState.Params.ElasticityMultiplier != 2 {
-				failures = append(failures, fmt.Sprintf("FAIL: feemarket elasticity_multiplier must be 2, got %d", fmState.Params.ElasticityMultiplier))
+			if fmState.Params.ElasticityMultiplier != FeemarketElasticityMultiplier {
+				failures = append(failures, fmt.Sprintf("FAIL: feemarket elasticity_multiplier must be %d, got %d", FeemarketElasticityMultiplier, fmState.Params.ElasticityMultiplier))
 			}
-			fmt.Printf("[PASS] File invariant: feemarket params (no_base_fee=false, elasticity_multiplier=2)\n")
+			fmt.Printf("[PASS] File invariant: feemarket params (no_base_fee=false, elasticity_multiplier=%d)\n", FeemarketElasticityMultiplier)
 		} else {
 			failures = append(failures, fmt.Sprintf("FAIL: failed to parse feemarket state in %s: %v", filePath, err))
 		}
@@ -1348,15 +1541,15 @@ func VerifyGenesisFileInvariants(filePath string, env string, expectedChainID st
 			}
 			var pairFound bool
 			for _, pair := range erc20State.TokenPairs {
-				if pair.Denom == TokenDenom && pair.Erc20Address == "0x0000000000000000000000000000000000000001" && pair.Enabled {
+				if pair.Denom == TokenDenom && pair.Erc20Address == Erc20NativePairAddress && pair.Enabled {
 					pairFound = true
 					break
 				}
 			}
 			if !pairFound {
-				failures = append(failures, fmt.Sprintf("FAIL: erc20 native token pair for %s (0x...0001) not found or disabled", TokenDenom))
+				failures = append(failures, fmt.Sprintf("FAIL: erc20 native token pair for %s (%s) not found or disabled", TokenDenom, Erc20NativePairAddress))
 			} else {
-				fmt.Printf("[PASS] File invariant: erc20 native token pair (%s <-> 0x...0001) verified\n", TokenDenom)
+				fmt.Printf("[PASS] File invariant: erc20 native token pair (%s <-> %s) verified\n", TokenDenom, Erc20NativePairAddress)
 			}
 		} else {
 			failures = append(failures, fmt.Sprintf("FAIL: failed to parse erc20 state in %s: %v", filePath, err))
