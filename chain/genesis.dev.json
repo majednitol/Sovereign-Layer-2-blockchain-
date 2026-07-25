@@ -59,6 +59,13 @@
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "account_number": "0",
+          "address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+          "pub_key": null,
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "account_number": "0",
           "address": "cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr",
           "pub_key": null,
           "sequence": "0"
@@ -98,6 +105,15 @@
           "coins": [
             {
               "amount": "200000000000000",
+              "denom": "ucsov"
+            }
+          ]
+        },
+        {
+          "address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+          "coins": [
+            {
+              "amount": "100000000000000",
               "denom": "ucsov"
             }
           ]
@@ -197,38 +213,34 @@
       "send_enabled": [],
       "supply": [
         {
-          "amount": "2000000000000000000000000",
-          "denom": "aesov"
-        },
-        {
-          "amount": "2600000000000000",
+          "amount": "700000000000000",
           "denom": "ucsov"
         }
       ]
     },
     "bridge": {
-      "cosmos_minted": "0",
+      "cosmos_minted": 0,
       "params": {
-        "circuit_breaker_address": "cosmos1devcbaddressplaceholderxxxxx",
-        "gnosis_safe_address": "cosmos1devgsaddressplaceholderxxxxx",
+        "circuit_breaker_address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
+        "gnosis_safe_address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
         "large_finality_depth": 50,
         "large_transfer_threshold": 5000000000,
         "lockbox_address": "0xdeace2ea00000000000000000000000000000000",
         "max_unlock_per_block": 100000000000,
         "quorum_threshold": 3,
         "standard_finality_depth": 15,
-        "supply_cap": "1000000000000"
+        "supply_cap": "300000000000000"
       },
       "relayers": []
     },
     "certification": {
+      "attested_validators": [],
+      "consecutive_rejection_count": 0,
+      "degraded_mode": false,
       "params": {
         "max_consecutive_rejections": 5,
         "missed_extension_limit": 10
-      },
-      "degraded_mode": false,
-      "consecutive_rejection_count": 0,
-      "attested_validators": []
+      }
     },
     "distribution": {
       "delegator_starting_infos": [],
@@ -322,11 +334,11 @@
         "expedited_min_deposit": [
           {
             "amount": "50000000",
-            "denom": "stake"
+            "denom": "ucsov"
           }
         ],
         "expedited_threshold": "0.667000000000000000",
-        "expedited_voting_period": "5s",
+        "expedited_voting_period": "86400s",
         "max_deposit_period": "172800s",
         "min_deposit": [
           {
@@ -341,7 +353,7 @@
         "quorum": "0.334000000000000000",
         "threshold": "0.500000000000000000",
         "veto_threshold": "0.334000000000000000",
-        "voting_period": "10s"
+        "voting_period": "172800s"
       },
       "proposals": [],
       "starting_proposal_id": "1",
@@ -351,8 +363,8 @@
     },
     "govext": {
       "params": {
-        "min_gas_limit": 100000,
-        "max_gas_limit": 2000000
+        "max_gas_limit": 2000000,
+        "min_gas_limit": 100000
       }
     },
     "ibc": {
@@ -398,28 +410,28 @@
       }
     },
     "milestone": {
+      "milestones": [],
       "params": {
         "max_active_milestones": 500
-      },
-      "milestones": []
+      }
     },
     "oracle": {
+      "operators": [
+        "cosmos17955zu57r288jeja39nc67x6qx9rda3xh7wyzw"
+      ],
       "params": {
         "commit_window": 10,
+        "min_operator_commits": 3,
         "reveal_window": 10,
-        "min_operator_commits": 1,
         "staleness_threshold_blocks": 100
-      },
-      "operators": [
-        "cosmosvaloper17955zu57r288jeja39nc67x6qx9rda3xj263wa"
-      ]
+      }
     },
     "settlement": {
       "params": {
         "timestamp_tolerance_seconds": 30
       },
-      "witnesses": [],
-      "processed_nonces": []
+      "processed_nonces": [],
+      "witnesses": []
     },
     "slashing": {
       "missed_blocks": [],
@@ -460,9 +472,9 @@
     },
     "upgrade": {},
     "validator": {
+      "active_validators": [],
       "max_validators": 30,
       "partition_scheme": "equal-slots-30",
-      "active_validators": [],
       "queued_ejections": []
     },
     "wasm": {
@@ -472,7 +484,7 @@
           "code_id": 1,
           "code_info": {
             "code_hash": "bTqw9vYs1gju9TmsaLFqcAuWkkPv3D18xCRZ4pep8kQ=",
-            "creator": "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
             "instantiate_config": {
               "permission": "Everybody"
             }
@@ -483,7 +495,7 @@
           "code_id": 2,
           "code_info": {
             "code_hash": "UKfEp4w19cq1cG5QyNmGtvMIdejVs50a5b1WS9Ocs50=",
-            "creator": "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
             "instantiate_config": {
               "permission": "Everybody"
             }
@@ -494,7 +506,7 @@
           "code_id": 3,
           "code_info": {
             "code_hash": "cPFGRgaFcYBRTtqL5TYoBtKWjhqt3FVLnebF4C2eqAk=",
-            "creator": "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
             "instantiate_config": {
               "permission": "Everybody"
             }
@@ -505,7 +517,7 @@
           "code_id": 4,
           "code_info": {
             "code_hash": "hygGhUOJuVIbos8gMW/iCej7uxo8Y8mMaldPDO8Xm3c=",
-            "creator": "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
             "instantiate_config": {
               "permission": "Everybody"
             }
@@ -526,7 +538,7 @@
           "contract_info": {
             "code_id": 1,
             "created": {},
-            "creator": "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
             "label": "Constitution"
           },
           "contract_state": [
@@ -549,7 +561,7 @@
           "contract_info": {
             "code_id": 2,
             "created": {},
-            "creator": "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
             "label": "Treasury"
           },
           "contract_state": [
@@ -572,7 +584,7 @@
           "contract_info": {
             "code_id": 3,
             "created": {},
-            "creator": "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
             "label": "Reserve Fund"
           },
           "contract_state": [
@@ -595,7 +607,7 @@
           "contract_info": {
             "code_id": 4,
             "created": {},
-            "creator": "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
+            "creator": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh",
             "label": "Governance"
           },
           "contract_state": [
@@ -616,7 +628,7 @@
       ],
       "params": {
         "code_upload_access": {
-          "permission": "Everybody"
+          "permission": "Nobody"
         },
         "instantiate_default_permission": "Everybody"
       },

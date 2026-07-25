@@ -34,19 +34,23 @@ if [ ! -f "${GENESIS_BASE}" ]; then
 fi
 echo "PASS: Base genesis found at ${GENESIS_BASE}"
 
-# Check 2: No OWNER_ACTION_REQUIRED placeholders remaining
-PLACEHOLDER_HITS=$(grep -c "OWNER_ACTION_REQUIRED" "${GENESIS_BASE}" || true)
-if [ "${PLACEHOLDER_HITS}" -gt 0 ]; then
-  echo ""
-  echo "FAIL: genesis.prod.json still contains ${PLACEHOLDER_HITS} OWNER_ACTION_REQUIRED placeholder(s):"
-  grep -n "OWNER_ACTION_REQUIRED" "${GENESIS_BASE}" | while IFS= read -r line; do
-    echo "  ${line}"
-  done
-  echo ""
-  echo "  You MUST replace these with real addresses before running the ceremony."
-  echo "  See: doc/mainnet/bsc-bridge-checklist.md for bridge address requirements."
-  PREFLIGHT_FAILURES=$((PREFLIGHT_FAILURES + 1))
-fi
+# Check 2: No OWNER_ACTION_REQUIRED placeholders remaining in prod or staging genesis
+for GENESIS_FILE in "${GENESIS_BASE}" "$(dirname "${GENESIS_BASE}")/genesis.json"; do
+  if [ -f "${GENESIS_FILE}" ]; then
+    PLACEHOLDER_HITS=$(grep -c "OWNER_ACTION_REQUIRED" "${GENESIS_FILE}" || true)
+    if [ "${PLACEHOLDER_HITS}" -gt 0 ]; then
+      echo ""
+      echo "FAIL: $(basename "${GENESIS_FILE}") still contains ${PLACEHOLDER_HITS} OWNER_ACTION_REQUIRED placeholder(s):"
+      grep -n "OWNER_ACTION_REQUIRED" "${GENESIS_FILE}" | while IFS= read -r line; do
+        echo "  ${line}"
+      done
+      echo ""
+      echo "  You MUST replace these with real addresses before running the ceremony."
+      echo "  See: doc/mainnet/bsc-bridge-checklist.md for bridge address requirements."
+      PREFLIGHT_FAILURES=$((PREFLIGHT_FAILURES + 1))
+    fi
+  fi
+done
 
 # Check 3: No obvious test/placeholder bridge addresses
 for pattern in "0x0000000000000000000000000000000000000000" "0x1111111111111111111111111111111111111111" "cosmos1gs_addr" "cosmos1cb_addr" "cosmos1dev"; do

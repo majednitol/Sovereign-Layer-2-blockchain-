@@ -88,6 +88,16 @@ const (
 	// and add a MultisigAllocation constant — INV-6 will enforce the sum stays valid.
 	OperationalFloat = CosmosAllocation - RewardsBucket - TreasuryAllocation - ReserveFundAllocation
 	// 700,000,000 − 100,000,000 − 400,000,000 − 200,000,000 = 0 TOKEN
+
+	// RewardsBucketAddress is the account that holds the 100M TOKEN block-reward reserve.
+	// Dedicated address controlled by the team; currently set to cold multisig placeholder.
+	RewardsBucketAddress = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh"
+
+	// GenesisDeployer is the address recorded as the creator of all wasm codes and contracts.
+	GenesisDeployer = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh"
+
+	// DevOracleOperator is the cosmos1 account address funded in entrypoint.sh for oracle duties.
+	DevOracleOperator = "cosmos17955zu57r288jeja39nc67x6qx9rda3xh7wyzw"
 )
 
 // contractAddrs holds the bech32 addresses of the four governance CosmWasm contracts.
@@ -276,11 +286,13 @@ func sha256Hash(data []byte) []byte {
 
 // buildAppState constructs the genesis app_state with all Phase 1 module params and Phase 3 CosmWasm smart contracts.
 func buildAppState(env string) map[string]interface{} {
-	if err := compileContracts(); err != nil {
-		panic(fmt.Sprintf("failed to compile contracts: %v", err))
+	contractsDir := "artifacts"
+	if _, err := os.Stat(filepath.Join(contractsDir, "constitution.wasm")); os.IsNotExist(err) {
+		if err := compileContracts(); err != nil {
+			panic(fmt.Sprintf("failed to compile contracts: %v", err))
+		}
+		contractsDir = "contracts/target/wasm32-unknown-unknown/release"
 	}
-
-	contractsDir := "contracts/target/wasm32-unknown-unknown/release"
 	constitutionWasm, err := os.ReadFile(filepath.Join(contractsDir, "constitution.wasm"))
 	if err != nil {
 		panic(fmt.Sprintf("failed to read constitution.wasm: %v", err))
@@ -298,48 +310,55 @@ func buildAppState(env string) map[string]interface{} {
 		panic(fmt.Sprintf("failed to read governance.wasm: %v", err))
 	}
 
+	var codeInstantiatePermission wasmtypes.AccessConfig
+	var defaultInstantiatePerm wasmtypes.AccessType
+	if env == "dev" {
+		codeInstantiatePermission = wasmtypes.AccessConfig{
+			Permission: wasmtypes.AccessTypeEverybody,
+		}
+		defaultInstantiatePerm = wasmtypes.AccessTypeEverybody
+	} else {
+		codeInstantiatePermission = wasmtypes.AccessConfig{
+			Permission: wasmtypes.AccessTypeAnyOfAddresses,
+			Addresses:  []string{GenesisDeployer},
+		}
+		defaultInstantiatePerm = wasmtypes.AccessTypeNobody
+	}
+
 	codes := []wasmtypes.Code{
 		{
 			CodeID: 1,
 			CodeInfo: wasmtypes.CodeInfo{
-				CodeHash: sha256Hash(constitutionWasm),
-				Creator:  "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
-				InstantiateConfig: wasmtypes.AccessConfig{
-					Permission: wasmtypes.AccessTypeEverybody,
-				},
+				CodeHash:          sha256Hash(constitutionWasm),
+				Creator:           GenesisDeployer,
+				InstantiateConfig: codeInstantiatePermission,
 			},
 			CodeBytes: constitutionWasm,
 		},
 		{
 			CodeID: 2,
 			CodeInfo: wasmtypes.CodeInfo{
-				CodeHash: sha256Hash(treasuryWasm),
-				Creator:  "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
-				InstantiateConfig: wasmtypes.AccessConfig{
-					Permission: wasmtypes.AccessTypeEverybody,
-				},
+				CodeHash:          sha256Hash(treasuryWasm),
+				Creator:           GenesisDeployer,
+				InstantiateConfig: codeInstantiatePermission,
 			},
 			CodeBytes: treasuryWasm,
 		},
 		{
 			CodeID: 3,
 			CodeInfo: wasmtypes.CodeInfo{
-				CodeHash: sha256Hash(reserveFundWasm),
-				Creator:  "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
-				InstantiateConfig: wasmtypes.AccessConfig{
-					Permission: wasmtypes.AccessTypeEverybody,
-				},
+				CodeHash:          sha256Hash(reserveFundWasm),
+				Creator:           GenesisDeployer,
+				InstantiateConfig: codeInstantiatePermission,
 			},
 			CodeBytes: reserveFundWasm,
 		},
 		{
 			CodeID: 4,
 			CodeInfo: wasmtypes.CodeInfo{
-				CodeHash: sha256Hash(governanceWasm),
-				Creator:  "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
-				InstantiateConfig: wasmtypes.AccessConfig{
-					Permission: wasmtypes.AccessTypeEverybody,
-				},
+				CodeHash:          sha256Hash(governanceWasm),
+				Creator:           GenesisDeployer,
+				InstantiateConfig: codeInstantiatePermission,
 			},
 			CodeBytes: governanceWasm,
 		},
@@ -350,7 +369,7 @@ func buildAppState(env string) map[string]interface{} {
 		ContractAddress: "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
 		ContractInfo: wasmtypes.ContractInfo{
 			CodeID:  1,
-			Creator: "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
+			Creator: GenesisDeployer,
 			Label:   "Constitution",
 			Created: &wasmtypes.AbsoluteTxPosition{BlockHeight: 0, TxIndex: 0},
 		},
@@ -375,7 +394,7 @@ func buildAppState(env string) map[string]interface{} {
 		ContractAddress: "cosmos1w8kmv94zcf8yysgw9dp8yzq6ffe2e8m0uj8dm0",
 		ContractInfo: wasmtypes.ContractInfo{
 			CodeID:  2,
-			Creator: "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
+			Creator: GenesisDeployer,
 			Label:   "Treasury",
 			Created: &wasmtypes.AbsoluteTxPosition{BlockHeight: 0, TxIndex: 0},
 		},
@@ -400,7 +419,7 @@ func buildAppState(env string) map[string]interface{} {
 		ContractAddress: "cosmos1dag3w9ydhzmwpvd6asrt8elexa8s27ph7895jc",
 		ContractInfo: wasmtypes.ContractInfo{
 			CodeID:  3,
-			Creator: "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
+			Creator: GenesisDeployer,
 			Label:   "Reserve Fund",
 			Created: &wasmtypes.AbsoluteTxPosition{BlockHeight: 0, TxIndex: 0},
 		},
@@ -425,7 +444,7 @@ func buildAppState(env string) map[string]interface{} {
 		ContractAddress: "cosmos1wteqf5yrveajhx7zg745p8f46he09gxc2q9fn8",
 		ContractInfo: wasmtypes.ContractInfo{
 			CodeID:  4,
-			Creator: "cosmos1shqsrlqalvzwearmrjq8yy788qhzagz6jdq79g",
+			Creator: GenesisDeployer,
 			Label:   "Governance",
 			Created: &wasmtypes.AbsoluteTxPosition{BlockHeight: 0, TxIndex: 0},
 		},
@@ -476,7 +495,7 @@ func buildAppState(env string) map[string]interface{} {
 			CodeUploadAccess: wasmtypes.AccessConfig{
 				Permission: wasmtypes.AccessTypeNobody,
 			},
-			InstantiateDefaultPermission: wasmtypes.AccessTypeEverybody,
+			InstantiateDefaultPermission: defaultInstantiatePerm,
 		},
 		Codes:     codes,
 		Contracts: contracts,
@@ -605,11 +624,17 @@ func buildAppState(env string) map[string]interface{} {
 			params["min_deposit"] = []map[string]interface{}{
 				{"denom": TokenDenom, "amount": "10000000"},
 			}
+			// FIX 1: expedited_min_deposit must use TokenDenom, not SDK default "stake".
+			params["expedited_min_deposit"] = []map[string]interface{}{
+				{"denom": TokenDenom, "amount": "50000000"},
+			}
 			params["max_deposit_period"] = "172800s"
 			params["voting_period"] = "172800s"
+			params["expedited_voting_period"] = "86400s"
 			params["quorum"] = "0.334000000000000000"
 			params["threshold"] = "0.500000000000000000"
 			params["veto_threshold"] = "0.334000000000000000"
+			params["expedited_threshold"] = "0.667000000000000000"
 		}
 	}
 
@@ -677,15 +702,7 @@ func buildAppState(env string) map[string]interface{} {
 	}
 	appState["wasm"] = wasmMap
 
-	// --- Fund governance contract accounts (applies to BOTH dev and prod) ---
-	//
-	// All four contract addresses must be in auth.accounts before bank's InitGenesis
-	// runs, because genesis module order is: auth → bank → … → wasm.
-	// Bank will panic if it tries to credit a balance to a non-existent account.
-	//
-	// Only Treasury and Reserve Fund receive token balances; Constitution and
-	// Governance receive auth.accounts entries only (they hold no tokens at genesis).
-
+	// --- Fund governance contract accounts & RewardsBucket account ---
 	allContractAddrs := []string{
 		contractAddrs.Constitution,
 		contractAddrs.Treasury,
@@ -701,6 +718,8 @@ func buildAppState(env string) map[string]interface{} {
 		for _, addr := range allContractAddrs {
 			accounts = append(accounts, createGenesisAccount(addr))
 		}
+		// FIX 2: RewardsBucket account must exist in auth
+		accounts = append(accounts, createGenesisAccount(RewardsBucketAddress))
 		auth["accounts"] = accounts
 	}
 
@@ -726,9 +745,19 @@ func buildAppState(env string) map[string]interface{} {
 			},
 		})
 
-		// Constitution and Governance receive zero tokens — no balances entry needed.
+		// FIX 2: RewardsBucket — 100M TOKEN block-reward reserve.
+		balances = append(balances, map[string]interface{}{
+			"address": RewardsBucketAddress,
+			"coins": []map[string]interface{}{
+				{"denom": TokenDenom, "amount": fmt.Sprintf("%d", RewardsBucket)},
+			},
+		})
 
 		bank["balances"] = balances
+		// FIX 2: bank.supply must equal CosmosAllocation (700M TOKEN)
+		bank["supply"] = []map[string]interface{}{
+			{"denom": TokenDenom, "amount": fmt.Sprintf("%d", CosmosAllocation)},
+		}
 	}
 
 	// --- Modify bridge ---
@@ -741,23 +770,24 @@ func buildAppState(env string) map[string]interface{} {
 			panic("production genesis build requires BRIDGE_GNOSIS_SAFE_ADDRESS, BRIDGE_LOCKBOX_ADDRESS, and BRIDGE_CIRCUIT_BREAKER_ADDRESS environment variables to be set")
 		}
 	} else {
+		// FIX 4: Use valid bech32 addresses for dev/staging
 		if gnosisSafe == "" {
-			gnosisSafe = "cosmos1devgsaddressplaceholderxxxxx"
+			gnosisSafe = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh"
 		}
 		if lockbox == "" {
 			lockbox = "0xdeace2ea00000000000000000000000000000000"
 		}
 		if circuitBreaker == "" {
-			circuitBreaker = "cosmos1devcbaddressplaceholderxxxxx"
+			circuitBreaker = "cosmos1398hwtqy7s935s26xezpxp6fdf063s93sd9dfh"
 		}
 	}
 
-	// Validate formats
-	if !strings.HasPrefix(gnosisSafe, "cosmos1") || len(gnosisSafe) < 10 {
-		panic(fmt.Sprintf("invalid gnosis_safe_address: %q", gnosisSafe))
+	// Validate formats (FIX 4: enforce valid bech32 length >= 39)
+	if !strings.HasPrefix(gnosisSafe, "cosmos1") || len(gnosisSafe) < 39 {
+		panic(fmt.Sprintf("invalid gnosis_safe_address %q: must be a valid bech32 cosmos1 address", gnosisSafe))
 	}
-	if !strings.HasPrefix(circuitBreaker, "cosmos1") || len(circuitBreaker) < 10 {
-		panic(fmt.Sprintf("invalid circuit_breaker_address: %q", circuitBreaker))
+	if !strings.HasPrefix(circuitBreaker, "cosmos1") || len(circuitBreaker) < 39 {
+		panic(fmt.Sprintf("invalid circuit_breaker_address %q: must be a valid bech32 cosmos1 address", circuitBreaker))
 	}
 	if !strings.HasPrefix(lockbox, "0x") || len(lockbox) != 42 {
 		panic(fmt.Sprintf("invalid lockbox_address: %q (must be 20-byte hex address with 0x prefix)", lockbox))
@@ -772,7 +802,8 @@ func buildAppState(env string) map[string]interface{} {
 			"max_unlock_per_block":     100000000000,
 			"circuit_breaker_address":  circuitBreaker,
 			"gnosis_safe_address":      gnosisSafe,
-			"supply_cap":              1000000000000,
+			// FIX 3: supply_cap must match BscEscrowBalance (300M TOKEN)
+			"supply_cap":              fmt.Sprintf("%d", BscEscrowBalance),
 			"lockbox_address":         lockbox,
 		},
 		"relayers":      []interface{}{},
@@ -780,6 +811,20 @@ func buildAppState(env string) map[string]interface{} {
 	}
 
 	if env == "dev" {
+		// FIX 5: Inject funded dev oracle operator into oracle state
+		if oracle, ok := appState["oracle"].(map[string]interface{}); ok {
+			oracle["operators"] = []string{DevOracleOperator}
+		} else {
+			appState["oracle"] = map[string]interface{}{
+				"params": map[string]interface{}{
+					"commit_window":              10,
+					"reveal_window":              10,
+					"min_operator_commits":       1,
+					"staleness_threshold_blocks": 100,
+				},
+				"operators": []string{DevOracleOperator},
+			}
+		}
 		// Inject into auth accounts
 		if auth, ok := appState["auth"].(map[string]interface{}); ok {
 			var accounts []interface{}
@@ -1142,7 +1187,7 @@ func VerifyGenesisFileInvariants(filePath string, env string) []string {
 
 	// 4. Verify bridge state
 	var bridgeState struct {
-		CosmosMinted int64 `json:"cosmos_minted"`
+		CosmosMinted interface{} `json:"cosmos_minted"`
 		Params       struct {
 			GnosisSafeAddress     string `json:"gnosis_safe_address"`
 			LockboxAddress        string `json:"lockbox_address"`
@@ -1151,8 +1196,15 @@ func VerifyGenesisFileInvariants(filePath string, env string) []string {
 	}
 	if bridgeRaw, ok := genesisDoc.AppState["bridge"]; ok {
 		if err := json.Unmarshal(bridgeRaw, &bridgeState); err == nil {
-			if bridgeState.CosmosMinted != 0 {
-				failures = append(failures, fmt.Sprintf("FAIL: bridge cosmos_minted must be 0, got %d", bridgeState.CosmosMinted))
+			var minted int64
+			switch v := bridgeState.CosmosMinted.(type) {
+			case float64:
+				minted = int64(v)
+			case string:
+				fmt.Sscanf(v, "%d", &minted)
+			}
+			if minted != 0 {
+				failures = append(failures, fmt.Sprintf("FAIL: bridge cosmos_minted must be 0, got %v", bridgeState.CosmosMinted))
 			} else {
 				fmt.Printf("[PASS] File invariant: bridge cosmos_minted = 0\n")
 			}
