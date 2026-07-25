@@ -16,7 +16,7 @@
   "fees": {
     "fee_tokens": [
       {
-        "denom": "aesov",
+        "denom": "ucsov",
         "fixed_min_gas_price": 0.5,
         "low_gas_price": 0.5,
         "average_gas_price": 0.75,

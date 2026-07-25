@@ -158,7 +158,7 @@ func handleFaucet(w http.ResponseWriter, r *http.Request) {
 		"--broadcast-mode", "sync",
 		"--gas", "auto",
 		"--gas-adjustment", "1.5",
-		"--gas-prices", "1000000000aesov",
+		"--gas-prices", "1000000000ucsov",
 		"--output", "json",
 	}
 	if seqErr == nil {
@@ -321,8 +321,8 @@ func normalizeAddress(input string) (string, error) {
 		return "", fmt.Errorf("invalid address format: not a valid Bech32 or hex address")
 	}
 
-	if hrp != "cosmos" && hrp != "sov" && hrp != "sovereign" {
-		return "", fmt.Errorf("unsupported address prefix: %s", hrp)
+	if hrp != "cosmos" {
+		return "", fmt.Errorf("unsupported address prefix: %s. Expected 'cosmos1' or EVM '0x'", hrp)
 	}
 
 	return sdk.AccAddress(bytes).String(), nil

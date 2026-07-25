@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/gogoproto/proto"
 )
@@ -36,6 +37,31 @@ type Params struct {
 	GnosisSafeAddress     string    `json:"gnosis_safe_address"`
 	SupplyCap             string    `json:"supply_cap"`
 	LockBoxAddress        string    `json:"lockbox_address"`
+}
+
+// Validate checks security-critical parameter bounds.
+// This MUST be called from both SetParams and ValidateGenesis.
+func (p Params) Validate() error {
+	if p.QuorumThreshold < 2 {
+		return fmt.Errorf("bridge quorum_threshold must be >= 2 to prevent single-signer compromise, got: %d", p.QuorumThreshold)
+	}
+	if p.StandardFinalityDepth == 0 {
+		return fmt.Errorf("bridge standard_finality_depth must be positive")
+	}
+	if p.LargeFinalityDepth == 0 {
+		return fmt.Errorf("bridge large_finality_depth must be positive")
+	}
+	if p.LargeFinalityDepth < p.StandardFinalityDepth {
+		return fmt.Errorf("bridge large_finality_depth (%d) must be >= standard_finality_depth (%d)", p.LargeFinalityDepth, p.StandardFinalityDepth)
+	}
+	supplyCap, ok := math.NewIntFromString(p.SupplyCap)
+	if !ok || !supplyCap.IsPositive() {
+		return fmt.Errorf("bridge supply_cap must be positive and valid, got: %s", p.SupplyCap)
+	}
+	if p.LockBoxAddress == "" {
+		return fmt.Errorf("bridge lockbox_address must be set")
+	}
+	return nil
 }
 
 type Relayer struct {
@@ -124,9 +150,11 @@ func (msg *MsgBridgeOut) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{addr}
 }
 
-// ComputeBridgeMessageHash computes the message hash that relayers sign with length-prefixed fields.
+// ComputeBridgeMessageHash computes the message hash that relayers sign with strict domain separation and length-prefixed fields.
 func ComputeBridgeMessageHash(receiver string, amount sdk.Coins, nonce []byte) []byte {
 	h := sha256.New()
+	h.Write([]byte("SOVEREIGN_BRIDGE_V1_IN")) // Strict domain separator
+
 	receiverBytes := []byte(receiver)
 	_ = binary.Write(h, binary.BigEndian, uint32(len(receiverBytes)))
 	h.Write(receiverBytes)

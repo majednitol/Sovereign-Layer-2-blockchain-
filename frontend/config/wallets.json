@@ -38,7 +38,11 @@
       "coinDenom": "CSOV",
       "coinMinimalDenom": "ucsov",
       "coinDecimals": 6
-    }
+    },
+    "features": [
+      "eth-address-gen",
+      "eth-key-sign"
+    ]
   },
   "metamaskSovereignEvm": {
     "chainId": "0x1E61",

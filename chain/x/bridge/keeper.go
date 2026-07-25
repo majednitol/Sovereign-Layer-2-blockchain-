@@ -60,10 +60,14 @@ func (k Keeper) GetParams(ctx sdk.Context) Params {
 	return params
 }
 
-func (k Keeper) SetParams(ctx sdk.Context, params Params) {
+func (k Keeper) SetParams(ctx sdk.Context, params Params) error {
+	if err := params.Validate(); err != nil {
+		return fmt.Errorf("invalid bridge params: %w", err)
+	}
 	store := ctx.KVStore(k.storeKey)
 	bz, _ := json.Marshal(params)
 	store.Set(ParamsKey, bz)
+	return nil
 }
 
 // Relayer management

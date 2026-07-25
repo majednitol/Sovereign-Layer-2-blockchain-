@@ -28,7 +28,7 @@ async function suggestCosmosChain(keplrLike: any): Promise<void> {
     chainName: COSMOS_CHAIN_NAME,
     rpc: COSMOS_RPC,
     rest: COSMOS_REST,
-    bip44: { coinType: 118 },
+    bip44: { coinType: 60 },
     bech32Config: {
       bech32PrefixAccAddr: "cosmos",
       bech32PrefixAccPub: "cosmospub",
@@ -53,6 +53,7 @@ async function suggestCosmosChain(keplrLike: any): Promise<void> {
       coinMinimalDenom: MINIMAL_DENOM,
       coinDecimals: 6,
     },
+    features: ["eth-address-gen", "eth-key-sign"],
   });
 }
 

@@ -11,9 +11,11 @@ if [ ! -f "${CHAIN_HOME}/config/config.toml" ]; then
   chaind init "${MONIKER}" --chain-id "${CHAIN_ID}" --home "${CHAIN_HOME}"
 
   # Copy custom genesis.json if mounted
+  HAS_CUSTOM_GENESIS=0
   if [ -f /root/genesis.json ]; then
     echo "Overwriting default genesis with custom /root/genesis.json..."
     cp /root/genesis.json "${CHAIN_HOME}/config/genesis.json"
+    HAS_CUSTOM_GENESIS=1
     # Re-read chain_id from custom genesis so the gentx is signed with the correct chain-id
     CUSTOM_CHAIN_ID=$(grep '"chain_id"' "${CHAIN_HOME}/config/genesis.json" | head -n 1 | cut -d '"' -f 4)
     if [ -n "${CUSTOM_CHAIN_ID}" ]; then
@@ -41,26 +43,24 @@ if [ ! -f "${CHAIN_HOME}/config/config.toml" ]; then
   COSMOS_HOLDER_ADDR=$(chaind keys show sovereign1-cosmos-holder -a --keyring-backend test --home "${CHAIN_HOME}")
   echo "Cosmos holder address: ${COSMOS_HOLDER_ADDR}"
 
-  echo "Funding validator, faucet and relayer accounts in genesis..."
-  # Fund validator in genesis (500,000,000 CSOV = 500,000,000,000,000 ucsov, and 1,000,000 ESOV for EVM)
-  chaind genesis add-genesis-account "${VAL_ADDR}" 1000000000000000000000000aesov,500000000000000ucsov --home "${CHAIN_HOME}"
+  echo "Funding validator and faucet accounts in genesis..."
+  chaind genesis add-genesis-account "${VAL_ADDR}" 500000000000000ucsov --home "${CHAIN_HOME}"
+  chaind genesis add-genesis-account "${FAUCET_ADDR}" 1000000000000000ucsov,1000000000000000uwsov --home "${CHAIN_HOME}"
 
-  # Fund mock oracle operator
-  chaind genesis add-genesis-account cosmos17955zu57r288jeja39nc67x6qx9rda3xh7wyzw 1000000000000000000000000aesov,500000000000000ucsov --home "${CHAIN_HOME}"
+  if [ "${HAS_CUSTOM_GENESIS}" -eq 0 ]; then
+    echo "Funding oracle and relayer accounts in genesis..."
+    chaind genesis add-genesis-account cosmos17955zu57r288jeja39nc67x6qx9rda3xh7wyzw 500000000000000ucsov --home "${CHAIN_HOME}"
 
-  # Fund faucet in genesis (1,000,000,000 WSOV = 1,000,000,000,000,000 uwsov, 1,000,000,000 CSOV = 1,000,000,000,000,000 ucsov for gas, and 1,000,000 ESOV for EVM)
-  chaind genesis add-genesis-account "${FAUCET_ADDR}" 1000000000000000000000000aesov,1000000000000000ucsov,1000000000000000uwsov --home "${CHAIN_HOME}"
-
-  # Extract relayer address from genesis and fund it
-  RELAYER_ADDR=$(grep -A 2 '"relayers"' "${CHAIN_HOME}/config/genesis.json" | grep '"address"' | head -n 1 | cut -d '"' -f 4 || true)
-  if [ -n "${RELAYER_ADDR}" ]; then
-    echo "Detected Relayer address: ${RELAYER_ADDR}. Funding..."
-    chaind genesis add-genesis-account "${RELAYER_ADDR}" 100000000000000ucsov --home "${CHAIN_HOME}"
+    RELAYER_ADDR=$(grep -A 2 '"relayers"' "${CHAIN_HOME}/config/genesis.json" | grep '"address"' | head -n 1 | cut -d '"' -f 4 || true)
+    if [ -n "${RELAYER_ADDR}" ]; then
+      echo "Detected Relayer address: ${RELAYER_ADDR}. Funding..."
+      chaind genesis add-genesis-account "${RELAYER_ADDR}" 100000000000000ucsov --home "${CHAIN_HOME}"
+    fi
   fi
 
   echo "Generating validator genesis transaction (gentx)..."
   # Generate gentx (delegate 400,000,000 CSOV = 400,000,000,000,000 ucsov to validator)
-  chaind genesis gentx validator 400000000000000ucsov --fees 5000aesov --keyring-backend test --chain-id "${CHAIN_ID}" --home "${CHAIN_HOME}"
+  chaind genesis gentx validator 400000000000000ucsov --fees 5000ucsov --keyring-backend test --chain-id "${CHAIN_ID}" --home "${CHAIN_HOME}"
 
   echo "Collecting gentxs..."
   # Collect gentxs into genesis.json
@@ -80,7 +80,7 @@ if [ -f "${APP_TOML}" ]; then
   sed -i 's|^address = "127.0.0.1:8545"|address = "0.0.0.0:8545"|' "${APP_TOML}"
   sed -i 's|^ws-address = "127.0.0.1:8546"|ws-address = "0.0.0.0:8546"|' "${APP_TOML}"
   # Set minimum gas prices
-  sed -i 's|^minimum-gas-prices =.*|minimum-gas-prices = "0aesov,0.025ucsov"|' "${APP_TOML}"
+  sed -i 's|^minimum-gas-prices =.*|minimum-gas-prices = "0.025ucsov"|' "${APP_TOML}"
   # Enable EVM indexer for transaction receipts/queries
   sed -i 's|^enable-indexer = false|enable-indexer = true|' "${APP_TOML}"
   # Enable app-side mempool (required when mempool.type = "app" in config.toml)

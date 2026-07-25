@@ -76,7 +76,7 @@ export default function ExportDataPage() {
               <label className="block text-gray-400 font-bold uppercase mb-1">Filter by Wallet Address (Optional)</label>
               <input 
                 type="text" 
-                placeholder="sov1... or 0x..." 
+                placeholder="cosmos1... or 0x..." 
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 className="w-full bg-black border border-gray-900 rounded-xl p-3 text-white focus:border-blue-500 outline-none font-mono"

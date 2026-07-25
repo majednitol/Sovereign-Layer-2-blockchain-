@@ -191,7 +191,7 @@ func (c *ChainClient) sendTx(ctx context.Context, msg sdk.Msg) error {
 			},
 		},
 		Fee: &txtypes.Fee{
-			Amount:   sdk.NewCoins(sdk.NewInt64Coin("aesov", 1000000000000000)),
+			Amount:   sdk.NewCoins(sdk.NewInt64Coin("ucsov", 5000)),
 			GasLimit: 200000,
 		},
 	}

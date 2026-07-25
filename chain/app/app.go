@@ -83,6 +83,11 @@ import (
 	erc20types "github.com/cosmos/evm/x/erc20/types"
 	"github.com/cosmos/evm/x/erc20"
 
+	// Cosmos EVM — PreciseBank
+	precisebankkeeper "github.com/cosmos/evm/contrib/x/precisebank/keeper"
+	precisebanktypes "github.com/cosmos/evm/contrib/x/precisebank/types"
+	"github.com/cosmos/evm/contrib/x/precisebank"
+
 	// Cosmos EVM — unified ante handler
 	evmante "github.com/cosmos/evm/ante"
 	antetypes "github.com/cosmos/evm/ante/types"
@@ -176,6 +181,8 @@ var (
 		ibctransfertypes.ModuleName:    {authtypes.Minter, authtypes.Burner},
 		evmtypes.ModuleName:            {authtypes.Minter, authtypes.Burner},
 		erc20types.ModuleName:          {authtypes.Minter, authtypes.Burner},
+		precisebanktypes.ModuleName:    {authtypes.Minter, authtypes.Burner},
+		bridge.ModuleName:              {authtypes.Minter, authtypes.Burner},
 		feemarkettypes.ModuleName:      nil,
 		wasm.ModuleName:                {authtypes.Burner},
 	}
@@ -221,6 +228,7 @@ type App struct {
 	FeeMarketKeeper feemarketkeeper.Keeper
 	EVMKeeper       *evmkeeper.Keeper
 	Erc20Keeper     erc20keeper.Keeper
+	PreciseBankKeeper precisebankkeeper.Keeper
 
 	// CosmWasm
 	WasmKeeper wasmkeeper.Keeper
@@ -343,6 +351,7 @@ func NewApp(
 		evmtypes.StoreKey,
 		feemarkettypes.StoreKey,
 		erc20types.StoreKey,
+		precisebanktypes.StoreKey,
 		// CosmWasm
 		wasm.StoreKey,
 		// Custom Modules
@@ -493,7 +502,14 @@ func NewApp(
 		authAddr,
 	)
 
-	// --- Cosmos EVM Keepers (order matters: feemarket → vm → erc20) ---
+	// --- Cosmos EVM Keepers (order matters: precisebank → feemarket → vm → erc20) ---
+	app.PreciseBankKeeper = precisebankkeeper.NewKeeper(
+		appCodec,
+		keys[precisebanktypes.StoreKey],
+		app.BankKeeper,
+		app.AccountKeeper,
+	)
+
 	app.FeeMarketKeeper = feemarketkeeper.NewKeeper(
 		appCodec,
 		authtypes.NewModuleAddress(govtypes.ModuleName),
@@ -507,7 +523,7 @@ func NewApp(
 		nil, // nonTransientKeys — not needed without transient stores
 		authtypes.NewModuleAddress(govtypes.ModuleName),
 		app.AccountKeeper,
-		app.BankKeeper,
+		app.PreciseBankKeeper, // Wired precisebank Keeper for 18-decimal wei precision
 		app.StakingKeeper,
 		app.FeeMarketKeeper,
 		app.ConsensusParamsKeeper, // ConsensusParamsKeeper
@@ -649,7 +665,8 @@ func NewApp(
 		ibc.NewAppModule(app.IBCKeeper),
 		ibctm.NewAppModule(tmLightClientModule),
 		transferModule,
-		// Cosmos EVM (order: feemarket → vm → erc20)
+		// Cosmos EVM (order: precisebank → feemarket → vm → erc20)
+		precisebank.NewAppModule(app.PreciseBankKeeper, app.BankKeeper, app.AccountKeeper),
 		feemarket.NewAppModule(app.FeeMarketKeeper),
 		vm.NewAppModule(app.EVMKeeper, app.AccountKeeper, app.BankKeeper, app.AccountKeeper.AddressCodec()),
 		erc20.NewAppModule(app.Erc20Keeper, app.AccountKeeper),
@@ -762,7 +779,8 @@ func NewApp(
 		govtypes.ModuleName,
 		consensusparamtypes.ModuleName,
 		ibcexported.ModuleName,
-		// EVM genesis order: feemarket → vm → erc20
+		// EVM genesis order: precisebank → feemarket → vm → erc20
+		precisebanktypes.ModuleName,
 		feemarkettypes.ModuleName,
 		evmtypes.ModuleName,
 		erc20types.ModuleName,

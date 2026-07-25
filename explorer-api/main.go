@@ -3108,7 +3108,7 @@ func handleFaucet(w http.ResponseWriter, r *http.Request, s *server) {
 		return
 	}
 
-	// Validate address format (accept both bech32 'sovereign1'/'sov1' and EVM hex '0x...')
+	// Validate address format (accept both bech32 'cosmos1'/'sovereign1'/'sov1' and EVM hex '0x...')
 	var targetBech32 string
 	var err error
 	if strings.HasPrefix(req.Address, "0x") {
@@ -3120,7 +3120,7 @@ func handleFaucet(w http.ResponseWriter, r *http.Request, s *server) {
 			return
 		}
 		var bAddr string
-		bAddr, err = bech32.ConvertAndEncode("sovereign", bytes)
+		bAddr, err = bech32.ConvertAndEncode("cosmos", bytes)
 		if err != nil {
 			http.Error(w, "Failed to derive Bech32 address from EVM address", http.StatusInternalServerError)
 			return
@@ -3128,12 +3128,17 @@ func handleFaucet(w http.ResponseWriter, r *http.Request, s *server) {
 		targetBech32 = bAddr
 	} else {
 		var hrp string
-		hrp, _, err = bech32.DecodeAndConvert(req.Address)
-		if err != nil || (hrp != "sovereign" && hrp != "sov") {
-			http.Error(w, "Invalid address format. Must be a Bech32 address starting with 'sovereign1'/'sov1' or a 20-byte EVM Hex address", http.StatusBadRequest)
+		var rawBytes []byte
+		hrp, rawBytes, err = bech32.DecodeAndConvert(req.Address)
+		if err != nil || hrp != "cosmos" {
+			http.Error(w, "Invalid address format. Must be a Bech32 address starting with 'cosmos1' or a 20-byte EVM Hex address", http.StatusBadRequest)
 			return
 		}
-		targetBech32 = req.Address
+		targetBech32, err = bech32.ConvertAndEncode("cosmos", rawBytes)
+		if err != nil {
+			http.Error(w, "Failed to encode Bech32 address", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Rate limit: check last drip time for this address
@@ -4510,7 +4515,7 @@ func handleAddressPortfolio(w http.ResponseWriter, r *http.Request, s *server) {
 				if cTypeUpper == "CW-20" {
 					_, valBytes, decodeErr := bech32.DecodeAndConvert(addressBech32)
 					if decodeErr == nil {
-						sovAddr, encodeErr := bech32.ConvertAndEncode("sovereign", valBytes)
+						sovAddr, encodeErr := bech32.ConvertAndEncode("cosmos", valBytes)
 						if encodeErr == nil {
 							queryMsg := fmt.Sprintf(`{"balance":{"address":"%s"}}`, sovAddr)
 							queryBase64 := base64.StdEncoding.EncodeToString([]byte(queryMsg))
@@ -4537,7 +4542,7 @@ func handleAddressPortfolio(w http.ResponseWriter, r *http.Request, s *server) {
 				} else if cTypeUpper == "CW-721" {
 					_, valBytes, decodeErr := bech32.DecodeAndConvert(addressBech32)
 					if decodeErr == nil {
-						sovAddr, encodeErr := bech32.ConvertAndEncode("sovereign", valBytes)
+						sovAddr, encodeErr := bech32.ConvertAndEncode("cosmos", valBytes)
 						if encodeErr == nil {
 							queryMsg := fmt.Sprintf(`{"tokens":{"owner":"%s","limit":10}}`, sovAddr)
 							queryBase64 := base64.StdEncoding.EncodeToString([]byte(queryMsg))

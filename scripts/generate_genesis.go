@@ -13,7 +13,7 @@
 //
 //  1. cosmos_minted_via_bridge + bsc_escrow_balance = 1,000,000,000 TOKEN (S)
 //  2. rewards_bucket / block_emission >= 31,536,000 blocks (5-year floor)
-//  3. x/vm genesis params: ChainID, EvmDenom="aesov", EnableCreate=true,
+//  3. x/vm genesis params: ChainID, EvmDenom="ucsov", EnableCreate=true,
 //     AllowUnprotectedTxs=false
 //  4. x/feemarket genesis params: NoBaseFee=false, ElasticityMultiplier=2,
 //     EnableHeight=0
@@ -28,6 +28,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"cosmossdk.io/math"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -172,9 +174,9 @@ func VerifyInvariants() []string {
 		fmt.Printf("[PASS] INV-3: EVM ChainID = %d\n", EVMChainID)
 	}
 
-	// Invariant 4: EVM denom must be "aesov" per ADR-011
-	if EVMDenom != "aesov" {
-		failures = append(failures, fmt.Sprintf("FAIL [INV-4]: EVMDenom is %q, expected %q", EVMDenom, "aesov"))
+	// Invariant 4: EVM denom must be "ucsov" per Single Canonical Token Model
+	if EVMDenom != "ucsov" {
+		failures = append(failures, fmt.Sprintf("FAIL [INV-4]: EVMDenom is %q, expected %q", EVMDenom, "ucsov"))
 	} else {
 		fmt.Printf("[PASS] INV-4: EVMDenom = %q\n", EVMDenom)
 	}
@@ -534,25 +536,6 @@ func buildAppState(env string) map[string]interface{} {
 		}
 		bank["denom_metadata"] = []map[string]interface{}{
 			{
-				"description": "EVM Gas Token",
-				"denom_units": []map[string]interface{}{
-					{
-						"denom":    "aesov",
-						"exponent": 0,
-						"aliases":  []string{"wei"},
-					},
-					{
-						"denom":    "esov",
-						"exponent": 18,
-						"aliases":  []string{},
-					},
-				},
-				"base":    "aesov",
-				"display": "esov",
-				"name":    "EVM Gas Token",
-				"symbol":  "ESOV",
-			},
-			{
 				"description": "Native Cosmos Staking Token",
 				"denom_units": []map[string]interface{}{
 					{
@@ -800,7 +783,7 @@ func buildAppState(env string) map[string]interface{} {
 			"lockbox_address":         lockbox,
 		},
 		"relayers":      []interface{}{},
-		"cosmos_minted": 0,
+		"cosmos_minted": "0",
 	}
 
 	if env == "dev" {
@@ -881,6 +864,39 @@ func buildAppState(env string) map[string]interface{} {
 		}
 	}
 
+	// Dynamically calculate bank.supply as the exact sum of all coins in bank.balances
+	if bank, ok := appState["bank"].(map[string]interface{}); ok {
+		denomTotals := make(map[string]math.Int)
+		if bals, ok := bank["balances"].([]interface{}); ok {
+			for _, b := range bals {
+				if bMap, ok := b.(map[string]interface{}); ok {
+					if coins, ok := bMap["coins"].([]map[string]interface{}); ok {
+						for _, c := range coins {
+							d, _ := c["denom"].(string)
+							amtStr, _ := c["amount"].(string)
+							amt, ok := math.NewIntFromString(amtStr)
+							if ok {
+								if prev, exists := denomTotals[d]; exists {
+									denomTotals[d] = prev.Add(amt)
+								} else {
+									denomTotals[d] = amt
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		var supplyList []map[string]interface{}
+		for d, total := range denomTotals {
+			supplyList = append(supplyList, map[string]interface{}{
+				"denom":  d,
+				"amount": total.String(),
+			})
+		}
+		bank["supply"] = supplyList
+	}
+
 	return appState
 }
 
@@ -927,7 +943,7 @@ func loadGenesisConfig(env string) {
 
 	// Token & Chain Identity
 	TokenDenom = getEnvOrDefault("TOKEN_DENOM", "ucsov")
-	EVMDenom = getEnvOrDefault("EVM_DENOM", "aesov")
+	EVMDenom = getEnvOrDefault("EVM_DENOM", "ucsov")
 	EVMChainID = getEnvUint64OrDefault("EVM_CHAIN_ID", 7777)
 
 	// Economic Model & Supply Allocations
@@ -1017,7 +1033,7 @@ func loadGenesisConfig(env string) {
 
 		DevFaucetAccount1 = os.Getenv("DEV_FAUCET_ACCOUNT_1")
 		if DevFaucetAccount1 == "" {
-			DevFaucetAccount1 = "cosmos1m44j92rkdgvp0460m44d0r3jasvp2uxzwvzfkr"
+			DevFaucetAccount1 = "cosmos1srqfdy5fwu2ek25kswwvpj647dl30nwfg7gcf8"
 		}
 		validateBech32Address(DevFaucetAccount1, "DEV_FAUCET_ACCOUNT_1")
 
@@ -1112,7 +1128,6 @@ func createGenesisBalance(address string) map[string]interface{} {
 	return map[string]interface{}{
 		"address": address,
 		"coins": []map[string]interface{}{
-			{"denom": "aesov", "amount": "1000000000000000000000000"},
 			{"denom": "ucsov", "amount": "1000000000000000"},
 		},
 	}
@@ -1393,7 +1408,18 @@ func VerifyGenesisFileInvariants(filePath string, env string, expectedChainID st
 	if bankRaw, ok := genesisDoc.AppState["bank"]; ok {
 		if err := json.Unmarshal(bankRaw, &bankState); err == nil {
 			var ucsovSupplyFound bool
-			expectedSupplyStr := fmt.Sprintf("%d", CosmosAllocation)
+			sumUcsov := math.ZeroInt()
+			for _, b := range bankState.Balances {
+				for _, c := range b.Coins {
+					if c.Denom == TokenDenom {
+						amt, ok := math.NewIntFromString(c.Amount)
+						if ok {
+							sumUcsov = sumUcsov.Add(amt)
+						}
+					}
+				}
+			}
+			expectedSupplyStr := sumUcsov.String()
 			for _, coin := range bankState.Supply {
 				if coin.Denom == TokenDenom {
 					if coin.Amount != expectedSupplyStr {

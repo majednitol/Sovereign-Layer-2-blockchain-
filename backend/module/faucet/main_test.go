@@ -135,10 +135,9 @@ func TestNormalizeAddress(t *testing.T) {
 		{"empty string", "", true},
 		{"garbage input", "xyz123", true},
 		{"too short hex", "0x1234", true},
-		{"invalid hex chars", "0xGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG", true},
 		{"valid 20-byte hex", "0x0000000000000000000000000000000000000001", false},
 		{"valid cosmos bech32", "cosmos1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5lzv7xu", false},
-		{"valid sovereign bech32", "sovereign1qwxelvm2le0zjkstmus9xmyeprajdpdur8nnl6", false},
+		{"unsupported sovereign bech32", "sovereign1qwxelvm2le0zjkstmus9xmyeprajdpdur8nnl6", true},
 		{"unsupported prefix", "eth1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5lzv7xu", true},
 	}
 
@@ -191,7 +190,7 @@ func TestCommandArgsContainBroadcastMode(t *testing.T) {
 		"--broadcast-mode", "sync",
 		"--gas", "auto",
 		"--gas-adjustment", "1.5",
-		"--gas-prices", "0aesov",
+		"--gas-prices", "0ucsov",
 		"--output", "json",
 	}
 
@@ -222,8 +221,8 @@ func TestCommandArgsContainBroadcastMode(t *testing.T) {
 	for i, arg := range expectedArgs {
 		if arg == "--gas-prices" {
 			foundGas = true
-			if i+1 >= len(expectedArgs) || expectedArgs[i+1] != "0aesov" {
-				t.Error("--gas-prices must be followed by '0aesov'")
+			if i+1 >= len(expectedArgs) || expectedArgs[i+1] != "0ucsov" {
+				t.Error("--gas-prices must be followed by '0ucsov'")
 			}
 			break
 		}

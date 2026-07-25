@@ -227,7 +227,7 @@ func TestAppSimulation(t *testing.T) {
 		MaxConsecutiveRejections: 5,
 		MissedExtensionLimit:     10,
 	})
-	bridgeKeeper.SetParams(ctx, bridge.Params{
+	if err := bridgeKeeper.SetParams(ctx, bridge.Params{
 		StandardFinalityDepth:  15,
 		LargeFinalityDepth:     50,
 		LargeTransferThreshold: 5000000000,
@@ -237,7 +237,9 @@ func TestAppSimulation(t *testing.T) {
 		GnosisSafeAddress:      "cosmos1gs_addr",
 		SupplyCap:              "1000000000000",
 		LockBoxAddress:         "0x1234567890123456789012345678901234567890",
-	})
+	}); err != nil {
+		t.Fatalf("SetParams bridge failed: %v", err)
+	}
 
 	// Pre-generate accounts
 	accs := make([]simtypes.Account, 5)

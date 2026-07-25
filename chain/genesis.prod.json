@@ -107,27 +107,6 @@
       ],
       "denom_metadata": [
         {
-          "base": "aesov",
-          "denom_units": [
-            {
-              "aliases": [
-                "wei"
-              ],
-              "denom": "aesov",
-              "exponent": 0
-            },
-            {
-              "aliases": [],
-              "denom": "esov",
-              "exponent": 18
-            }
-          ],
-          "description": "EVM Gas Token",
-          "display": "esov",
-          "name": "EVM Gas Token",
-          "symbol": "ESOV"
-        },
-        {
           "base": "ucsov",
           "denom_units": [
             {
@@ -179,7 +158,7 @@
       ]
     },
     "bridge": {
-      "cosmos_minted": 0,
+      "cosmos_minted": "0",
       "params": {
         "circuit_breaker_address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
         "gnosis_safe_address": "cosmos1398hwtqy7s935s26xezpxp6fdf063s93x6tg2g",
@@ -256,9 +235,9 @@
           "0x0000000000000000000000000000000000000802"
         ],
         "evm_channels": [],
-        "evm_denom": "aesov",
+        "evm_denom": "ucsov",
         "extended_denom_options": {
-          "extended_denom": "aesov"
+          "extended_denom": "ucsov"
         },
         "extra_eips": [],
         "history_serve_window": "8192"

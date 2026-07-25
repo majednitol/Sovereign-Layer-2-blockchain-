@@ -62,7 +62,7 @@ export default function AdvancedFilterPage() {
               <label className="block text-gray-400 font-bold uppercase mb-1">Sender Address</label>
               <input 
                 type="text" 
-                placeholder="sov1... or 0x..." 
+                placeholder="cosmos1... or 0x..." 
                 value={sender} 
                 onChange={(e) => setSender(e.target.value)}
                 className="w-full bg-black border border-gray-900 rounded-xl p-3 text-white focus:border-blue-500 outline-none font-mono"
@@ -73,7 +73,7 @@ export default function AdvancedFilterPage() {
               <label className="block text-gray-400 font-bold uppercase mb-1">Recipient Address</label>
               <input 
                 type="text" 
-                placeholder="sov1... or 0x..." 
+                placeholder="cosmos1... or 0x..." 
                 value={receiver} 
                 onChange={(e) => setReceiver(e.target.value)}
                 className="w-full bg-black border border-gray-900 rounded-xl p-3 text-white focus:border-blue-500 outline-none font-mono"

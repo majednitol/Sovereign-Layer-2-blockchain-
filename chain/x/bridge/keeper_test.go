@@ -105,12 +105,28 @@ func TestKeeperParamsAndRelayers(t *testing.T) {
 		t.Errorf("Expected default quorum threshold 3, got %d", params.QuorumThreshold)
 	}
 
-	// Set custom params
+	// Set custom params (must be fully valid for Validate())
 	params.QuorumThreshold = 2
-	keeper.SetParams(ctx, params)
+	params.SupplyCap = "300000000000000"
+	params.LockBoxAddress = "0x1111111111111111111111111111111111111111"
+	if err := keeper.SetParams(ctx, params); err != nil {
+		t.Fatalf("SetParams failed: %v", err)
+	}
 	params2 := keeper.GetParams(ctx)
 	if params2.QuorumThreshold != 2 {
 		t.Errorf("Expected updated quorum threshold 2, got %d", params2.QuorumThreshold)
+	}
+
+	// V-01 regression: verify QuorumThreshold=1 is REJECTED
+	params.QuorumThreshold = 1
+	if err := keeper.SetParams(ctx, params); err == nil {
+		t.Fatal("SetParams should reject QuorumThreshold=1")
+	}
+
+	// V-01 regression: verify QuorumThreshold=0 is REJECTED
+	params.QuorumThreshold = 0
+	if err := keeper.SetParams(ctx, params); err == nil {
+		t.Fatal("SetParams should reject QuorumThreshold=0")
 	}
 
 	// Relayer registration
@@ -164,7 +180,10 @@ func TestProcessBridgeInAndOut(t *testing.T) {
 	params := keeper.GetParams(ctx)
 	params.QuorumThreshold = 2
 	params.SupplyCap = "1000000"
-	keeper.SetParams(ctx, params)
+	params.LockBoxAddress = "0x1111111111111111111111111111111111111111"
+	if err := keeper.SetParams(ctx, params); err != nil {
+		t.Fatalf("SetParams failed: %v", err)
+	}
 
 	receiver := sdk.AccAddress([]byte("receiver_addr")).String()
 	amount := sdk.NewCoins(sdk.NewCoin("uwsov", math.NewInt(50000)))

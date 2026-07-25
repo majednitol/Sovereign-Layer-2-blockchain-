@@ -112,12 +112,12 @@ func TestPhase10_2_EVMGenesisParams(t *testing.T) {
 	}
 
 	evmState := genesis.AppState.EVM
-	if evmState.Params.EvmDenom != "aesov" {
-		t.Errorf("FAIL: Expected evm_denom 'aesov', got '%s'", evmState.Params.EvmDenom)
+	if evmState.Params.EvmDenom != "ucsov" {
+		t.Errorf("FAIL: Expected evm_denom 'ucsov', got '%s'", evmState.Params.EvmDenom)
 	}
 
-	if evmState.Params.ExtendedDenomOptions == nil || evmState.Params.ExtendedDenomOptions.ExtendedDenom != "aesov" {
-		t.Errorf("FAIL: ExtendedDenomOptions.ExtendedDenom is not set to 'aesov'")
+	if evmState.Params.ExtendedDenomOptions == nil || evmState.Params.ExtendedDenomOptions.ExtendedDenom != "ucsov" {
+		t.Errorf("FAIL: ExtendedDenomOptions.ExtendedDenom is not set to 'ucsov'")
 	}
 
 	// Verify AllowUnprotectedTxs = false in app.toml

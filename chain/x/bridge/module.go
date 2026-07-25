@@ -53,25 +53,11 @@ func (AppModuleBasic) ValidateGenesis(cdc codec.JSONCodec, config client.TxEncod
 	if err := json.Unmarshal(bz, &state); err != nil {
 		return fmt.Errorf("failed to unmarshal bridge genesis state: %w", err)
 	}
-	p := state.Params
-	supplyCap, ok := math.NewIntFromString(p.SupplyCap)
-	if !ok || !supplyCap.IsPositive() {
-		return fmt.Errorf("bridge supply_cap must be positive and valid, got: %s", p.SupplyCap)
+	if err := state.Params.Validate(); err != nil {
+		return err
 	}
-	if p.QuorumThreshold == 0 {
-		return fmt.Errorf("bridge quorum_threshold must be positive")
-	}
-	if p.StandardFinalityDepth == 0 {
-		return fmt.Errorf("bridge standard_finality_depth must be positive")
-	}
-	if p.LargeFinalityDepth == 0 {
-		return fmt.Errorf("bridge large_finality_depth must be positive")
-	}
-	if p.CircuitBreakerAddress == "" {
+	if state.Params.CircuitBreakerAddress == "" {
 		return fmt.Errorf("bridge circuit_breaker_address must be set")
-	}
-	if p.LockBoxAddress == "" {
-		return fmt.Errorf("bridge lockbox_address must be set")
 	}
 	return nil
 }
@@ -106,7 +92,9 @@ func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONCodec, data json.
 	if err := json.Unmarshal(data, &genesisState); err != nil {
 		panic(fmt.Sprintf("failed to unmarshal bridge genesis state: %v", err))
 	}
-	am.keeper.SetParams(ctx, genesisState.Params)
+	if err := am.keeper.SetParams(ctx, genesisState.Params); err != nil {
+		panic(fmt.Sprintf("failed to set bridge params from genesis: %v", err))
+	}
 	for _, r := range genesisState.Relayers {
 		am.keeper.SetRelayer(ctx, r)
 	}
