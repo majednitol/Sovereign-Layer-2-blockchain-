@@ -189,7 +189,7 @@ export default function EvmTxDetailPage() {
             </div>
             <div>
               <div className="text-gray-500 text-xs uppercase font-bold">Value</div>
-              <div className="font-mono text-sm text-white mt-1">{tx?.value} SLT</div>
+              <div className="font-mono text-sm text-white mt-1">{tx?.value} CSOV</div>
             </div>
           </div>
           <div className="space-y-4">
@@ -286,7 +286,7 @@ export default function EvmTxDetailPage() {
                 <div className="text-gray-300">
                   {tr.from.slice(0, 8)}... &rarr; {tr.to.slice(0, 8)}...
                 </div>
-                {tr.value !== "0 SLT" && (
+                {tr.value !== "0 CSOV" && (
                   <div className="text-green-400 font-semibold">Value: {tr.value}</div>
                 )}
               </div>

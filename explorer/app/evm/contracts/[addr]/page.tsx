@@ -554,7 +554,7 @@ export default function EvmContractDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-sm">
               <div className="bg-gray-900/40 border border-gray-850 p-4 rounded-xl space-y-1">
                 <span className="text-gray-500 text-xs font-bold uppercase block">Total Managed Assets</span>
-                <span className="font-mono text-xl font-bold text-white">100,500 SLT</span>
+                <span className="font-mono text-xl font-bold text-white">100,500 CSOV</span>
               </div>
               <div className="bg-gray-900/40 border border-gray-850 p-4 rounded-xl space-y-1">
                 <span className="text-gray-500 text-xs font-bold uppercase block">Exchange Rate</span>

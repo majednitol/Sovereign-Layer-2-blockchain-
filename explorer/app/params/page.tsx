@@ -20,13 +20,13 @@ export default function PARAMSPage() {
   const initialStaking: ParamItem[] = [
     { name: "Unbonding Time", value: "21 days (1,814,400s)", type: "Duration", description: "Time duration after requesting undelegation before funds are released." },
     { name: "Max Validators", value: "30", type: "Integer", description: "Maximum number of active validators participating in consensus." },
-    { name: "Min Self Delegation", value: "1,000,000 uSLT", type: "Coin", description: "Minimum amount of staking tokens a validator must delegate to themselves." },
-    { name: "Bond Denom", value: "uSLT", type: "String", description: "The native denomination used for staking and governance voting power." },
+    { name: "Min Self Delegation", value: "1,000,000 ucsov", type: "Coin", description: "Minimum amount of staking tokens a validator must delegate to themselves." },
+    { name: "Bond Denom", value: "ucsov", type: "String", description: "The native denomination used for staking and governance voting power." },
     { name: "Historical Entries", value: "10,000", type: "Integer", description: "Number of historical info entries stored in the state history." },
   ];
 
   const initialGov: ParamItem[] = [
-    { name: "Min Deposit", value: "10,000,000 uSLT", type: "Coin", description: "Minimum deposit required to push a proposal into the voting phase." },
+    { name: "Min Deposit", value: "10,000,000 ucsov", type: "Coin", description: "Minimum deposit required to push a proposal into the voting phase." },
     { name: "Max Deposit Period", value: "48 hours (172,800s)", type: "Duration", description: "Maximum time a proposal can remain in deposit phase to meet min deposit." },
     { name: "Voting Period", value: "24 hours (86,400s)", type: "Duration", description: "Length of the voting phase for active proposals." },
     { name: "Quorum", value: "33.40%", type: "Percentage", description: "Minimum percentage of total bonded voting power required to vote for proposal validity." },
@@ -69,7 +69,7 @@ export default function PARAMSPage() {
   const initialFeemarket: ParamItem[] = [
     { name: "Base Fee Denominator", value: "8", type: "Integer", description: "Divider determining block-by-block base fee volatility speed." },
     { name: "Target Block Gas Limit", value: "15,000,000 gas", type: "Integer", description: "The targeted optimal block size in gas units." },
-    { name: "Min Gas Price", value: "0.0025 uSLT/gas", type: "Coin", description: "Minimum price threshold for transaction execution." },
+    { name: "Min Gas Price", value: "0.0025 ucsov/gas", type: "Coin", description: "Minimum price threshold for transaction execution." },
   ];
 
   const [staking, setStaking] = useState<ParamItem[]>(initialStaking);
@@ -94,8 +94,8 @@ export default function PARAMSPage() {
           setStaking([
             { name: "Unbonding Time", value: p.unbonding_time || "21 days (1,814,400s)", type: "Duration", description: "Time duration after requesting undelegation before funds are released." },
             { name: "Max Validators", value: String(p.max_validators || "30"), type: "Integer", description: "Maximum number of active validators participating in consensus." },
-            { name: "Min Self Delegation", value: p.min_self_delegation ? `${p.min_self_delegation} uSLT` : "1,000,000 uSLT", type: "Coin", description: "Minimum amount of staking tokens a validator must delegate to themselves." },
-            { name: "Bond Denom", value: p.bond_denom || "uSLT", type: "String", description: "The native denomination used for staking and governance voting power." },
+            { name: "Min Self Delegation", value: p.min_self_delegation ? `${p.min_self_delegation} ucsov` : "1,000,000 ucsov", type: "Coin", description: "Minimum amount of staking tokens a validator must delegate to themselves." },
+            { name: "Bond Denom", value: p.bond_denom || "ucsov", type: "String", description: "The native denomination used for staking and governance voting power." },
             { name: "Historical Entries", value: String(p.historical_entries || "10,000"), type: "Integer", description: "Number of historical info entries stored in the state history." },
           ]);
         }
@@ -115,7 +115,7 @@ export default function PARAMSPage() {
         const tP = tallyingData.params || {};
 
         setGov([
-          { name: "Min Deposit", value: dP.min_deposit && dP.min_deposit.length > 0 ? `${dP.min_deposit[0].amount} ${dP.min_deposit[0].denom}` : "10,000,000 uSLT", type: "Coin", description: "Minimum deposit required to push a proposal into the voting phase." },
+          { name: "Min Deposit", value: dP.min_deposit && dP.min_deposit.length > 0 ? `${dP.min_deposit[0].amount} ${dP.min_deposit[0].denom}` : "10,000,000 ucsov", type: "Coin", description: "Minimum deposit required to push a proposal into the voting phase." },
           { name: "Max Deposit Period", value: dP.max_deposit_period || "48 hours (172,800s)", type: "Duration", description: "Maximum time a proposal can remain in deposit phase to meet min deposit." },
           { name: "Voting Period", value: vP.voting_period || "24 hours (86,400s)", type: "Duration", description: "Length of the voting phase for active proposals." },
           { name: "Quorum", value: tP.quorum ? `${(parseFloat(tP.quorum) * 100).toFixed(2)}%` : "33.40%", type: "Percentage", description: "Minimum percentage of total bonded voting power required to vote for proposal validity." },

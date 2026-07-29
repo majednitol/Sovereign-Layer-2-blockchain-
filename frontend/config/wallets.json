@@ -40,20 +40,20 @@
       "coinDecimals": 6
     },
     "features": [
+      "eth-secp256k1-cosmos",
       "eth-address-gen",
       "eth-key-sign"
     ]
   },
   "metamaskSovereignEvm": {
     "chainId": "0x1E61",
-    "chainName": "Sovereign EVM Mainnet",
+    "chainName": "Sovereign L1 EVM",
     "nativeCurrency": {
-      "name": "ESOV",
-      "symbol": "ESOV",
+      "name": "CSOV",
+      "symbol": "CSOV",
       "decimals": 18
     },
-    "rpcUrls": ["https://rpc.mainnet.sovereign.l1:8545/evm-rpc"],
-    "blockExplorerUrls": ["https://explorer.sovereign.l1/blockscout"]
+    "rpcUrls": ["https://localhost:8545", "http://localhost:8545"]
   },
   "metamaskBscMainnet": {
     "chainId": "0x38",

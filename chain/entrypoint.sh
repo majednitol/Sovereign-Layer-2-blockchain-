@@ -95,6 +95,8 @@ if [ -f "${APP_TOML}" ]; then
   else
     sed -i '/^\[evm.mempool\]/a insert-queue-size = 5000' "${APP_TOML}"
   fi
+  # Enable CORS on LCD API server for browser extension compatibility
+  sed -i 's|^enabled-unsafe-cors = false|enabled-unsafe-cors = true|' "${APP_TOML}"
 fi
 
 # --- Patch config.toml ---

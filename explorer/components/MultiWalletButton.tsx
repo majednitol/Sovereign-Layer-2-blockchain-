@@ -6,8 +6,8 @@ import { Wallet, ChevronDown, LogOut, Check, ExternalLink } from "lucide-react";
 
 const WALLET_OPTIONS = [
   { id: "keplr" as const, label: "Keplr", color: "bg-blue-600 hover:bg-blue-500" },
-  { id: "leap" as const, label: "Leap", color: "bg-green-600 hover:bg-green-500" },
   { id: "cosmostation" as const, label: "Cosmostation", color: "bg-purple-600 hover:bg-purple-500" },
+  { id: "okx" as const, label: "OKX Wallet", color: "bg-gray-800 hover:bg-gray-700" },
   { id: "metamask" as const, label: "MetaMask", color: "bg-orange-500 hover:bg-orange-400" },
 ];
 
@@ -33,7 +33,7 @@ export default function MultiWalletButton() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleConnect = async (type: "keplr" | "metamask" | "leap" | "cosmostation") => {
+  const handleConnect = async (type: "keplr" | "metamask" | "okx" | "cosmostation") => {
     setConnecting(type);
     setError(null);
     try {

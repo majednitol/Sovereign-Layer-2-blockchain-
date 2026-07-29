@@ -212,7 +212,7 @@ export default function SubmitProposalPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-gray-400 font-semibold uppercase">Initial Deposit (SLT)</label>
+                  <label className="text-xs text-gray-400 font-semibold uppercase">Initial Deposit (CSOV)</label>
                   <div className="relative">
                     <input
                       type="number"
@@ -222,7 +222,7 @@ export default function SubmitProposalPage() {
                       onChange={(e) => setDeposit(e.target.value)}
                       className="w-full bg-gray-900 border border-gray-850 text-white rounded-lg pl-4 pr-12 py-2.5 text-sm focus:outline-none focus:border-blue-500 font-mono"
                     />
-                    <span className="absolute right-3 top-3 text-xs text-gray-500 font-semibold font-mono">SLT</span>
+                    <span className="absolute right-3 top-3 text-xs text-gray-500 font-semibold font-mono">CSOV</span>
                   </div>
                 </div>
               </div>
@@ -355,7 +355,7 @@ export default function SubmitProposalPage() {
 
                   {/* Check 3 */}
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">3. Deposit Requirement (&ge;1k SLT)</span>
+                    <span className="text-gray-400">3. Deposit Requirement (&ge;1k CSOV)</span>
                     {isDepositOk ? (
                       <CheckCircle2 className="h-4.5 w-4.5 text-green-500" />
                     ) : (
@@ -379,7 +379,7 @@ export default function SubmitProposalPage() {
                     <span className="font-bold text-gray-400 uppercase tracking-wide block mb-1">How to resolve:</span>
                     {!hasTitle && <div>&bull; Provide a title describing the change.</div>}
                     {!isLengthOk && <div>&bull; Elaborate the description text to be 30 characters or more.</div>}
-                    {!isDepositOk && <div>&bull; Increase deposit value to 1,000 SLT or more.</div>}
+                    {!isDepositOk && <div>&bull; Increase deposit value to 1,000 CSOV or more.</div>}
                     {!hasKeywords && (
                       <div>
                         &bull; Include one or more alignment keywords in your description (e.g. <i>benefit, improve, upgrade, governance, community</i>).

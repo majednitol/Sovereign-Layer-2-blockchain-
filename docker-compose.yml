@@ -309,7 +309,7 @@ services:
         NEXT_PUBLIC_COSMOS_REST: "http://localhost:1317"
         NEXT_PUBLIC_COSMOS_CHAIN_ID: "sovereign-1"
         NEXT_PUBLIC_EVM_CHAIN_ID: "7777"
-        NEXT_PUBLIC_CURRENCY_SYMBOL: "SLT"
+        NEXT_PUBLIC_CURRENCY_SYMBOL: "CSOV"
     container_name: explorer-frontend
     depends_on:
       - chain-node

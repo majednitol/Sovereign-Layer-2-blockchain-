@@ -245,7 +245,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-white font-semibold">{tx.fee} uSLT</div>
+                  <div className="text-white font-semibold">{tx.fee} ucsov</div>
                   <div className="mt-1">
                     {tx.status === 0 ? (
                       <Badge variant="success" size="sm">Success</Badge>

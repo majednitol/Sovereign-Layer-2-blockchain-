@@ -16,7 +16,7 @@ export default function SendPage() {
   
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
-  const [denom, setDenom] = useState("uSLT");
+  const [denom, setDenom] = useState("ucsov");
   const [memo, setMemo] = useState("");
   const [fee, setFee] = useState("average");
   const [loading, setLoading] = useState(false);
@@ -119,7 +119,7 @@ export default function SendPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Amount:</span>
-              <span className="text-white font-bold">{amount} SLT</span>
+              <span className="text-white font-bold">{amount} CSOV</span>
             </div>
           </div>
           <div className="pt-2 flex justify-center space-x-3">
@@ -201,7 +201,7 @@ export default function SendPage() {
                   className="w-full bg-gray-900 border border-gray-850 pl-4 pr-16 py-2.5 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-xs text-gray-500 uppercase">
-                  SLT
+                  CSOV
                 </span>
               </div>
             </div>
@@ -214,7 +214,7 @@ export default function SendPage() {
                 onChange={(e) => setDenom(e.target.value)}
                 className="w-full bg-gray-900 border border-gray-850 px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500 transition"
               >
-                <option value="uSLT">SLT (Native Token)</option>
+                <option value="ucsov">CSOV (Native Token)</option>
               </select>
             </div>
           </div>
@@ -248,7 +248,7 @@ export default function SendPage() {
                 >
                   <span className="text-xs capitalize font-bold">{level}</span>
                   <span className="text-[10px] text-gray-500 font-mono">
-                    {level === "low" ? "0.01 SLT" : level === "average" ? "0.025 SLT" : "0.04 SLT"}
+                    {level === "low" ? "0.01 CSOV" : level === "average" ? "0.025 CSOV" : "0.04 CSOV"}
                   </span>
                 </button>
               ))}

@@ -33,7 +33,7 @@ export default function DEVELOPERSPage() {
   params: [{
     chainId: '0x1E61',           // 7777 in hex
     chainName: 'Sovereign L1',
-    nativeCurrency: { name: 'SLT', symbol: 'SLT', decimals: 18 },
+    nativeCurrency: { name: 'CSOV', symbol: 'CSOV', decimals: 18 },
     rpcUrls: ['http://localhost:8545'],
     blockExplorerUrls: ['http://localhost:3000/evm']
   }]
@@ -102,7 +102,7 @@ import { privateKeyToAccount } from "viem/accounts";
 const sovereignChain = {
   id: 7777,
   name: "Sovereign L1",
-  nativeCurrency: { name: "SLT", symbol: "SLT", decimals: 18 },
+  nativeCurrency: { name: "CSOV", symbol: "CSOV", decimals: 18 },
   rpcUrls: { default: { http: ["http://localhost:8545"] } }
 };
 
@@ -127,7 +127,7 @@ import { defineChain } from "viem";
 const sovereign = defineChain({
   id: 7777,
   name: "Sovereign L1",
-  nativeCurrency: { name: "SLT", symbol: "SLT", decimals: 18 },
+  nativeCurrency: { name: "CSOV", symbol: "CSOV", decimals: 18 },
   rpcUrls: { default: { http: ["http://localhost:8545"] } }
 });
 

@@ -55,8 +55,8 @@ export default function StakePage() {
       } catch (err) {
         console.warn("Failed to fetch validators list, falling back to mock", err);
         const mocks = [
-          { address: "sovereignvaloper1valaddr0", moniker: "Sovereign Validator #0", votingPower: "1,200,000 uSLT", commission: "5.0%" },
-          { address: "sovereignvaloper1valaddr1", moniker: "Genesis Validator L1", votingPower: "980,000 uSLT", commission: "10.0%" },
+          { address: "sovereignvaloper1valaddr0", moniker: "Sovereign Validator #0", votingPower: "1,200,000 ucsov", commission: "5.0%" },
+          { address: "sovereignvaloper1valaddr1", moniker: "Genesis Validator L1", votingPower: "980,000 ucsov", commission: "10.0%" },
         ];
         setValidators(mocks);
         setSelectedVal(mocks[0].address);
@@ -115,7 +115,7 @@ export default function StakePage() {
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
               <Layers className="text-blue-500 h-6 w-6" /> Staking & Delegation
             </h1>
-            <p className="text-xs text-gray-400 mt-0.5">Bond SLT tokens to validator nodes to earn network inflation rewards</p>
+            <p className="text-xs text-gray-400 mt-0.5">Bond CSOV tokens to validator nodes to earn network inflation rewards</p>
           </div>
         </div>
         <MultiWalletButton />
@@ -142,7 +142,7 @@ export default function StakePage() {
             {action !== "claim" && (
               <div className="flex justify-between">
                 <span className="text-gray-500">Amount:</span>
-                <span className="text-white font-bold">{amount} SLT</span>
+                <span className="text-white font-bold">{amount} CSOV</span>
               </div>
             )}
             <div className="flex justify-between">
@@ -269,7 +269,7 @@ export default function StakePage() {
                     className="w-full bg-gray-900 border border-gray-850 pl-4 pr-16 py-2.5 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-xs text-gray-500">
-                    SLT
+                    CSOV
                   </span>
                 </div>
               </div>

@@ -5,9 +5,9 @@ const COSMOS_CHAIN_ID =
 const COSMOS_CHAIN_NAME =
   process.env.NEXT_PUBLIC_COSMOS_CHAIN_NAME || "Sovereign L1";
 const COSMOS_RPC =
-  process.env.NEXT_PUBLIC_COSMOS_RPC_URL || "https://rpc.yourchain.io";
+  process.env.NEXT_PUBLIC_COSMOS_RPC_URL || "http://localhost:26657";
 const COSMOS_REST =
-  process.env.NEXT_PUBLIC_COSMOS_REST || "https://lcd.yourchain.io:1317";
+  process.env.NEXT_PUBLIC_COSMOS_REST || "http://localhost:1317";
 const SYMBOL = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || "CSOV";
 const MINIMAL_DENOM = "ucsov";
 
@@ -15,7 +15,7 @@ interface WalletState {
   walletType: string | null;
   connected: boolean;
   address: string | null;
-  connectWallet: (type: "keplr" | "metamask" | "leap" | "cosmostation") => Promise<void>;
+  connectWallet: (type: "keplr" | "metamask" | "okx" | "cosmostation") => Promise<void>;
   disconnectWallet: () => void;
 }
 
@@ -53,7 +53,7 @@ async function suggestCosmosChain(keplrLike: any): Promise<void> {
       coinMinimalDenom: MINIMAL_DENOM,
       coinDecimals: 6,
     },
-    features: ["eth-address-gen", "eth-key-sign"],
+    features: ["eth-secp256k1-cosmos", "eth-address-gen", "eth-key-sign"],
   });
 }
 
@@ -86,17 +86,17 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       return;
     }
 
-    // --- Leap ---
-    if (type === "leap") {
-      const leap = (window as any).leap;
-      if (!leap) {
+    // --- OKX Wallet ---
+    if (type === "okx") {
+      const okx = (window as any).okxwallet?.keplr || (window as any).okxwallet;
+      if (!okx) {
         throw new Error(
-          "Leap extension not found. Please install Leap from https://leapwallet.io"
+          "OKX Wallet extension not found. Please install OKX Wallet."
         );
       }
-      await suggestCosmosChain(leap);
-      const addr = await getCosmosAddress(leap);
-      set({ walletType: "leap", connected: true, address: addr });
+      await suggestCosmosChain(okx);
+      const addr = await getCosmosAddress(okx);
+      set({ walletType: "okx", connected: true, address: addr });
       return;
     }
 
@@ -123,53 +123,66 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         );
       }
 
-      const evmChainIdDec =
-        process.env.NEXT_PUBLIC_EVM_CHAIN_ID || "7777";
-      const evmChainIdHex = "0x" + Number(evmChainIdDec).toString(16);
-      const evmChainName =
-        process.env.NEXT_PUBLIC_EVM_CHAIN_NAME || "Sovereign L1 EVM";
-      const evmRpcUrl =
-        process.env.NEXT_PUBLIC_EVM_RPC_URL || "https://evm-rpc.yourchain.io";
-      const explorerUrl =
-        process.env.NEXT_PUBLIC_EXPLORER_URL || "http://localhost:3001";
-
-      // Switch or add the Sovereign EVM chain
-      try {
-        await ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: evmChainIdHex }],
-        });
-      } catch (switchErr: any) {
-        // 4902 = chain not added yet
-        if (switchErr.code === 4902) {
-          await ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [
-              {
-                chainId: evmChainIdHex,
-                chainName: evmChainName,
-                nativeCurrency: {
-                  name: SYMBOL,
-                  symbol: SYMBOL,
-                  decimals: 18,
-                },
-                rpcUrls: [evmRpcUrl],
-                blockExplorerUrls: [explorerUrl],
-              },
-            ],
-          });
-        } else {
-          throw switchErr;
-        }
-      }
-
-      // Request accounts
+      // Request accounts FIRST so wallet connects regardless of RPC add policy
       const accounts: string[] = await ethereum.request({
         method: "eth_requestAccounts",
       });
       if (!accounts || accounts.length === 0) {
         throw new Error("MetaMask returned no accounts.");
       }
+
+      const evmChainIdDec =
+        process.env.NEXT_PUBLIC_EVM_CHAIN_ID || "7777";
+      const evmChainIdHex = "0x" + Number(evmChainIdDec).toString(16);
+      const evmChainName =
+        process.env.NEXT_PUBLIC_EVM_CHAIN_NAME || "Sovereign L1 EVM";
+      const evmRpcUrl =
+        process.env.NEXT_PUBLIC_EVM_RPC_URL || "http://localhost:8545";
+      const explorerUrl =
+        process.env.NEXT_PUBLIC_EXPLORER_URL || "http://localhost:3001";
+
+      // Non-blocking attempt to switch or suggest network
+      try {
+        await ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: evmChainIdHex }],
+        });
+      } catch (switchErr: any) {
+        if (switchErr.code === 4902) {
+          const httpsRpcUrl = evmRpcUrl.startsWith("http://")
+            ? evmRpcUrl.replace("http://", "https://")
+            : evmRpcUrl;
+          const chainParams: any = {
+            chainId: evmChainIdHex,
+            chainName: evmChainName,
+            nativeCurrency: {
+              name: SYMBOL,
+              symbol: SYMBOL,
+              decimals: 18,
+            },
+            rpcUrls: [httpsRpcUrl, evmRpcUrl],
+          };
+          if (explorerUrl.startsWith("https://")) {
+            chainParams.blockExplorerUrls = [explorerUrl];
+          }
+          try {
+            await ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [chainParams],
+            });
+          } catch (addErr) {
+            try {
+              await ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [{ ...chainParams, rpcUrls: [httpsRpcUrl] }],
+              });
+            } catch (fallbackAddErr) {
+              console.warn("MetaMask programmatic network suggestion skipped:", fallbackAddErr);
+            }
+          }
+        }
+      }
+
       set({
         walletType: "metamask",
         connected: true,
@@ -189,3 +202,48 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     });
   },
 }));
+
+// Setup live listeners for wallet account changes
+if (typeof window !== "undefined") {
+  const win = window as any;
+
+  // Listen for MetaMask account changes
+  if (win.ethereum && win.ethereum.on) {
+    win.ethereum.on("accountsChanged", (accounts: string[]) => {
+      const state = useWalletStore.getState();
+      if (state.walletType === "metamask") {
+        if (accounts && accounts.length > 0) {
+          useWalletStore.setState({ address: accounts[0], connected: true });
+        } else {
+          useWalletStore.getState().disconnectWallet();
+        }
+      }
+    });
+
+    win.ethereum.on("chainChanged", () => {
+      window.location.reload();
+    });
+  }
+
+  // Listen for Keplr / Cosmostation / OKX keystore changes
+  window.addEventListener("keplr_keystorechange", async () => {
+    const state = useWalletStore.getState();
+    if (state.connected && (state.walletType === "keplr" || state.walletType === "okx" || state.walletType === "cosmostation")) {
+      let provider: any = null;
+      if (state.walletType === "keplr") provider = (window as any).keplr;
+      if (state.walletType === "okx") provider = (window as any).okxwallet?.keplr || (window as any).okxwallet;
+      if (state.walletType === "cosmostation") provider = (window as any).cosmostation?.providers?.keplr;
+
+      if (provider) {
+        try {
+          const key = await provider.getKey(COSMOS_CHAIN_ID);
+          if (key && key.bech32Address) {
+            useWalletStore.setState({ address: key.bech32Address, connected: true });
+          }
+        } catch (e) {
+          console.warn("Failed to update Cosmos address on keystore change:", e);
+        }
+      }
+    }
+  });
+}

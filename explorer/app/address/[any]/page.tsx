@@ -57,7 +57,7 @@ export default function AddressPage() {
           addressHex: data.addressHex,
           firstSeen: Number(data.firstSeen),
           lastActive: Number(data.lastActive),
-          balance: data.balance || "0 uSLT",
+          balance: data.balance || "0 ucsov",
         });
       }
 
@@ -90,7 +90,7 @@ export default function AddressPage() {
         addressHex: addressParam.startsWith("0x") ? addressParam : "0xhexaddress0mock1234567890",
         firstSeen: 100,
         lastActive: 120530,
-        balance: "1,250.50 uSLT",
+        balance: "1,250.50 ucsov",
       });
       setTxs([
         { hash: "7c28f9d6ae1234c...", height: 120530, time: new Date().toISOString(), type: "cosmos", msgTypes: ["/cosmos.bank.v1beta1.MsgSend"], status: 0, fee: 150 },
@@ -98,7 +98,7 @@ export default function AddressPage() {
       ]);
       setPortfolio({
         tokens: [
-          { standard: "native", contract: "native", name: "SLT Native Coin", symbol: "SLT", decimals: 6, balance: "1,250.50", valueUsd: "1250.50" },
+          { standard: "native", contract: "native", name: "CSOV Native Coin", symbol: "CSOV", decimals: 6, balance: "1,250.50", valueUsd: "1250.50" },
           { standard: "cw20", contract: "cosmos1contractcw20mck", name: "Sovereign CW20 Token", symbol: "sCW20", decimals: 6, balance: "10,000,000.00", valueUsd: "12000000.00" },
           { standard: "erc20", contract: "0x25091a8d7a8d05cf5d2eb123456789012345678", name: "Ethereum ERC-20", symbol: "USDC", decimals: 6, balance: "1,250.00", valueUsd: "1250.00" }
         ],
@@ -509,8 +509,8 @@ export default function AddressPage() {
                     <div className="text-xs text-gray-500 font-mono">sovereignvaloper1valaddr0</div>
                   </div>
                   <div className="text-right font-mono text-white">
-                    <div className="font-bold">500,000 uSLT</div>
-                    <div className="text-[10px] text-green-400 font-bold">Reward: 1.25 uSLT</div>
+                    <div className="font-bold">500,000 ucsov</div>
+                    <div className="text-[10px] text-green-400 font-bold">Reward: 1.25 ucsov</div>
                   </div>
                 </div>
               </div>

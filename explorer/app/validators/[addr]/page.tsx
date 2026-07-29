@@ -170,7 +170,7 @@ export default function ValidatorDetailPage() {
           <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">Voting Power</div>
           <div className="text-2xl font-extrabold text-white flex items-center gap-2">
             <Cpu className="w-5 h-5 text-blue-500" />
-            {val?.power} SLT
+            {val?.power} CSOV
           </div>
         </div>
 

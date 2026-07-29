@@ -245,7 +245,7 @@ export default function AnalyticsPage() {
             {/* Bridge Inflow Vol */}
             <div className="bg-gray-950 border border-gray-900 rounded-2xl p-6 shadow-md space-y-4">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <ArrowLeftRight className="text-indigo-500 h-5 w-5" /> Bridge Aggregated Volume (SLT)
+                <ArrowLeftRight className="text-indigo-500 h-5 w-5" /> Bridge Aggregated Volume (CSOV)
               </h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">

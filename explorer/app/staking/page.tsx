@@ -14,10 +14,10 @@ interface StakingStats {
 
 export default function StakingPage() {
   const [stats, setStats] = useState<StakingStats>({
-    totalBonded: "450,000,000 uSLT",
+    totalBonded: "450,000,000 ucsov",
     bondedRatio: "45.0%",
     inflation: "7.0%",
-    communityPool: "10,000,000 uSLT",
+    communityPool: "10,000,000 ucsov",
     apr: "12.5%",
   });
   const [loading, setLoading] = useState(true);
@@ -122,7 +122,7 @@ export default function StakingPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase mb-2">
-                Staking Amount (SLT)
+                Staking Amount (CSOV)
               </label>
               <input
                 type="number"
@@ -139,7 +139,7 @@ export default function StakingPage() {
               </div>
               <div className="flex justify-between items-center border-t border-gray-800 pt-2 text-base font-medium">
                 <span className="text-gray-300">Estimated Annual Rewards</span>
-                <span className="font-bold text-green-400">{calculatedYield} SLT</span>
+                <span className="font-bold text-green-400">{calculatedYield} CSOV</span>
               </div>
             </div>
           </div>
