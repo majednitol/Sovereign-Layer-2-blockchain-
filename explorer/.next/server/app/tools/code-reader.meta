@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/tools/layout,_N_T_/tools/code-reader/layout,_N_T_/tools/code-reader/page,_N_T_/tools/code-reader"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/tools/code-reader/__PAGE__",
+    "/tools/code-reader",
+    "/tools",
+    "/_index",
+    "/_head"
+  ]
+}

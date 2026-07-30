@@ -1,0 +1,8 @@
+{
+  "pages": {},
+  "app": {
+    "[project]/explorer/app/bridge/relayers/page": []
+  },
+  "appUsingSizeAdjust": false,
+  "pagesUsingSizeAdjust": false
+}

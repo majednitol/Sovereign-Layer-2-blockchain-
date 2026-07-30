@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/tools/layout,_N_T_/tools/disassembler/layout,_N_T_/tools/disassembler/page,_N_T_/tools/disassembler"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/tools/disassembler/__PAGE__",
+    "/tools/disassembler",
+    "/tools",
+    "/_index",
+    "/_head"
+  ]
+}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Layers } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import { BlockListSchema, StatsSummarySchema } from "@/lib/schemas";
+import { BlockListSchema, StatsSummarySchema, GasPriceSchema } from "@/lib/schemas";
 import { DataTable } from "@/components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 
@@ -39,6 +39,13 @@ export default function BlocksPage() {
     queryKey: ["stats-summary-blocks"],
     queryFn: () => apiClient.get("/api/rest/v1/explorer/stats/summary", StatsSummarySchema),
   });
+
+  const { data: gasPriceData } = useQuery({
+    queryKey: ["gas-price-blocks"],
+    queryFn: () => apiClient.get("/api/rest/v1/explorer/gas-price", GasPriceSchema),
+  });
+
+  const baseFee = gasPriceData?.baseFee || "0";
 
   const columns: ColumnDef<any>[] = [
     {
@@ -110,14 +117,14 @@ export default function BlocksPage() {
       header: "Base Fee",
       cell: () => (
         <span className="text-gray-400 font-mono text-xs">
-          0.025 ucsov
+          {baseFee} ucsov
         </span>
       ),
     },
     {
       header: "Burnt Fees",
       cell: ({ row }) => {
-        const burnt = (row.original.gasUsed || 0) * 0.025;
+        const burnt = (row.original.gasUsed || 0) * Number(baseFee);
         return (
           <span className="text-orange-400 font-mono text-xs font-semibold">
             {burnt > 0 ? `${burnt.toFixed(3)} ucsov` : "0 ucsov"}

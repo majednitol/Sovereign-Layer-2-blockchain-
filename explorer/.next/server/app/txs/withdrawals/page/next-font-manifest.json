@@ -1,0 +1,8 @@
+{
+  "pages": {},
+  "app": {
+    "[project]/explorer/app/txs/withdrawals/page": []
+  },
+  "appUsingSizeAdjust": false,
+  "pagesUsingSizeAdjust": false
+}

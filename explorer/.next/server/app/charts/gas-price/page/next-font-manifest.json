@@ -1,0 +1,8 @@
+{
+  "pages": {},
+  "app": {
+    "[project]/explorer/app/charts/gas-price/page": []
+  },
+  "appUsingSizeAdjust": false,
+  "pagesUsingSizeAdjust": false
+}

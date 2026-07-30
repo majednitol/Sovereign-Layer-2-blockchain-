@@ -167,7 +167,11 @@ func main() {
 		}
 
 		wrappedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			allowedOrigin := os.Getenv("CORS_ALLOWED_ORIGIN")
+			if allowedOrigin == "" {
+				allowedOrigin = "*"
+			}
+			w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
 
@@ -815,8 +819,12 @@ type CosmosBalancesResponse struct {
 }
 
 func fetchBalances(address string) string {
+	lcdURL := os.Getenv("COSMOS_LCD_URL")
+	if lcdURL == "" {
+		lcdURL = "http://chain-node:1317"
+	}
 	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get(fmt.Sprintf("http://chain-node:1317/cosmos/bank/v1beta1/balances/%s", address))
+	resp, err := client.Get(fmt.Sprintf("%s/cosmos/bank/v1beta1/balances/%s", lcdURL, address))
 	if err != nil {
 		return "0 uSLT"
 	}

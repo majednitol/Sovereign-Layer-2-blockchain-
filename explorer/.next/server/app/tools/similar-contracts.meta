@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/tools/layout,_N_T_/tools/similar-contracts/layout,_N_T_/tools/similar-contracts/page,_N_T_/tools/similar-contracts"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/tools/similar-contracts/__PAGE__",
+    "/tools/similar-contracts",
+    "/tools",
+    "/_index",
+    "/_head"
+  ]
+}

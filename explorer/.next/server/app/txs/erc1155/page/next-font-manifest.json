@@ -1,0 +1,8 @@
+{
+  "pages": {},
+  "app": {
+    "[project]/explorer/app/txs/erc1155/page": []
+  },
+  "appUsingSizeAdjust": false,
+  "pagesUsingSizeAdjust": false
+}

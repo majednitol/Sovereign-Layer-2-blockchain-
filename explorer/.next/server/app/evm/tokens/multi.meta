@@ -1,0 +1,17 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/evm/layout,_N_T_/evm/tokens/layout,_N_T_/evm/tokens/multi/layout,_N_T_/evm/tokens/multi/page,_N_T_/evm/tokens/multi"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/evm/tokens/multi/__PAGE__",
+    "/evm/tokens/multi",
+    "/evm/tokens",
+    "/evm",
+    "/_index",
+    "/_head"
+  ]
+}

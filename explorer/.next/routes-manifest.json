@@ -47,6 +47,14 @@
       "namedRegex": "^/address/(?<nxtPany>[^/]+?)/stake(?:/)?$"
     },
     {
+      "page": "/address/[any]/tokencheck",
+      "regex": "^/address/([^/]+?)/tokencheck(?:/)?$",
+      "routeKeys": {
+        "nxtPany": "nxtPany"
+      },
+      "namedRegex": "^/address/(?<nxtPany>[^/]+?)/tokencheck(?:/)?$"
+    },
+    {
       "page": "/blocks/[height]",
       "regex": "^/blocks/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -69,6 +77,14 @@
         "nxtPcodeId": "nxtPcodeId"
       },
       "namedRegex": "^/codes/(?<nxtPcodeId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/contracts/verified/[type]",
+      "regex": "^/contracts/verified/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPtype": "nxtPtype"
+      },
+      "namedRegex": "^/contracts/verified/(?<nxtPtype>[^/]+?)(?:/)?$"
     },
     {
       "page": "/contracts/[addr]",
@@ -209,6 +225,14 @@
       "namedRegex": "^/ibc/channels/(?<nxtPchannelId>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/label/[slug]",
+      "regex": "^/label/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPslug": "nxtPslug"
+      },
+      "namedRegex": "^/label/(?<nxtPslug>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/milestones/[id]",
       "regex": "^/milestones/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -241,6 +265,22 @@
       "namedRegex": "^/settlements/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/tokens/[addr]",
+      "regex": "^/tokens/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/tokens/(?<nxtPaddr>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/tokens/[addr]/submit",
+      "regex": "^/tokens/([^/]+?)/submit(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/tokens/(?<nxtPaddr>[^/]+?)/submit(?:/)?$"
+    },
+    {
       "page": "/txs/[hash]",
       "regex": "^/txs/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -255,6 +295,14 @@
         "nxtPaddr": "nxtPaddr"
       },
       "namedRegex": "^/validators/(?<nxtPaddr>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/vaults/[addr]",
+      "regex": "^/vaults/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPaddr": "nxtPaddr"
+      },
+      "namedRegex": "^/vaults/(?<nxtPaddr>[^/]+?)(?:/)?$"
     }
   ],
   "staticRoutes": [
@@ -289,10 +337,22 @@
       "namedRegex": "^/analytics(?:/)?$"
     },
     {
+      "page": "/api-plans",
+      "regex": "^/api\\-plans(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api\\-plans(?:/)?$"
+    },
+    {
       "page": "/blocks",
       "regex": "^/blocks(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/blocks(?:/)?$"
+    },
+    {
+      "page": "/blocks/reorgs",
+      "regex": "^/blocks/reorgs(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/blocks/reorgs(?:/)?$"
     },
     {
       "page": "/bridge",
@@ -313,6 +373,18 @@
       "namedRegex": "^/bridge/history(?:/)?$"
     },
     {
+      "page": "/bridge/nonces",
+      "regex": "^/bridge/nonces(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/bridge/nonces(?:/)?$"
+    },
+    {
+      "page": "/bridge/relayers",
+      "regex": "^/bridge/relayers(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/bridge/relayers(?:/)?$"
+    },
+    {
       "page": "/bridge/withdraw",
       "regex": "^/bridge/withdraw(?:/)?$",
       "routeKeys": {},
@@ -329,6 +401,138 @@
       "regex": "^/charts(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/charts(?:/)?$"
+    },
+    {
+      "page": "/charts/active-addresses",
+      "regex": "^/charts/active\\-addresses(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/active\\-addresses(?:/)?$"
+    },
+    {
+      "page": "/charts/block-count",
+      "regex": "^/charts/block\\-count(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/block\\-count(?:/)?$"
+    },
+    {
+      "page": "/charts/block-size",
+      "regex": "^/charts/block\\-size(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/block\\-size(?:/)?$"
+    },
+    {
+      "page": "/charts/block-time",
+      "regex": "^/charts/block\\-time(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/block\\-time(?:/)?$"
+    },
+    {
+      "page": "/charts/bridge-volume",
+      "regex": "^/charts/bridge\\-volume(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/bridge\\-volume(?:/)?$"
+    },
+    {
+      "page": "/charts/burnt-fees",
+      "regex": "^/charts/burnt\\-fees(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/burnt\\-fees(?:/)?$"
+    },
+    {
+      "page": "/charts/contracts-deployed",
+      "regex": "^/charts/contracts\\-deployed(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/contracts\\-deployed(?:/)?$"
+    },
+    {
+      "page": "/charts/contracts-verified",
+      "regex": "^/charts/contracts\\-verified(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/contracts\\-verified(?:/)?$"
+    },
+    {
+      "page": "/charts/gas-price",
+      "regex": "^/charts/gas\\-price(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/gas\\-price(?:/)?$"
+    },
+    {
+      "page": "/charts/gas-used",
+      "regex": "^/charts/gas\\-used(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/gas\\-used(?:/)?$"
+    },
+    {
+      "page": "/charts/ibc-volume",
+      "regex": "^/charts/ibc\\-volume(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/ibc\\-volume(?:/)?$"
+    },
+    {
+      "page": "/charts/market-cap",
+      "regex": "^/charts/market\\-cap(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/market\\-cap(?:/)?$"
+    },
+    {
+      "page": "/charts/new-addresses",
+      "regex": "^/charts/new\\-addresses(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/new\\-addresses(?:/)?$"
+    },
+    {
+      "page": "/charts/nft-transfers",
+      "regex": "^/charts/nft\\-transfers(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/nft\\-transfers(?:/)?$"
+    },
+    {
+      "page": "/charts/price",
+      "regex": "^/charts/price(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/price(?:/)?$"
+    },
+    {
+      "page": "/charts/staking-ratio",
+      "regex": "^/charts/staking\\-ratio(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/staking\\-ratio(?:/)?$"
+    },
+    {
+      "page": "/charts/token-transfers",
+      "regex": "^/charts/token\\-transfers(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/token\\-transfers(?:/)?$"
+    },
+    {
+      "page": "/charts/tps",
+      "regex": "^/charts/tps(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/tps(?:/)?$"
+    },
+    {
+      "page": "/charts/tx",
+      "regex": "^/charts/tx(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/tx(?:/)?$"
+    },
+    {
+      "page": "/charts/tx-fee",
+      "regex": "^/charts/tx\\-fee(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/tx\\-fee(?:/)?$"
+    },
+    {
+      "page": "/charts/unique-addresses",
+      "regex": "^/charts/unique\\-addresses(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/unique\\-addresses(?:/)?$"
+    },
+    {
+      "page": "/charts/validator-count",
+      "regex": "^/charts/validator\\-count(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/charts/validator\\-count(?:/)?$"
     },
     {
       "page": "/codes",
@@ -361,16 +565,34 @@
       "namedRegex": "^/contracts/verified(?:/)?$"
     },
     {
+      "page": "/deployments",
+      "regex": "^/deployments(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/deployments(?:/)?$"
+    },
+    {
       "page": "/developers",
       "regex": "^/developers(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/developers(?:/)?$"
     },
     {
+      "page": "/directory",
+      "regex": "^/directory(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/directory(?:/)?$"
+    },
+    {
       "page": "/docs",
       "regex": "^/docs(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/docs(?:/)?$"
+    },
+    {
+      "page": "/domains",
+      "regex": "^/domains(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/domains(?:/)?$"
     },
     {
       "page": "/evm",
@@ -403,6 +625,12 @@
       "namedRegex": "^/evm/tokens(?:/)?$"
     },
     {
+      "page": "/evm/tokens/multi",
+      "regex": "^/evm/tokens/multi(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/evm/tokens/multi(?:/)?$"
+    },
+    {
       "page": "/evm/txs",
       "regex": "^/evm/txs(?:/)?$",
       "routeKeys": {},
@@ -425,6 +653,18 @@
       "regex": "^/faucet(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/faucet(?:/)?$"
+    },
+    {
+      "page": "/gas/guzzlers",
+      "regex": "^/gas/guzzlers(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/gas/guzzlers(?:/)?$"
+    },
+    {
+      "page": "/gas/spenders",
+      "regex": "^/gas/spenders(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/gas/spenders(?:/)?$"
     },
     {
       "page": "/gastracker",
@@ -463,10 +703,22 @@
       "namedRegex": "^/ibc/channels(?:/)?$"
     },
     {
+      "page": "/labelcloud",
+      "regex": "^/labelcloud(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/labelcloud(?:/)?$"
+    },
+    {
       "page": "/milestones",
       "regex": "^/milestones(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/milestones(?:/)?$"
+    },
+    {
+      "page": "/myaccount",
+      "regex": "^/myaccount(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/myaccount(?:/)?$"
     },
     {
       "page": "/network",
@@ -479,6 +731,30 @@
       "regex": "^/nfts(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/nfts(?:/)?$"
+    },
+    {
+      "page": "/nfts/latest-mints",
+      "regex": "^/nfts/latest\\-mints(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/nfts/latest\\-mints(?:/)?$"
+    },
+    {
+      "page": "/nfts/latest-trades",
+      "regex": "^/nfts/latest\\-trades(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/nfts/latest\\-trades(?:/)?$"
+    },
+    {
+      "page": "/nfts/latest-transfers",
+      "regex": "^/nfts/latest\\-transfers(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/nfts/latest\\-transfers(?:/)?$"
+    },
+    {
+      "page": "/nfts/top-mints",
+      "regex": "^/nfts/top\\-mints(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/nfts/top\\-mints(?:/)?$"
     },
     {
       "page": "/oracle",
@@ -553,6 +829,66 @@
       "namedRegex": "^/tools(?:/)?$"
     },
     {
+      "page": "/tools/abi-encoder",
+      "regex": "^/tools/abi\\-encoder(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/tools/abi\\-encoder(?:/)?$"
+    },
+    {
+      "page": "/tools/broadcast",
+      "regex": "^/tools/broadcast(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/tools/broadcast(?:/)?$"
+    },
+    {
+      "page": "/tools/code-reader",
+      "regex": "^/tools/code\\-reader(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/tools/code\\-reader(?:/)?$"
+    },
+    {
+      "page": "/tools/compiler",
+      "regex": "^/tools/compiler(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/tools/compiler(?:/)?$"
+    },
+    {
+      "page": "/tools/constructor-args",
+      "regex": "^/tools/constructor\\-args(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/tools/constructor\\-args(?:/)?$"
+    },
+    {
+      "page": "/tools/contract-diff",
+      "regex": "^/tools/contract\\-diff(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/tools/contract\\-diff(?:/)?$"
+    },
+    {
+      "page": "/tools/disassembler",
+      "regex": "^/tools/disassembler(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/tools/disassembler(?:/)?$"
+    },
+    {
+      "page": "/tools/similar-contracts",
+      "regex": "^/tools/similar\\-contracts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/tools/similar\\-contracts(?:/)?$"
+    },
+    {
+      "page": "/tools/unit-converter",
+      "regex": "^/tools/unit\\-converter(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/tools/unit\\-converter(?:/)?$"
+    },
+    {
+      "page": "/tools/verify-signature",
+      "regex": "^/tools/verify\\-signature(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/tools/verify\\-signature(?:/)?$"
+    },
+    {
       "page": "/txs",
       "regex": "^/txs(?:/)?$",
       "routeKeys": {},
@@ -565,10 +901,40 @@
       "namedRegex": "^/txs/advanced\\-filter(?:/)?$"
     },
     {
+      "page": "/txs/erc1155",
+      "regex": "^/txs/erc1155(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/txs/erc1155(?:/)?$"
+    },
+    {
+      "page": "/txs/erc20",
+      "regex": "^/txs/erc20(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/txs/erc20(?:/)?$"
+    },
+    {
+      "page": "/txs/erc721",
+      "regex": "^/txs/erc721(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/txs/erc721(?:/)?$"
+    },
+    {
+      "page": "/txs/internal",
+      "regex": "^/txs/internal(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/txs/internal(?:/)?$"
+    },
+    {
       "page": "/txs/pending",
       "regex": "^/txs/pending(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/txs/pending(?:/)?$"
+    },
+    {
+      "page": "/txs/withdrawals",
+      "regex": "^/txs/withdrawals(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/txs/withdrawals(?:/)?$"
     },
     {
       "page": "/validators",
