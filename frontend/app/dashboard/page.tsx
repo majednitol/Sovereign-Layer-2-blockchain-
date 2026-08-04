@@ -9,13 +9,7 @@ import { transport, startStreamWithReconnect } from "../../config/grpc-client";
 const queryClient = new QueryServiceClient(transport);
 const streamClient = new StreamServiceClient(transport);
 
-// --- Mock Data Generators for Analytics Dashboard ---
-// In production, these would be replaced by gRPC-Web hooks from @workspace/api-spec codegen:
-// - GetTps (reads from tps_1h TimescaleDB continuous aggregate)
-// - GetBlockStats (reads block stats)
-// - StreamChainStats (streams real-time chain stats)
-// - GetBridgeVolume (reads from bridge_volume_1h TimescaleDB continuous aggregate)
-// - GetOraclePrice (reads from oracle_price_1h TimescaleDB continuous aggregate)
+
 
 interface TpsData {
   tps_avg: number;
@@ -65,59 +59,6 @@ interface MilestoneData {
   block_height: number;
 }
 
-// --- Simulated Data ---
-function mockTps(): TpsData {
-  return { tps_avg: 142.5, tps_peak: 312.8, total_txs: 1_245_678 };
-}
-
-function mockBlockStats(): BlockStatsData {
-  return { avg_ms: 2450, max_ms: 4100 };
-}
-
-function mockBridgeVolume(): BridgeVolumeData {
-  return {
-    total_minted: "8,450,000",
-    total_burned: "5,800,000",
-    volume_usd: "14,250,000",
-    transaction_count: 3_241,
-    direction: "lock",
-  };
-}
-
-function mockOraclePrices(): OraclePriceData[] {
-  return [
-    { asset_id: "CSOV/USD", open: 1.02, high: 1.08, low: 0.98, close: 1.05, submission_count: 245 },
-    { asset_id: "BNB/USD", open: 620.5, high: 635.2, low: 615.1, close: 628.4, submission_count: 243 },
-    { asset_id: "ETH/USD", open: 3850.0, high: 3920.5, low: 3810.2, close: 3895.0, submission_count: 240 },
-  ];
-}
-
-function mockValidatorUptime(): ValidatorUptimeData[] {
-  return [
-    { validator_address: "cosmosvaloper1abc...xyz1", total_blocks: 100_000, missed_blocks: 12, uptime_percentage: 99.988 },
-    { validator_address: "cosmosvaloper1def...xyz2", total_blocks: 100_000, missed_blocks: 45, uptime_percentage: 99.955 },
-    { validator_address: "cosmosvaloper1ghi...xyz3", total_blocks: 100_000, missed_blocks: 3, uptime_percentage: 99.997 },
-    { validator_address: "cosmosvaloper1jkl...xyz4", total_blocks: 100_000, missed_blocks: 150, uptime_percentage: 99.850 },
-    { validator_address: "cosmosvaloper1mno...xyz5", total_blocks: 100_000, missed_blocks: 0, uptime_percentage: 100.0 },
-  ];
-}
-
-function mockSettlements(): SettlementData[] {
-  return [
-    { settlement_id: "stl-001", status: "finalized", block_height: 98_450, signatures: ["sig1", "sig2", "sig3"] },
-    { settlement_id: "stl-002", status: "confirmed", block_height: 99_100, signatures: ["sig4", "sig5"] },
-    { settlement_id: "stl-003", status: "pending", block_height: 99_800, signatures: [] },
-  ];
-}
-
-function mockMilestones(): MilestoneData[] {
-  return [
-    { milestone_id: "ms-genesis", status: "achieved", block_height: 1 },
-    { milestone_id: "ms-first-1k-txs", status: "achieved", block_height: 5_420 },
-    { milestone_id: "ms-bridge-live", status: "achieved", block_height: 12_000 },
-    { milestone_id: "ms-100-validators", status: "pending", block_height: 0 },
-  ];
-}
 
 import {
   ResponsiveContainer,
