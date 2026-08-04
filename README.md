@@ -29,7 +29,7 @@
 
 ---
 
-## 📖 Overview
+##  Overview
 
 **Sovereign** is a next-generation Layer 1 blockchain that combines the best of the Cosmos ecosystem with full Ethereum Virtual Machine (EVM) compatibility. It is designed for institutional-grade decentralized governance, cross-chain asset transfers, and programmable smart contracts — all while maintaining the security and performance guarantees expected of a production mainnet.
 
@@ -48,7 +48,7 @@
 
 ---
 
-## 🏗 Architecture
+##  Architecture
 
 ```
                          ┌─────────────────────────────────────────────┐
@@ -212,7 +212,7 @@ All major design decisions are documented as Architecture Decision Records (ADRs
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -298,7 +298,7 @@ pnpm --filter explorer dev       # → http://localhost:3001
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 Sovereign/
